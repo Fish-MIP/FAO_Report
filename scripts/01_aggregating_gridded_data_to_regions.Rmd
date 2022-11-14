@@ -26,17 +26,59 @@ temp_data_dir <- "/mnt/rdsi/raw_data/foodmip/temp_data"
 Save data in raw data directory in repo
 ```{r}
 
-cmip5 <- load(file.path(temp_data_dir, "data_CMIP5.RData"))
+#load CMIP5 data
+load(file.path(temp_data_dir, "data_CMIP5.RData"))
 ls()
+cmip5 <- data_summaries_CMIP5$res_all$model_average
+dim(cmip5)
+rownames(cmip5) <- seq(-180, 179)
+colnames(cmip5) <- rev(seq(-90, 89))
+
+cmip5_df <- cmip5 |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "lon") |> 
+  pivot_longer(names_to = "lat", values_to = "mean_change_cmip5", cols = -c(lon))
+
+cmip5_r <- rast(cmip5_df, type="xyz")
+plot(cmip5_r)
+writeRaster(x = cmip5_r, filename = here("data/data_products/CMIP_5_gridded_mean_change.tif"))
 
 
 
-save(, file = here("data/raw_data/data_CMIP5_mean.RData"))
+#load CMIP6 data
+load(file.path(temp_data_dir, "data_CMIP6.RData"))
+cmip6 <- data_summaries_CMIP6$res_all$model_average
+dim(cmip6)
+rownames(cmip6) <- seq(-180, 179)
+colnames(cmip6) <- rev(seq(-90, 89))
 
 
-cmip6 <- load(file.path(temp_data_dir, "data_CMIP6.RData"))
+cmip6_df <- cmip6 |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "lon") |> 
+  pivot_longer(names_to = "lat", values_to = "mean_change_cmip6", cols = -c(lon))
+
+
+cmip6_r <- rast(cmip6_df, type="xyz")
+plot(cmip6_r)
+writeRaster(x = cmip6_r, filename = here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+
+
 save(cmip6, file = here("raw_data/foodmip/data_CMIP6.RData"))
 
+
+
+```
+
+Bring in shapefiles for cropping rasters
+```{r}
+
+eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
+
+
+#check how the shapefiles plot 
+ggplot()+
+  geom_sf(data = eez_shp, size=0.2) ##eez seems to plot OK
 
 
 ```
