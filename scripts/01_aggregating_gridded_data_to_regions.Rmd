@@ -1,0 +1,43 @@
+---
+title: "Aggregated gridded data to EEZ and IHO"
+author: "Rich Cottrell"
+date: "14/11/2022"
+output: pdf_document
+---
+Setup
+```{r}
+
+library(tidyverse)
+library(sf)
+library(terra)
+library(here)
+
+```
+
+Gridded data source. Change this file directory to make relevant to gem or the source you're working from.
+
+```{r}
+
+temp_data_dir <- "/mnt/rdsi/raw_data/foodmip/temp_data"
+
+```
+
+
+Save data in raw data directory in repo
+```{r}
+
+cmip5 <- load(file.path(temp_data_dir, "data_CMIP5.RData"))
+ls()
+
+
+
+save(, file = here("data/raw_data/data_CMIP5_mean.RData"))
+
+
+cmip6 <- load(file.path(temp_data_dir, "data_CMIP6.RData"))
+save(cmip6, file = here("raw_data/foodmip/data_CMIP6.RData"))
+
+
+
+```
+
