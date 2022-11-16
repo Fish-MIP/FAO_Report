@@ -45,7 +45,7 @@ countries_shp <- ne_countries(scale="medium", returnclass = "sf")
 Plot CMIP5
 ```{r}
 
-cmip5_mean <- readRDS(here("data/data_products/cmip5_mean_%_change_aggregated_by_region.rds"))
+cmip5_mean <- readRDS(here("data/data_products/cmip5_mean_change_aggregated_by_region.rds"))
 cmip5_sd <- readRDS(here("data/data_products/cmip5_SD_aggregated_by_region.rds"))
 
 
@@ -126,7 +126,7 @@ Plot CMIP6
 ```{r}
 
 
-cmip6_mean <- readRDS(here("data/data_products/cmip6_mean_%_change_aggregated_by_region.rds"))
+cmip6_mean <- readRDS(here("data/data_products/cmip6_mean_change_aggregated_by_region.rds"))
 cmip6_sd <- readRDS(here("data/data_products/cmip6_SD_aggregated_by_region.rds"))
 
 
