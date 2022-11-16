@@ -1,0 +1,334 @@
+---
+title: "Aggregated ensemble mean change data to EEZ and FAO fishing areas (high seas)"
+author: "Rich Cottrell"
+date: "14/11/2022"
+output: pdf_document
+---
+Setup
+```{r, echo = FALSE}
+
+library(tidyverse)
+library(sf)
+library(terra)
+library(here)
+
+```
+
+Gridded data source. Change this file directory to make relevant to gem or the source you're working from.
+
+```{r}
+
+temp_data_dir <- "/mnt/rdsi/raw_data/foodmip/temp_data"
+
+```
+
+
+Save data in raw data directory in repo
+```{r}
+
+#load CMIP5 data
+load(file.path(temp_data_dir, "data_CMIP5.RData"))
+ls()
+cmip5 <- data_summaries_CMIP5$res_all$model_average
+dim(cmip5)
+rownames(cmip5) <- seq(-180, 179)
+colnames(cmip5) <- rev(seq(-90, 89))
+
+cmip5_df <- cmip5 |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "lon") |> 
+  pivot_longer(names_to = "lat", values_to = "mean_change_cmip5", cols = -c(lon))
+
+cmip5_r <- rast(cmip5_df, type="xyz")
+plot(cmip5_r)
+writeRaster(x = cmip5_r, filename = here("data/data_products/CMIP_5_gridded_mean_change.tif"), overwrite=TRUE)
+
+
+
+#load CMIP6 data
+load(file.path(temp_data_dir, "data_CMIP6.RData"))
+cmip6 <- data_summaries_CMIP6$res_all$model_average
+dim(cmip6)
+rownames(cmip6) <- seq(-180, 179)
+colnames(cmip6) <- rev(seq(-90, 89))
+
+
+cmip6_df <- cmip6 |> 
+  as.data.frame() |> 
+  rownames_to_column(var = "lon") |> 
+  pivot_longer(names_to = "lat", values_to = "mean_change_cmip6", cols = -c(lon))
+
+
+cmip6_r <- rast(cmip6_df, type="xyz")
+plot(cmip6_r)
+writeRaster(x = cmip6_r, filename = here("data/data_products/CMIP_6_gridded_mean_change.tif"), overwrite=TRUE)
+
+
+
+plot((rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))))
+
+
+
+```
+
+Bring in and modify shapefiles for cropping rasters
+```{r}
+
+eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
+
+
+#check how the shapefiles plot 
+ggplot()+
+  geom_sf(data = eez_shp, size=0.2) ##eez seems to plot OK
+
+
+#bring in FAO fishing areas and aggregate to main regions
+fao_areas <- st_read("/mnt/rdsi/raw_data/fao/FAO_AREAS_CWP/FAO_AREAS_CWP.shp")
+ggplot()+
+  geom_sf(data = fao_areas)
+
+#rasterize to merge FAO subareas
+blank_r <- rast(res =0.5)
+fao_area_r <- rasterize(vect(fao_areas), blank_r, field = "F_AREA", fun = "first") 
+
+#convert raster back to polygons and save
+fao_vect <- as.polygons(fao_area_r, values=TRUE)
+writeVector(fao_vect, filename = here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"),filetype = "ESRI Shapefile")
+
+fao_areas <- st_read(here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"))
+
+
+#this takes about 10 min to run 
+fao_area_mask_r <- mask(x = fao_area_r, mask = vect(eez_shp), inverse=TRUE)
+
+#plot to check it's doing what we expect - looks good.
+plot(fao_area_mask_r)
+
+fao_vect_wo_eez <- as.polygons(fao_area_mask_r, values=TRUE)
+writeVector(fao_vect_wo_eez, filename = here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"),filetype = "ESRI Shapefile")
+
+fao_area_eez_mask_shp <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"))
+
+
+ggplot()+
+  geom_sf(data = fao_area_eez_mask_shp, aes(fill=F_AREA))
+  geom_sf(data = eez_shp)
+
+```
+
+
+Aggregate CMIP 5 by EEZ and FAO Fishing Areas in the high seas
+```{r}
+
+
+#AGGREGATE BY EEZ
+
+#EEZ shape file
+eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
+
+#split by EEZ
+eez_list <- eez_shp |> 
+  group_split(GEONAME)
+
+#test function
+this_eez_shp <- eez_list[[12]]
+
+
+#Average values by EEZ, weighted by cell size (Canada takes ages)
+
+eez_aggregated_df <- 
+  
+  map_df(.x = eez_list, .f = \(this_eez_shp){
+  
+  #EEZ name
+  this_eez_name <-  this_eez_shp |> pull(GEONAME) |> unique()
+  
+  message("Processing - ", this_eez_name)
+  
+  #cmip 5 raster
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+  
+  #mask the raster with the EEZ shp
+  this_eez_mask <- mask(the_cmip_5_r, vect(this_eez_shp))
+  crs(this_eez_mask) <- "EPSG:4326"
+  
+  #Warn when there are no non-NA values in the masked raster
+  if(!length(values(this_eez_mask, na.rm=TRUE) |> as.numeric()) >0){
+    message("WARNING: No values for ", this_eez_name)
+
+  }
+  
+  #writeRaster(x = this_eez_mask, filename = sprintf(here("data/data_products/cmip5_masked_rasters/%s.tif"),this_eez_name), overwrite=TRUE)
+  
+  this_region_mean <- 
+    global(this_eez_mask, fun = mean, weights = cellSize(this_eez_mask), na.rm=TRUE) |> 
+    mutate(region = this_eez_name) |> 
+    rownames_to_column(var="model")
+  
+  return(this_region_mean)
+})
+
+
+
+
+
+#AGGREGATE BY FAO FISHING AREA
+
+# fao regions masked by EEZ
+fao_area_eez_mask_shp <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"))
+
+#split by fao area
+fao_area_list <- 
+  fao_area_eez_mask_shp |> 
+  group_split(F_AREA)
+
+#test function
+this_fao_area_shp <- fao_area_list[[1]]
+
+
+#Average values by FAO region, weighted by cell size
+fao_aggregated_df <- 
+  
+  map_df(.x = fao_area_list, .f = \(this_fao_area_shp){
+  
+  #EEZ name
+  this_fao_name <-  paste("High Seas, FAO area",  this_fao_area_shp |> pull(F_AREA) |> unique())
+  
+  message("Processing - ", this_fao_name)
+  
+  #cmip 5 raster
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+  
+  #mask the raster with the EEZ shp
+  this_fao_mask <- mask(the_cmip_5_r, vect(this_fao_area_shp))
+  crs(this_fao_mask) <- "EPSG:4326"
+  
+  # writeRaster(x = this_eez_mask, filename = sprintf(here("data/data_products/cmip5_masked_rasters/%s.tif"),this_fao_name), overwrite=TRUE)
+  
+  this_region_mean <- 
+    global(this_fao_mask, fun = mean, weights = cellSize(this_fao_mask), na.rm=TRUE) |> 
+    mutate(region = this_fao_name) |> 
+    rownames_to_column(var="model")
+  
+  return(this_region_mean)
+  
+})
+  
+  
+  
+cmip5_aggregated_df <- bind_rows(fao_aggregated_df, eez_aggregated_df)
+
+saveRDS(object = cmip5_aggregated_df, file = here("data/data_products/cmip5_mean_%_change_aggregated_by_region.rds"))
+
+```
+
+
+Aggregate CMIP6 data in EEZ and FAO Fishing areas in the high seas
+
+```{r}
+
+#AGGREGATE BY EEZ
+
+#EEZ shape file
+eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
+
+#split by EEZ
+eez_list <- eez_shp |> 
+  group_split(GEONAME)
+
+#test function
+this_eez_shp <- eez_list[[12]]
+
+
+#Average values by EEZ, weighted by cell size (Canada takes ages)
+
+eez_aggregated_df <- 
+  
+  map_df(.x = eez_list, .f = \(this_eez_shp){
+  
+  #EEZ name
+  this_eez_name <-  this_eez_shp |> pull(GEONAME) |> unique()
+  
+  message("Processing - ", this_eez_name)
+  
+  #cmip 6 raster
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+  
+  #mask the raster with the EEZ shp
+  this_eez_mask <- mask(the_cmip_6_r, vect(this_eez_shp))
+  crs(this_eez_mask) <- "EPSG:4326"
+  
+  #plot(this_eez_mask)
+  
+  #Warn when there are no non-NA values in the masked raster
+  if(!length(values(this_eez_mask, na.rm=TRUE) |> as.numeric()) >0){
+    message("WARNING: No values for ", this_eez_name)
+
+  }
+  
+  #writeRaster(x = this_eez_mask, filename = sprintf(here("data/data_products/cmip6_masked_rasters/%s.tif"),this_eez_name), overwrite=TRUE)
+  
+  this_region_mean <- 
+    global(this_eez_mask, fun = mean, weights = cellSize(this_eez_mask), na.rm=TRUE) |> 
+    mutate(region = this_eez_name) |> 
+    rownames_to_column(var="model")
+  
+  return(this_region_mean)
+})
+
+
+
+
+
+#AGGREGATE BY FAO FISHING AREA
+
+# fao regions masked by EEZ
+fao_area_eez_mask_shp <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"))
+
+#split by fao area
+fao_area_list <- 
+  fao_area_eez_mask_shp |> 
+  group_split(F_AREA)
+
+#test function
+this_fao_area_shp <- fao_area_list[[1]]
+
+
+#Average values by FAO region, weighted by cell size
+fao_aggregated_df <- 
+  
+  map_df(.x = fao_area_list, .f = \(this_fao_area_shp){
+  
+  #EEZ name
+  this_fao_name <-  paste("High Seas, FAO area",  this_fao_area_shp |> pull(F_AREA) |> unique())
+  
+  message("Processing - ", this_fao_name)
+  
+  #cmip 6 raster
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+  
+  #mask the raster with the EEZ shp
+  this_fao_mask <- mask(the_cmip_6_r, vect(this_fao_area_shp))
+  crs(this_fao_mask) <- "EPSG:4326"
+  
+  # writeRaster(x = this_eez_mask, filename = sprintf(here("data/data_products/cmip5_masked_rasters/%s.tif"),this_fao_name), overwrite=TRUE)
+  
+  this_region_mean <- 
+    global(this_fao_mask, fun = mean, weights = cellSize(this_fao_mask), na.rm=TRUE) |> 
+    mutate(region = this_fao_name) |> 
+    rownames_to_column(var="model")
+  
+  return(this_region_mean)
+  
+})
+  
+  
+  
+cmip6_aggregated_df <- bind_rows(fao_aggregated_df, eez_aggregated_df)
+
+saveRDS(object = cmip6_aggregated_df, file = here("data/data_products/cmip6_mean_%_change_aggregated_by_region.rds"))
+
+
+
+```
+
