@@ -120,6 +120,74 @@ ggplot()+
 ```
 
 
+```{r}
+
+#return non_NA values from raster
+no_na_values <- \(x){return(terra::values(x, na.rm=TRUE))}
+
+
+#CMIP5
+cmip_5_sd_r <- rast(here("data/data_products/CMIP_5_gridded_SD.tif"))
+
+cmip5_sd_vals <- cmip_5_sd_r |> no_na_values() |> as.numeric()
+
+quantile_options <- c(0.5,0.75,0.9,0.91, 0.92, 0.93, 0.94, 0.95,0.96, 0.97, 0.98, 0.99)
+
+quant_vals_cmip5_sd <- list()
+
+
+for(i in 1:length(quantile_options)){
+  quantile <- 
+    quant_vals_cmip5_sd[[i]] <- quantile(cmip5_sd_vals, quantile_options[i])
+}
+
+print(quant_vals_cmip5_sd) #95th percentile looks good
+
+quant_vals_cmip5_sd |> unlist() |> as.numeric() |> plot()
+
+
+#CMIP6
+
+cmip6_sd_r <- rast(here("data/data_products/CMIP_6_gridded_SD.tif"))
+
+cmip6_sd_vals <- cmip6_sd_r |> no_na_values() |> as.numeric()
+
+quantile_options <- c(0.5,0.75,0.9,0.91, 0.92, 0.93, 0.94, 0.95,0.96, 0.97, 0.98, 0.99)
+
+quant_vals_sd_cmip6 <- list()
+
+
+for(i in 1:length(quantile_options)){
+  quantile <- 
+    quant_vals_sd_cmip6[[i]] <- quantile(cmip6_sd_vals, quantile_options[i])
+}
+
+print(quant_vals_sd_cmip6) #95th percentile looks good
+
+quant_vals_sd_cmip6 |> unlist() |> as.numeric() |> plot()
+
+
+#create constrained rasters for CMIP5 and 6
+
+rescale_cmip5_sd <- quantile(cmip5_sd_vals, 0.95) |> as.numeric()
+rescale_cmip6_sd <- quantile(cmip6_sd_vals, 0.95) |> as.numeric()
+
+
+#rescale cmip5
+app(cmip_5_sd_r, fun = \(this_cell){
+    if_else(this_cell> rescale_cmip5_sd, true = rescale_cmip5_sd, false = this_cell)
+}, filename =  here("data/data_products/CMIP_5_gridded_SD_constrained.tif"), overwrite=TRUE)
+
+
+#rescale cmip6
+app(cmip6_sd_r, fun = \(this_cell){
+    if_else(this_cell> rescale_cmip6_sd, true = rescale_cmip6_sd, false = this_cell)
+}, filename =  here("data/data_products/CMIP_6_gridded_SD_constrained.tif"), overwrite=TRUE)
+
+```
+
+
+
 Aggregate CMIP 5 by EEZ and FAO Fishing Areas in the high seas
 ```{r}
 
@@ -149,7 +217,7 @@ cmip5_sd_eez_aggregated_df <-
   message("Processing - ", this_eez_name)
   
   #cmip 5 raster
-  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_SD.tif"))
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_SD_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_eez_mask <- mask(the_cmip_5_r, vect(this_eez_shp))
@@ -200,7 +268,7 @@ cmip5_sd_fao_aggregated_df <-
   message("Processing - ", this_fao_name)
   
   #cmip 5 raster
-  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_SD.tif"))
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_SD_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_fao_mask <- mask(the_cmip_5_r, vect(this_fao_area_shp))
@@ -255,7 +323,7 @@ cmip6_sd_eez_aggregated_df <-
   message("Processing - ", this_eez_name)
   
   #cmip 6 raster
-  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_SD.tif"))
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_SD_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_eez_mask <- mask(the_cmip_6_r, vect(this_eez_shp))
@@ -308,7 +376,7 @@ cmip6_sd_fao_aggregated_df <-
   message("Processing - ", this_fao_name)
   
   #cmip 6 raster
-  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_SD.tif"))
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_SD_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_fao_mask <- mask(the_cmip_6_r, vect(this_fao_area_shp))
@@ -329,7 +397,7 @@ cmip6_sd_fao_aggregated_df <-
   
 cmip6_sd_aggregated_df <- bind_rows(cmip6_sd_fao_aggregated_df, cmip6_sd_eez_aggregated_df)
 
-saveRDS(object = cmip6_sd_, file = here("data/data_products/cmip6_SD_aggregated_by_region.rds"))
+saveRDS(object = cmip6_sd_aggregated_df, file = here("data/data_products/cmip6_SD_aggregated_by_region.rds"))
 
 
 

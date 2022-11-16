@@ -141,6 +141,8 @@ for(i in 1:length(quantile_options)){
 
 print(quant_vals_cmip5) #95th percentile looks good
 
+quant_vals_cmip5 |> unlist() |> plot()
+
 
 #CMIP6
 
@@ -161,6 +163,9 @@ for(i in 1:length(quantile_options)){
 print(quant_vals_cmip6) #95th percentile looks good
 
 
+quant_vals_cmip6 |> unlist() |> as.numeric() |> plot()
+
+
 
 #create constrained rasters for CMIP5 and 6
 
@@ -176,7 +181,7 @@ app(cmip_5_mean_r, fun = \(this_cell){
 
 #rescale cmip6
 app(cmip6_mean_r, fun = \(this_cell){
-    if_else(this_cell> rescale_cmip6, true = rescale_cmip5, false = this_cell)
+    if_else(this_cell> rescale_cmip6, true = rescale_cmip6, false = this_cell)
 }, filename =  here("data/data_products/CMIP_6_gridded_mean_change_constrained.tif"), overwrite=TRUE)
 
 ```
@@ -184,9 +189,6 @@ app(cmip6_mean_r, fun = \(this_cell){
 
 Aggregate CMIP 5 by EEZ and FAO Fishing Areas in the high seas
 ```{r}
-
-
-
 
 #AGGREGATE BY EEZ
 
