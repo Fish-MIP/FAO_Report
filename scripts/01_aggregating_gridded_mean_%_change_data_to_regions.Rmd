@@ -117,8 +117,75 @@ ggplot()+
 ```
 
 
+Identify percentile for constraining original gridded rasters. Have adjusted CMIP6 and CMIP5 by the 95th percentiles to deal with outliers
+```{r}
+
+#return non_NA values from raster
+no_na_values <- \(x){return(terra::values(x, na.rm=TRUE))}
+
+
+#CMIP5
+cmip_5_mean_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+
+cmip5_vals <- cmip_5_mean_r |> no_na_values() |> as.numeric()
+
+quantile_options <- c(0.5,0.75,0.9,0.91, 0.92, 0.93, 0.94, 0.95,0.96, 0.97, 0.98, 0.99)
+
+quant_vals_cmip5 <- list()
+
+
+for(i in 1:length(quantile_options)){
+  quantile <- 
+    quant_vals_cmip5[[i]] <- quantile(cmip5_vals, quantile_options[i])
+}
+
+print(quant_vals_cmip5) #95th percentile looks good
+
+
+#CMIP6
+
+cmip6_mean_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+
+cmip6_vals <- cmip6_mean_r |> no_na_values() |> as.numeric()
+
+quantile_options <- c(0.5,0.75,0.9,0.91, 0.92, 0.93, 0.94, 0.95,0.96, 0.97, 0.98, 0.99)
+
+quant_vals_cmip6 <- list()
+
+
+for(i in 1:length(quantile_options)){
+  quantile <- 
+    quant_vals_cmip6[[i]] <- quantile(cmip6_vals, quantile_options[i])
+}
+
+print(quant_vals_cmip6) #95th percentile looks good
+
+
+
+#create constrained rasters for CMIP5 and 6
+
+rescale_cmip5 <- quantile(cmip5_vals, 0.95)
+rescale_cmip6 <- quantile(cmip6_vals, 0.95)
+
+
+#rescale cmip5
+app(cmip_5_mean_r, fun = \(this_cell){
+    if_else(this_cell> rescale_cmip5, true = rescale_cmip5, false = this_cell)
+}, filename =  here("data/data_products/CMIP_5_gridded_mean_change_constrained.tif"), overwrite=TRUE)
+
+
+#rescale cmip6
+app(cmip6_mean_r, fun = \(this_cell){
+    if_else(this_cell> rescale_cmip6, true = rescale_cmip5, false = this_cell)
+}, filename =  here("data/data_products/CMIP_6_gridded_mean_change_constrained.tif"), overwrite=TRUE)
+
+```
+
+
 Aggregate CMIP 5 by EEZ and FAO Fishing Areas in the high seas
 ```{r}
+
+
 
 
 #AGGREGATE BY EEZ
@@ -131,12 +198,12 @@ eez_list <- eez_shp |>
   group_split(GEONAME)
 
 #test function
-this_eez_shp <- eez_list[[12]]
+this_eez_shp <- eez_list[[5]]
 
 
 #Average values by EEZ, weighted by cell size (Canada takes ages)
 
-eez_aggregated_df <- 
+cmip5_eez_aggregated_df <- 
   
   map_df(.x = eez_list, .f = \(this_eez_shp){
   
@@ -146,7 +213,8 @@ eez_aggregated_df <-
   message("Processing - ", this_eez_name)
   
   #cmip 5 raster
-  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change_constrained.tif"))
+  
   
   #mask the raster with the EEZ shp
   this_eez_mask <- mask(the_cmip_5_r, vect(this_eez_shp))
@@ -187,7 +255,7 @@ this_fao_area_shp <- fao_area_list[[1]]
 
 
 #Average values by FAO region, weighted by cell size
-fao_aggregated_df <- 
+cmip5_fao_aggregated_df <- 
   
   map_df(.x = fao_area_list, .f = \(this_fao_area_shp){
   
@@ -197,7 +265,7 @@ fao_aggregated_df <-
   message("Processing - ", this_fao_name)
   
   #cmip 5 raster
-  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+  the_cmip_5_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_fao_mask <- mask(the_cmip_5_r, vect(this_fao_area_shp))
@@ -216,7 +284,7 @@ fao_aggregated_df <-
   
   
   
-cmip5_aggregated_df <- bind_rows(fao_aggregated_df, eez_aggregated_df)
+cmip5_aggregated_df <- bind_rows(cmip5_fao_aggregated_df, cmip5_eez_aggregated_df)
 
 saveRDS(object = cmip5_aggregated_df, file = here("data/data_products/cmip5_mean_%_change_aggregated_by_region.rds"))
 
@@ -242,7 +310,7 @@ this_eez_shp <- eez_list[[12]]
 
 #Average values by EEZ, weighted by cell size (Canada takes ages)
 
-eez_aggregated_df <- 
+cmip6_eez_aggregated_df <- 
   
   map_df(.x = eez_list, .f = \(this_eez_shp){
   
@@ -252,7 +320,7 @@ eez_aggregated_df <-
   message("Processing - ", this_eez_name)
   
   #cmip 6 raster
-  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_eez_mask <- mask(the_cmip_6_r, vect(this_eez_shp))
@@ -295,7 +363,7 @@ this_fao_area_shp <- fao_area_list[[1]]
 
 
 #Average values by FAO region, weighted by cell size
-fao_aggregated_df <- 
+cmip6_fao_aggregated_df <- 
   
   map_df(.x = fao_area_list, .f = \(this_fao_area_shp){
   
@@ -305,7 +373,7 @@ fao_aggregated_df <-
   message("Processing - ", this_fao_name)
   
   #cmip 6 raster
-  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change.tif"))
+  the_cmip_6_r <- rast(here("data/data_products/CMIP_6_gridded_mean_change_constrained.tif"))
   
   #mask the raster with the EEZ shp
   this_fao_mask <- mask(the_cmip_6_r, vect(this_fao_area_shp))
@@ -324,11 +392,11 @@ fao_aggregated_df <-
   
   
   
-cmip6_aggregated_df <- bind_rows(fao_aggregated_df, eez_aggregated_df)
+cmip6_aggregated_df <- bind_rows(cmip6_fao_aggregated_df, cmip6_eez_aggregated_df)
 
 saveRDS(object = cmip6_aggregated_df, file = here("data/data_products/cmip6_mean_%_change_aggregated_by_region.rds"))
 
 
-
+rm(list = ls())
 ```
 

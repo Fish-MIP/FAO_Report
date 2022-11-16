@@ -1,0 +1,77 @@
+---
+title: "Plotting regional aggregations of mean and SD"
+author: "Rich Cottrell"
+date: "16/11/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(tidyverse)
+library(sf)
+library(terra)
+library(here)
+library(rnaturalearth)
+library(rnaturalearthdata)
+
+```
+
+Bring in shapefiles
+```{r}
+
+eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp")) |> 
+  select(GEONAME,geometry) |> 
+  rename(region=GEONAME)
+  
+
+hs_fao_area <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp")) |> 
+  select(F_AREA, geometry) |> 
+  rename(region=F_AREA)
+  
+
+
+joint_eez_fao_shp <- bind_rows(hs_fao_area, eez_shp)
+
+
+countries_shp <- ne_countries(scale="medium", returnclass = "sf")
+
+
+```
+
+
+Plot CMIP5
+```{r}
+
+cmip5_mean <- readRDS(here("data/data_products/cmip5_mean_%_change_aggregated_by_region.rds"))
+cmip5_sd <- readRDS(here("data/data_products/cmip5_SD_aggregated_by_region.rds"))
+
+
+
+#MEAN CHANGE
+
+#join mean data to joint eez and fao 
+
+cmip5_mean_join <- 
+  joint_eez_fao_shp |> 
+  left_join(cmip5_mean |> 
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)), by = "region")
+
+
+ggplot()+
+  geom_sf(data = cmip5_mean_join, aes(fill=weighted_mean), size=0.3)+
+  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.3)+
+  #scale_fill_gradientn(colors = as.vector(pals::coolwarm(25)))+
+  scale_fill_gradient2(low ="red", mid = "#FFFDE7", high = "blue", midpoint = 0)+
+  theme_bw()+
+  theme(panel.grid = element_blank(),
+        panel.border = element_blank())+
+  labs(fill = "Mean % change", title = "CMIP5")
+
+
+ggsave(filename = here("figures/cmip5_mean_change.jpg"), device = "jpg", dpi = 600, width = 18, height = 10, units="cm")
+
+
+```
+
