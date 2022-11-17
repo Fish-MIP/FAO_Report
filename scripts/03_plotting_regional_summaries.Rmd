@@ -154,7 +154,6 @@ cmip6_sd <- readRDS(here("data/data_products/cmip6_SD_aggregated_by_region.rds")
 
 
 
-
 #MEAN CHANGE
 
 #join mean data to joint eez and fao 
@@ -194,7 +193,7 @@ cmip6_mean_p <- ggplot()+
   new_scale_fill()+
   geom_sf(data = cmip6_mean_eez, aes(fill=weighted_mean), size=0.15)+
   scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
-  labs(fill = "Biomass\nchange (%)\n ", title = "CMIP5")+
+  labs(fill = "Biomass\nchange (%)\n ", title = "CMIP6")+
   guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))+
   theme(legend.position = "right",
         legend.direction = "vertical",
@@ -210,31 +209,42 @@ ggsave(plot = cmip6_mean_p, filename = here("figures/cmip6_mean_change.jpg"), de
 
 #SD
 
-cmip6_sd_join <- 
-  joint_eez_fao_shp |> 
+#SD
+
+cmip6_sd_eez <- 
+  eez_shp |>  
   left_join(cmip6_sd |> 
-              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)), by = "region")
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  st_transform(crs = "ESRI:54030")
 
 
-cmip6_sd_p <- 
-  ggplot()+
-  geom_sf(data = cmip6_sd_join, aes(fill=weighted_mean), size=0.15)+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
-  #scale_fill_gradientn(colors = as.vector(pals::coolwarm(25)))+
+cmip6_sd_fao <- 
+  fao_area |>  
+  left_join(cmip6_sd |> 
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  st_transform(crs = "ESRI:54030")
+
+
+
+cmip6_sd_p <- ggplot()+
+   geom_sf(data = cmip6_sd_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
+  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        #plot.title = element_text(hjust = 0.5, size=10, vjust = -2),
-        #plot.title.position = "panel",
-        legend.position = "right",
+        panel.border = element_blank())+
+  guides(fill="none")+
+  new_scale_fill()+
+  geom_sf(data = cmip6_sd_eez, aes(fill=weighted_mean), size=0.15)+
+  scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
+  labs(fill = "Variability (SD)")+
+  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))+
+  theme(legend.position = "right",
         legend.direction = "vertical",
         legend.title = element_text(size = 8),
         legend.text = element_text(size=8),
-        legend.box.spacing = unit(-0.2, "cm"))+
-  labs(fill = "Variance")+
-  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))
-
+        legend.box.spacing = unit(-0.2, "cm"))
+  
 
 ggsave(plot = cmip6_sd_p, filename = here("figures/cmip6_SD.jpg"), device = "jpg", dpi = 600, width = 9, height = 6, units="cm")
 
@@ -255,7 +265,7 @@ ggsave(plot = cmip6_sd_p, filename = here("figures/cmip6_SD.jpg"), device = "jpg
   theme(legend.position = "right",
         legend.box.spacing = unit(-0.5, "cm")))
 
-ggsave(filename =  here("figures/cmip5_cmip6_mean_sd.jpg"), dpi = 600, width = 19, height =9, units="cm")
+ggsave(filename =  here("figures/cmip5_cmip6_mean_sd.jpg"), dpi = 600, width = 18, height =9, units="cm")
 
 
 ```
