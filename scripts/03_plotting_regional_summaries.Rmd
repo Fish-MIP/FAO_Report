@@ -16,6 +16,7 @@ library(here)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(patchwork)
+library(ggnewscale)
 
 ```
 
@@ -26,17 +27,12 @@ eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp")) |>
   select(GEONAME,geometry) |> 
   rename(region=GEONAME)
   
+fao_area <- 
+  st_read("/mnt/rdsi/raw_data/fao/FAO_AREAS_CWP/FAO_AREAS_CWP.shp") |> 
+   select(F_AREA, geometry) |> 
+   rename(region=F_AREA)
 
-hs_fao_area <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp")) |> 
-  select(F_AREA, geometry) |> 
-  rename(region=F_AREA)
-  
-
-
-joint_eez_fao_shp <- bind_rows(hs_fao_area, eez_shp)
-
-
-countries_shp <- ne_countries(scale="medium", returnclass = "sf")
+countries_shp <- ne_countries(scale="medium", returnclass = "sf") |> st_transform(crs = "ESRI:54030")
 
 
 ```
@@ -54,64 +50,91 @@ cmip5_sd <- readRDS(here("data/data_products/cmip5_SD_aggregated_by_region.rds")
 
 #join mean data to joint eez and fao 
 
-cmip5_mean_join <- 
-  joint_eez_fao_shp |> 
+cmip5_mean_eez <- 
+  eez_shp |>  
   left_join(cmip5_mean |> 
-              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)), by = "region")
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  mutate(weighted_mean = case_when(weighted_mean < -50 ~ -50,
+                                   weighted_mean > 50 ~ 50, 
+                                   TRUE ~ weighted_mean)) |> 
+  st_transform(crs = "ESRI:54030")
 
 
+cmip5_mean_fao <- 
+  fao_area |>  
+  left_join(cmip5_mean |> 
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+ mutate(weighted_mean = case_when(weighted_mean < -50 ~ -50,
+                                   weighted_mean > 50 ~ 50, 
+                                   TRUE ~ weighted_mean)) |> 
+  st_transform(crs = "ESRI:54030")
 
 
 
 cmip5_mean_p <- ggplot()+
-  geom_sf(data = cmip5_mean_join, aes(fill=weighted_mean), size=0.15)+
+   geom_sf(data = cmip5_mean_fao, aes(fill=weighted_mean), size=NA)+
+  scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
   geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
-  #scale_fill_gradientn(colors = as.vector(pals::coolwarm(25)))+
-  scale_fill_gradient2(low ="darkred", mid = "#FFFDE7", high = "mediumblue", midpoint = 0, limits = c(-80,180), breaks = c(-80, 0, 80,160))+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.title = element_text(hjust = 0.5, size=10, vjust = -2),
-        plot.title.position = "panel",
-        legend.position = "right",
+        plot.title.position = "panel")+
+  guides(fill="none")+
+  new_scale_fill()+
+  geom_sf(data = cmip5_mean_eez, aes(fill=weighted_mean), size=0.15)+
+  scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
+  labs(fill = "Biomass\nchange (%)\n ", title = "CMIP5")+
+  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))+
+  theme(legend.position = "right",
         legend.direction = "vertical",
         legend.title = element_text(size = 8),
         legend.text = element_text(size=8),
-        legend.box.spacing = unit(-0.2, "cm"))+
-  labs(fill = "Mean change\n(%)", title = "CMIP5")+
-  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))
-
+        legend.box.spacing = unit(-0.2, "cm"))
+  
+  
 
 ggsave(plot = cmip5_mean_p, filename = here("figures/cmip5_mean_change.jpg"), device = "jpg", dpi = 600, width = 9, height = 6.5, units="cm")
 
 
 
+
 #SD
 
-cmip5_sd_join <- 
-  joint_eez_fao_shp |> 
+cmip5_sd_eez <- 
+  eez_shp |>  
   left_join(cmip5_sd |> 
-              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)), by = "region")
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  st_transform(crs = "ESRI:54030")
+
+
+cmip5_sd_fao <- 
+  fao_area |>  
+  left_join(cmip5_sd |> 
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  st_transform(crs = "ESRI:54030")
+
 
 
 cmip5_sd_p <- ggplot()+
-  geom_sf(data = cmip5_sd_join, aes(fill=weighted_mean), size=0.15)+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
-  #scale_fill_gradientn(colors = as.vector(pals::coolwarm(25)))+
+   geom_sf(data = cmip5_sd_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
+  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
-        panel.border = element_blank(),
-        #plot.title = element_text(hjust = 0.5, size=10, vjust = -2),
-        #plot.title.position = "panel",
-        legend.position = "right",
+        panel.border = element_blank())+
+  guides(fill="none")+
+  new_scale_fill()+
+  geom_sf(data = cmip5_sd_eez, aes(fill=weighted_mean), size=0.15)+
+  scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
+  labs(fill = "Variability (SD)")+
+  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))+
+  theme(legend.position = "right",
         legend.direction = "vertical",
         legend.title = element_text(size = 8),
         legend.text = element_text(size=8),
-        legend.box.spacing = unit(-0.2, "cm"))+
-  labs(fill = "Variance")+
-  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))
-
+        legend.box.spacing = unit(-0.2, "cm"))
+  
 
 ggsave(plot = cmip5_sd_p, filename = here("figures/cmip5_SD.jpg"), device = "jpg", dpi = 600, width = 9, height = 6, units="cm")
 
@@ -136,33 +159,50 @@ cmip6_sd <- readRDS(here("data/data_products/cmip6_SD_aggregated_by_region.rds")
 
 #join mean data to joint eez and fao 
 
-cmip6_mean_join <- 
-  joint_eez_fao_shp |> 
+cmip6_mean_eez <- 
+  eez_shp |>  
   left_join(cmip6_mean |> 
-              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)), by = "region")
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+  mutate(weighted_mean = case_when(weighted_mean < -50 ~ -50,
+                                   weighted_mean > 50 ~ 50, 
+                                   TRUE ~ weighted_mean)) |> 
+  st_transform(crs = "ESRI:54030")
 
 
 
+
+cmip6_mean_fao <- 
+  fao_area |>  
+  left_join(cmip6_mean |> 
+              mutate(region = gsub("High Seas, FAO area ", replacement = "", region)) , by = "region") |> 
+ mutate(weighted_mean = case_when(weighted_mean < -50 ~ -50,
+                                   weighted_mean > 50 ~ 50, 
+                                   TRUE ~ weighted_mean)) |> 
+  st_transform(crs = "ESRI:54030")
 
 
 cmip6_mean_p <- ggplot()+
-  geom_sf(data = cmip6_mean_join, aes(fill=weighted_mean), size=0.15)+
+   geom_sf(data = cmip6_mean_fao, aes(fill=weighted_mean), size=NA)+
+  scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
   geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
-  #scale_fill_gradientn(colors = as.vector(pals::coolwarm(25)))+
-  scale_fill_gradient2(low ="darkred", mid = "#FFFDE7", high = "mediumblue", midpoint = 0, limits = c(-80,180), breaks = c(-80, 0, 80,160))+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.title = element_text(hjust = 0.5, size=10, vjust = -2),
-        plot.title.position = "panel",
-        legend.position = "right",
+        plot.title.position = "panel")+
+  guides(fill="none")+
+  new_scale_fill()+
+  geom_sf(data = cmip6_mean_eez, aes(fill=weighted_mean), size=0.15)+
+  scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
+  labs(fill = "Biomass\nchange (%)\n ", title = "CMIP5")+
+  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))+
+  theme(legend.position = "right",
         legend.direction = "vertical",
         legend.title = element_text(size = 8),
         legend.text = element_text(size=8),
-        legend.box.spacing = unit(-0.2, "cm"))+
-  labs(fill = "Mean change\n(%)", title = "CMIP6")+
-  guides(fill = guide_colorbar(barwidth = 0.5, barheight = 4.5, title.hjust = 0, title.position = "top"))
-
+        legend.box.spacing = unit(-0.2, "cm"))
+  
+  
 
 ggsave(plot = cmip6_mean_p, filename = here("figures/cmip6_mean_change.jpg"), device = "jpg", dpi = 600, width = 9, height = 6.5, units="cm")
 

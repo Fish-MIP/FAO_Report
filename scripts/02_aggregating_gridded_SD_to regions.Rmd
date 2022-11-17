@@ -74,51 +74,6 @@ plot((rast(here("data/data_products/CMIP_6_gridded_SD.tif"))))
 ```
 
 
-Bring in and modify shapefiles for cropping rasters
-```{r}
-
-eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
-
-
-#check how the shapefiles plot 
-ggplot()+
-  geom_sf(data = eez_shp, size=0.2) ##eez seems to plot OK
-
-
-#bring in FAO fishing areas and aggregate to main regions
-fao_areas <- st_read("/mnt/rdsi/raw_data/fao/FAO_AREAS_CWP/FAO_AREAS_CWP.shp")
-ggplot()+
-  geom_sf(data = fao_areas)
-
-#rasterize to merge FAO subareas
-blank_r <- rast(res =0.5)
-fao_area_r <- rasterize(vect(fao_areas), blank_r, field = "F_AREA", fun = "first") 
-
-#convert raster back to polygons and save
-fao_vect <- as.polygons(fao_area_r, values=TRUE)
-writeVector(fao_vect, filename = here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"),filetype = "ESRI Shapefile")
-
-fao_areas <- st_read(here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"))
-
-
-#this takes about 10 min to run 
-fao_area_mask_r <- mask(x = fao_area_r, mask = vect(eez_shp), inverse=TRUE)
-
-#plot to check it's doing what we expect - looks good.
-plot(fao_area_mask_r)
-
-fao_vect_wo_eez <- as.polygons(fao_area_mask_r, values=TRUE)
-writeVector(fao_vect_wo_eez, filename = here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"),filetype = "ESRI Shapefile")
-
-fao_area_eez_mask_shp <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"))
-
-
-ggplot()+
-  geom_sf(data = fao_area_eez_mask_shp, aes(fill=F_AREA))
-  geom_sf(data = eez_shp)
-
-```
-
 
 ```{r}
 

@@ -40,7 +40,9 @@ cmip5_df <- cmip5 |>
   pivot_longer(names_to = "lat", values_to = "mean_change_cmip5", cols = -c(lon))
 
 cmip5_r <- rast(cmip5_df, type="xyz")
+crs(cmip5_r) <- "EPSG:4326"
 plot(cmip5_r)
+
 writeRaster(x = cmip5_r, filename = here("data/data_products/CMIP_5_gridded_mean_change.tif"), overwrite=TRUE)
 
 
@@ -60,6 +62,7 @@ cmip6_df <- cmip6 |>
 
 
 cmip6_r <- rast(cmip6_df, type="xyz")
+crs(cmip6_r) <- "EPSG:4326"
 plot(cmip6_r)
 writeRaster(x = cmip6_r, filename = here("data/data_products/CMIP_6_gridded_mean_change.tif"), overwrite=TRUE)
 
@@ -76,43 +79,46 @@ Bring in and modify shapefiles for cropping rasters
 
 eez_shp <- st_read(here("data/raw_data/World_EEZ/eez_corrected.shp"))
 
-
 #check how the shapefiles plot 
 ggplot()+
   geom_sf(data = eez_shp, size=0.2) ##eez seems to plot OK
 
 
-#bring in FAO fishing areas and aggregate to main regions
+#bring in FAO fishing areas and aggregate to main regions - and save in project
 fao_areas <- st_read("/mnt/rdsi/raw_data/fao/FAO_AREAS_CWP/FAO_AREAS_CWP.shp")
+
 ggplot()+
   geom_sf(data = fao_areas)
 
 #rasterize to merge FAO subareas
-blank_r <- rast(res =0.5)
+blank_r <- rast(res = 0.5) 
 fao_area_r <- rasterize(vect(fao_areas), blank_r, field = "F_AREA", fun = "first") 
 
-#convert raster back to polygons and save
+
+plot(fao_area_r)
+
+# #convert raster back to polygons to save to project
 fao_vect <- as.polygons(fao_area_r, values=TRUE)
-writeVector(fao_vect, filename = here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"),filetype = "ESRI Shapefile")
-
-fao_areas <- st_read(here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"))
+writeVector(fao_vect, filename = here("data/raw_data/fao_fishing_areas/aggregate_fao_regions.shp"),filetype = "ESRI Shapefile", overwrite=TRUE)
 
 
-#this takes about 10 min to run 
+
+
+#Now mask aggregated FAO area raster by eez shapefile this takes about 10 min to run 
 fao_area_mask_r <- mask(x = fao_area_r, mask = vect(eez_shp), inverse=TRUE)
 
 #plot to check it's doing what we expect - looks good.
 plot(fao_area_mask_r)
 
 fao_vect_wo_eez <- as.polygons(fao_area_mask_r, values=TRUE)
-writeVector(fao_vect_wo_eez, filename = here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"),filetype = "ESRI Shapefile")
+writeVector(fao_vect_wo_eez, filename = here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"),filetype = "ESRI Shapefile", overwrite=TRUE)
 
 fao_area_eez_mask_shp <- st_read(here("data/raw_data/fao_fishing_areas_eez_mask/aggregate_fao_regions_eez_mask.shp"))
 
 
 ggplot()+
   geom_sf(data = fao_area_eez_mask_shp, aes(fill=F_AREA))
-  geom_sf(data = eez_shp)
+  #geom_sf(data = eez_shp)
 
 ```
 
@@ -126,6 +132,7 @@ no_na_values <- \(x){return(terra::values(x, na.rm=TRUE))}
 
 #CMIP5
 cmip_5_mean_r <- rast(here("data/data_products/CMIP_5_gridded_mean_change.tif"))
+
 
 cmip5_vals <- cmip_5_mean_r |> no_na_values() |> as.numeric()
 
@@ -288,7 +295,7 @@ cmip5_fao_aggregated_df <-
   
 cmip5_aggregated_df <- bind_rows(cmip5_fao_aggregated_df, cmip5_eez_aggregated_df)
 
-saveRDS(object = cmip5_aggregated_df, file = here("data/data_products/cmip5_mean_%_change_aggregated_by_region.rds"))
+saveRDS(object = cmip5_aggregated_df, file = here("data/data_products/cmip5_mean_change_aggregated_by_region.rds"))
 
 ```
 
@@ -396,7 +403,7 @@ cmip6_fao_aggregated_df <-
   
 cmip6_aggregated_df <- bind_rows(cmip6_fao_aggregated_df, cmip6_eez_aggregated_df)
 
-saveRDS(object = cmip6_aggregated_df, file = here("data/data_products/cmip6_mean_%_change_aggregated_by_region.rds"))
+saveRDS(object = cmip6_aggregated_df, file = here("data/data_products/cmip6_mean_change_aggregated_by_region.rds"))
 
 
 rm(list = ls())
