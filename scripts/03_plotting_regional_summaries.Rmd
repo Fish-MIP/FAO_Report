@@ -74,7 +74,7 @@ cmip5_mean_fao <-
 cmip5_mean_p <- ggplot()+
    geom_sf(data = cmip5_mean_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
+  geom_sf(data = countries_shp, fill= "grey20", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
@@ -119,7 +119,7 @@ cmip5_sd_fao <-
 cmip5_sd_p <- ggplot()+
    geom_sf(data = cmip5_sd_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
+  geom_sf(data = countries_shp, fill= "grey20", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank())+
@@ -183,7 +183,7 @@ cmip6_mean_fao <-
 cmip6_mean_p <- ggplot()+
    geom_sf(data = cmip6_mean_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient2(low ="red", mid = "white", high = "blue", midpoint = 0, limits = c(-50,50), breaks = c(-50, 0, 50))+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
+  geom_sf(data = countries_shp, fill= "grey20", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank(),
@@ -229,7 +229,7 @@ cmip6_sd_fao <-
 cmip6_sd_p <- ggplot()+
    geom_sf(data = cmip6_sd_fao, aes(fill=weighted_mean), size=NA)+
   scale_fill_gradient(low = "aliceblue", high = "dodgerblue4", limits = c(0,450))+
-  geom_sf(data = countries_shp, fill= "grey95", colour=NA, size=0.15)+
+  geom_sf(data = countries_shp, fill= "grey20", colour=NA, size=0.15)+
   theme_bw()+
   theme(panel.grid = element_blank(),
         panel.border = element_blank())+
