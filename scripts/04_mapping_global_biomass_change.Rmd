@@ -1,0 +1,238 @@
+---
+title: "Plotting biomass change under different SSPs"
+author: "Denisse Fierro Arcos"
+date: "2024-01-09"
+output: pdf_document
+---
+
+# Introduction
+
+In this notebook, we will calculate the mean percentage change in fish biomass between 2041 and 2050 under two climate emission scenarios: `SSP1-2.6` (low emissions) and `SSP5-8.5` (very high emissions). The last decade from the historical period (2005-2014) was used as the reference period.  
+  
+Note that outputs from all [global FishMIP models](https://fishmip.org/modellingteams.html) were used to calculate the mean percentage change for the entire ensemble.  
+  
+## Loading libraries
+  
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rnaturalearth)
+library(data.table)
+library(cowplot)
+library(sf)
+```
+
+## Setting up notebook
+  
+```{r}
+#Defining location of notebook outputs
+out_folder <- "/rd/gem/private/users/camillan/FAO_Report"
+if(!dir.exists(out_folder)){
+  dir.create(out_folder)
+}
+
+#Defining location of model outputs
+data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/" 
+
+#Getting a list of files containing biomass data
+global_files <- list.files(data_dir, full.names = T)
+
+#Getting a list of models
+members <- str_extract(global_files, "outputs//(.*)_(h|s)", group = 1) |> 
+  unique()
+```
+  
+## Calculating percentage change in fish biomass estimates from global FishMIP models
+We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios). Finally, we will calculate the percentage change between these two decades.  
+  
+```{r}
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    #Ignore columns SOVEREIGN1-3 - not needed here
+    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "GEONAME"))) |> 
+    #Extract data only for years to be used in maps
+    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    #Create new group column to calculate means
+    mutate(group = case_when(year <= 2014 ~ "reference",
+                             year >= 2041 & year <= 2050 ~ "mean50",
+                             year >= 2091 & year <= 2100 ~ "mean00"),
+           #The new group column also need to have the scenario as part of the label
+           group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
+                             T ~ group)) |> 
+    #Calculate mean per ensemble member
+    group_by(x, y, mem, esm, eez, group) |> 
+    summarise(mean_bio = mean(biomass, na.rm = T)) |> 
+    #Reorganise table to facilitate calculations
+    pivot_wider(names_from = group, values_from = mean_bio) |> 
+    ungroup() |> 
+    #Calculate % change in fish biomass for the two emissions scenarios
+    mutate(rel_change_mean50_ssp126 = ((mean50_ssp126-reference)/reference)*100,
+           rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
+           rel_change_mean00_ssp126 = ((mean00_ssp126-reference)/reference)*100,
+           rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100)
+  
+  #Create name to save file  
+  f_out <- file.path(out_folder, str_c(m, "_perc_bio_change_data_map.csv"))
+  
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+  
+```
+  
+### Calculating ensemble mean
+We will now load the percentage change in biomass for all global models and calculate an ensemble mean.  
+  
+```{r}
+#Listing all relevant files to calculate biomass projections
+maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", full.names = T) |> 
+  map_df(~fread(.)) |> 
+  #Calculations performed by year and EEZ
+  group_by(x, y, eez) |> 
+  #Apply calculations to biases only
+  summarise(across(reference:rel_change_mean00_ssp585, 
+                   #Listing statistics to be calculated
+                   list(mean = mean), 
+                   #Setting column names
+                   .names = "{.col}_{.fn}")) |> 
+  ungroup()
+```
+## Loading information about continents
+We will add information about the continents where each EEZ is located.  
+  
+```{r}
+#Loading continent information
+cont <- read_csv("../../Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+
+#Merge with biomass data
+maps_data <- maps_data |> 
+  left_join(cont, by = join_by(eez==ID_merged)) |> 
+  #If a grid cell is not assigned to an EEZ, then change to NA
+  mutate(across(starts_with("rel_change"), ~ case_when(is.na(eez) ~ NA,
+                                                      T ~ .x)))
+```
+
+## Plotting maps
+In this section, we will plot individual maps for fish biomass change per decade/scenario combination. We will merge them together in a single plot.  
+  
+### Loading relevant shapefiles
+  
+```{r}
+#Base map of the world
+world <- ne_countries(returnclass = "sf")
+
+#EEZ boundaries
+eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp")
+```
+  
+### Creating individual maps
+All maps share the same colour palette, so we will not include legends in any of them except for the last one.
+
+Grey cells are areas with no data in the models.  
+  
+```{r}
+#SSP1-2.6 2041-2050
+p50_126 <- maps_data |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  scale_fill_distiller(palette = "RdYlBu", direction = 1,
+                       na.value = "white", 
+                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       mid = 0))+
+  geom_sf(inherit.aes = F, data = world)+
+  geom_sf(inherit.aes = F, data = eez, fill = NA,
+          show.legend = F, linewidth = 0.25)+
+  theme_bw()+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+#SSP5-8.5 2041-2050
+p50_585 <- maps_data |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  scale_fill_distiller(palette = "RdYlBu", direction = 1,
+                       na.value = "white", 
+                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       mid = 0))+
+  geom_sf(inherit.aes = F, data = world)+
+  geom_sf(inherit.aes = F, data = eez, fill = NA,
+          show.legend = F, linewidth = 0.25)+
+  theme_bw()+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+#SSP1-2.6 2091-2100
+p00_126 <- maps_data |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  scale_fill_distiller(palette = "RdYlBu", direction = 1,
+                       na.value = "white", 
+                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       mid = 0))+
+  geom_sf(inherit.aes = F, data = world)+
+  geom_sf(inherit.aes = F, data = eez, fill = NA,
+          show.legend = F, linewidth = 0.25)+
+  theme_bw()+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+
+#SSP5-8.5 2091-2100
+p00_585 <- maps_data |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  scale_fill_distiller(palette = "RdYlBu", direction = 1,
+                       na.value = "white", limits = c(-70, 260),
+                       breaks = c(seq(-70, 0, length.out = 5),
+                                  seq(32.5, 260, length.out = 8)),
+                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       mid = 0))+
+  geom_sf(inherit.aes = F, data = world)+
+  geom_sf(inherit.aes = F, data = eez, fill = NA,
+          show.legend = F, linewidth = 0.25)+
+  theme_bw()+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
+        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass from 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+all_plots
+```
+  
+### Saving final plot
+  
+```{r}
+ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+```
+
+
