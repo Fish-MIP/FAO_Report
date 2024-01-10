@@ -24,6 +24,13 @@ library(sf)
 ## Setting up notebook
   
 ```{r}
+#FAO_EEZ key - Contains continent information
+fao_eez <- read_csv("../../Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+
+#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
+fao_eez_mask <- read_csv("../../Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
+  rename(x = Lon, y = Lat, ID_mrgd = mask)
+
 #Defining location of notebook outputs
 out_folder <- "/rd/gem/private/users/camillan/FAO_Report"
 if(!dir.exists(out_folder)){
@@ -50,7 +57,7 @@ for(m in members){
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
     #Ignore columns SOVEREIGN1-3 - not needed here
-    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "GEONAME"))) |> 
+    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "GEONAME", "eez"))) |> 
     #Extract data only for years to be used in maps
     filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
     #Create new group column to calculate means
@@ -60,8 +67,10 @@ for(m in members){
            #The new group column also need to have the scenario as part of the label
            group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
                              T ~ group)) |> 
+    #Apply mask
+    left_join(fao_eez_mask, by = join_by(x, y)) |> 
     #Calculate mean per ensemble member
-    group_by(x, y, mem, esm, eez, group) |> 
+    group_by(x, y, mem, esm, ID_mrgd, group) |> 
     summarise(mean_bio = mean(biomass, na.rm = T)) |> 
     #Reorganise table to facilitate calculations
     pivot_wider(names_from = group, values_from = mean_bio) |> 
@@ -90,7 +99,7 @@ We will now load the percentage change in biomass for all global models and calc
 maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", full.names = T) |> 
   map_df(~fread(.)) |> 
   #Calculations performed by year and EEZ
-  group_by(x, y, eez) |> 
+  group_by(x, y, ID_mrgd) |> 
   #Apply calculations to biases only
   summarise(across(reference:rel_change_mean00_ssp585, 
                    #Listing statistics to be calculated
@@ -103,14 +112,11 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", f
 We will add information about the continents where each EEZ is located.  
   
 ```{r}
-#Loading continent information
-cont <- read_csv("../../Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
-
 #Merge with biomass data
 maps_data <- maps_data |> 
-  left_join(cont, by = join_by(eez==ID_merged)) |> 
+  inner_join(fao_eez, by = join_by(ID_mrgd)) |> 
   #If a grid cell is not assigned to an EEZ, then change to NA
-  mutate(across(starts_with("rel_change"), ~ case_when(is.na(eez) ~ NA,
+  mutate(across(starts_with("rel_change"), ~ case_when(is.na(ID_mrgd) ~ NA,
                                                       T ~ .x)))
 ```
 
@@ -124,7 +130,9 @@ In this section, we will plot individual maps for fish biomass change per decade
 world <- ne_countries(returnclass = "sf")
 
 #EEZ boundaries
-eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp")
+eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |> 
+  #Removing Antarctic EEZ
+  filter(str_detect(GEONAME, "Antarctic", negate = T))
 ```
   
 ### Creating individual maps
@@ -140,6 +148,7 @@ p50_126 <- maps_data |>
   scale_fill_distiller(palette = "RdYlBu", direction = 1,
                        na.value = "white", 
                        rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       # to = c(-50, 50),
                                                        mid = 0))+
   geom_sf(inherit.aes = F, data = world)+
   geom_sf(inherit.aes = F, data = eez, fill = NA,
@@ -157,6 +166,7 @@ p50_585 <- maps_data |>
   scale_fill_distiller(palette = "RdYlBu", direction = 1,
                        na.value = "white", 
                        rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       # to = c(-50, 50),
                                                        mid = 0))+
   geom_sf(inherit.aes = F, data = world)+
   geom_sf(inherit.aes = F, data = eez, fill = NA,
@@ -174,6 +184,7 @@ p00_126 <- maps_data |>
   scale_fill_distiller(palette = "RdYlBu", direction = 1,
                        na.value = "white", 
                        rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       # to = c(-50, 50),
                                                        mid = 0))+
   geom_sf(inherit.aes = F, data = world)+
   geom_sf(inherit.aes = F, data = eez, fill = NA,
@@ -193,6 +204,7 @@ p00_585 <- maps_data |>
                        breaks = c(seq(-70, 0, length.out = 5),
                                   seq(32.5, 260, length.out = 8)),
                        rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+                                                       # to = c(-50, 50),
                                                        mid = 0))+
   geom_sf(inherit.aes = F, data = world)+
   geom_sf(inherit.aes = F, data = eez, fill = NA,
