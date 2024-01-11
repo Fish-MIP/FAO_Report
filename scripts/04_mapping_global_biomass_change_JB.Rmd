@@ -668,3 +668,518 @@ p00_585
 Losses more widespread under ssp585 for most EEZ up to - 30%
 Isolated regions where increases projected, but smaller
 
+
+
+### EUROPE
+
+In this section the maps will focus on a particular region and EEZs in that region
+
+```{r}
+# FishMIP data
+maps_data_region <- maps_data |>
+  filter(region=="Europe")
+
+#Base map of the world
+world <- ne_countries(returnclass = "sf") |> 
+  filter(continent %in% c("Europe"))#|>
+#  st_shift_longitude() 
+ 
+
+region_fao_eez<-filter(fao_eez,region=="Europe")
+
+#EEZ boundaries
+eez <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_short.shp") |> 
+  #Removing Antarctic EEZ
+  filter(str_detect(GEONAME, "Antarctic", negate = T)) |>
+  filter(GEONAME %in%  region_fao_eez$nm_mrgd) # |> 
+  # #Ensure ID and name are factors
+  # mutate(ID_1 = as.factor(ID_1)) |> 
+  # #Ensuring shapefile crosses the international dateline
+  #st_shift_longitude() 
+```
+
+
+Let's look at 2050 first
+
+
+```{r}
+p50_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_126
+```
+
+Max losses - 30% 
+Large increases in polar regions & also eastern mediterranean
+
+```{r}
+p50_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_585
+```
+More pronouced losses by 2050 under ssp585 - up to -30%, less extreme gains
+
+```{r}
+p00_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_126
+```
+
+Drastic reduction in losses from 2050 and MASSIVE gains in polar regions... hmmm would be good to look at uncertainty , perhaps include maps of across model SD ?
+
+```{r}
+p00_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_585
+min(maps_data_region$rel_change_mean00_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
+```
+Dominated by large gains (+243) in polar, ocmpared to reductions (-39% still pretty bad though for some EEZs), highly uncertain region
+Starting to think we show focus on 2050...
+
+
+### AMERICAS
+
+In this section the maps will focus on a particular region and EEZs in that region
+
+```{r}
+# FishMIP data
+maps_data_region <- maps_data |>
+  filter(region=="Americas")
+
+#Base map of the world
+world <- ne_countries(returnclass = "sf") |> 
+  filter(continent %in% c("Americas"))#|>
+#  st_shift_longitude() 
+ 
+
+region_fao_eez<-filter(fao_eez,region=="Americas")
+
+#EEZ boundaries
+eez <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_short.shp") |> 
+  #Removing Antarctic EEZ
+  filter(str_detect(GEONAME, "Antarctic", negate = T)) |>
+  filter(GEONAME %in%  region_fao_eez$nm_mrgd) # |> 
+  # #Ensure ID and name are factors
+  # mutate(ID_1 = as.factor(ID_1)) |> 
+  # #Ensuring shapefile crosses the international dateline
+  #st_shift_longitude() 
+```
+
+
+Let's look at 2050 first
+
+
+```{r}
+p50_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_126
+min(maps_data_region$rel_change_mean50_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp126_mean,na.rm=T)
+```
+
+Area dominated by losses (max loss - 23%), but scale skewed towards high increases (up to 98% in localised area) in Arctic (uncertain, need to show SD somewhere)
+
+
+
+```{r}
+p50_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_585
+min(maps_data_region$rel_change_mean50_ssp585_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp585_mean,na.rm=T)
+```
+More pronouced losses by 2050 under ssp585 - up to -32%, less extreme gains but still high
+
+```{r}
+p00_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_126
+min(maps_data_region$rel_change_mean00_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp125_mean,na.rm=T)
+
+```
+Again...
+Drastic reduction in losses from 2050 and MASSIVE gains in polar regions... hmmm would be good to look at uncertainty , perhaps include maps of across model SD ?
+
+```{r}
+p00_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_585
+min(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
+max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
+```
+ALSO : Dominated by large gains (+244) in polar, ocmpared to reductions (-57% still pretty bad though for some EEZs), highly uncertain region
+Starting to think we show focus on 2050...
+
+### OCEANIA
+
+
+In this section the maps will focus on a particular region and EEZs in that region
+
+```{r}
+# FishMIP data
+maps_data_region <- maps_data |>
+  filter(region=="Oceania")
+
+#Base map of the world
+world <- ne_countries(returnclass = "sf") |> 
+  filter(continent %in% c("Oceania"))|>
+  st_shift_longitude() 
+ 
+
+region_fao_eez<-filter(fao_eez,region=="Oceania")
+
+#EEZ boundaries
+eez <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_short.shp") |>
+  #Removing Antarctic EEZ
+  filter(str_detect(GEONAME, "Antarctic", negate = T)) |>
+  filter(GEONAME %in%  region_fao_eez$nm_mrgd)  |> 
+  # #Ensure ID and name are factors
+  # mutate(ID_1 = as.factor(ID_1)) |> 
+  # #Ensuring shapefile crosses the international dateline
+  st_shift_longitude() 
+```
+
+
+Let's look at 2050 first
+
+
+```{r}
+p50_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_126
+min(maps_data_region$rel_change_mean50_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp126_mean,na.rm=T)
+```
+Need to fix map
+
+Like most regions - area is dominated by losses range:
+[1] -23.29476
+[1] 19.24042
+
+
+
+```{r}
+p50_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p50_585
+min(maps_data_region$rel_change_mean50_ssp585_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp585_mean,na.rm=T)
+```
+More pronouced losses by 2050 under ssp585 - up to -30%, minimal gains
+1] -30.39914
+[1] 10.13352
+
+```{r}
+p00_126 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_126
+min(maps_data_region$rel_change_mean00_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean00_ssp126_mean,na.rm=T)
+
+```
+Range
+[1] -20.25578
+[1] 28.36939
+Again area dominated by losses
+
+```{r}
+p00_585 <- maps_data_region  |>
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  #scale_fill_cmocean(name="balance")+
+  # scale_fill_stepsn(colors = pal, n.breaks = 11, 
+  #                   limits = c(-75, 15), show.limits = T)+
+  scale_fill_continuous_divergingx(palette = 'Geyser', # ArmyRose
+                                         mid = 1,
+                                         rev = TRUE,
+                                         guide = guide_colorbar(
+                                           title = "% change",
+                                           title.position = "top",
+                                           title.hjust = 0.5),
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         #limits=c(min, max),
+                                         #oob = scales::squish,
+                                         na.value = "grey") +
+  geom_sf(inherit.aes = F, data = eez, fill = NA, 
+          show.legend = F, linewidth = 0.25)+
+  geom_sf(inherit.aes = F, data = world)+
+  theme_bw()  + 
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5))
+
+
+p00_585
+min(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
+max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
+```
+Scary losses up to -50%, extremly small pockets of increase
+
+We dont account for reef habitats
+
+
