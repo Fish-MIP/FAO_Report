@@ -50,45 +50,45 @@ We will add information about the continents where each EEZ is located.
   
 ```{r}
 
-#FAO_EEZ key - Contains continent information
-fao_eez <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
-
-#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
-   rename(x = Lon, y = Lat, ID_mrgd = mask)
-fao_eez_mask<-unique(fao_eez_mask)
-
-# complement with other masks from Denisse
-eez_df <- read_csv("/home/dbpm//Extract_tcblog10_data/Output/EEZMasks/EEZ_mask_1deg.csv") |> 
-  rename(x = lon, y = lat)
-eez_df<-unique(eez_df)
-
-head(fao_eez)
-head(fao_eez_mask)
-head(eez_df)
-
-unique(fao_eez$F_CODE) # fao code 
-
-new_key<-fao_eez_mask %>% 
-  full_join(eez_df) 
-filter(new_key, eez == 8489) # problem - this is not cell-unique - ID_mrgd and eez are not the same. Multiple ID_merge for one eez gets problematic when merging the key 
-
-# broad - possibly wrong appraoch but OK for now 
-### it should be done with something like GEONAME instead of SOVEREIGN1
-new_key<-fao_eez %>% 
-  select(SOVEREIGN1, ID_mrgd, region) %>% 
-  unique() %>% 
-  filter(!is.na(SOVEREIGN1))
-
-filter(new_key, SOVEREIGN1 == "Netherlands") # again not good because one SOVEREIGN1 includes multiple GEONAME hence ID_mrgd and region  
-
-# # Merge with biomass data
-# head(df)
-# df <- df |> 
-#   left_join(new_key, by = "SOVEREIGN1") 
+# #FAO_EEZ key - Contains continent information
+# fao_eez <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
 # 
-# df[2,]
-# filter(df, eez == 8489)
+# #FAO_EEZ mask - Contains IDs for FAO and EEZ areas
+# fao_eez_mask <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
+#    rename(x = Lon, y = Lat, ID_mrgd = mask)
+# fao_eez_mask<-unique(fao_eez_mask)
+# 
+# # complement with other masks from Denisse
+# eez_df <- read_csv("/home/dbpm//Extract_tcblog10_data/Output/EEZMasks/EEZ_mask_1deg.csv") |> 
+#   rename(x = lon, y = lat)
+# eez_df<-unique(eez_df)
+# 
+# head(fao_eez)
+# head(fao_eez_mask)
+# head(eez_df)
+# 
+# unique(fao_eez$F_CODE) # fao code 
+# 
+# new_key<-fao_eez_mask %>% 
+#   full_join(eez_df) 
+# filter(new_key, eez == 8489) # problem - this is not cell-unique - ID_mrgd and eez are not the same. Multiple ID_merge for one eez gets problematic when merging the key 
+# 
+# # broad - possibly wrong appraoch but OK for now 
+# ### it should be done with something like GEONAME instead of SOVEREIGN1
+# new_key<-fao_eez %>% 
+#   select(SOVEREIGN1, ID_mrgd, region) %>% 
+#   unique() %>% 
+#   filter(!is.na(SOVEREIGN1))
+# 
+# filter(new_key, SOVEREIGN1 == "Netherlands") # again not good because one SOVEREIGN1 includes multiple GEONAME hence ID_mrgd and region  
+# 
+# # # Merge with biomass data
+# # head(df)
+# # df <- df |> 
+# #   left_join(new_key, by = "SOVEREIGN1") 
+# # 
+# # df[2,]
+# # filter(df, eez == 8489)
 
 ```
 
@@ -150,9 +150,9 @@ mean_perc_chenge_trends<-mean_perc_chenge_trends %>%
 list_geoname<-unique(mean_perc_chenge_trends$GEONAME)
 geoname1<-list_geoname[1:50]
 geoname2<-list_geoname[50:100]
-geoname2<-list_geoname[100:150]
-geoname3<-list_geoname[150:200]
-geoname3<-list_geoname[200:238]
+geoname3<-list_geoname[100:150]
+geoname4<-list_geoname[150:200]
+geoname5<-list_geoname[200:238]
 
 
 plot_trends1<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname1), aes(x = year, y = mean_change, group = scenario))+
@@ -170,15 +170,103 @@ plot_trends1<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
       panel.background = element_blank())+
     facet_wrap(~GEONAME)
     
- 
+name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends1.pdf", sep = "")
+
+pdf(name_Fig, width = 15, height = 10, bg = "transparent")
+plot_trends1
+dev.off()
+
+plot_trends2<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname2), aes(x = year, y = mean_change, group = scenario))+
+    geom_line(aes(color = scenario))+
+    geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
+                  fill = scenario), alpha = .2) +
+    theme_bw()+
+    scale_fill_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    scale_color_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    geom_vline(xintercept = 2014.5, color = "black", linetype ="dashed")+
+    ylab("Change in exploitable \n fish biomass (%)") + 
+    xlab("Year")+
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())+
+    facet_wrap(~GEONAME)
+    
+name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends2.pdf", sep = "")
+
+pdf(name_Fig, width = 15, height = 10, bg = "transparent")
+plot_trends2
+dev.off()
+
+plot_trends3<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname3), aes(x = year, y = mean_change, group = scenario))+
+    geom_line(aes(color = scenario))+
+    geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
+                  fill = scenario), alpha = .2) +
+    theme_bw()+
+    scale_fill_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    scale_color_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    geom_vline(xintercept = 2014.5, color = "black", linetype ="dashed")+
+    ylab("Change in exploitable \n fish biomass (%)") + 
+    xlab("Year")+
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())+
+    facet_wrap(~GEONAME)
+    
+name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends3.pdf", sep = "")
+
+pdf(name_Fig, width = 15, height = 10, bg = "transparent")
+plot_trends3
+dev.off()
+
+plot_trends4<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname4), aes(x = year, y = mean_change, group = scenario))+
+    geom_line(aes(color = scenario))+
+    geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
+                  fill = scenario), alpha = .2) +
+    theme_bw()+
+    scale_fill_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    scale_color_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    geom_vline(xintercept = 2014.5, color = "black", linetype ="dashed")+
+    ylab("Change in exploitable \n fish biomass (%)") + 
+    xlab("Year")+
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())+
+    facet_wrap(~GEONAME)
+    
+name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends4.pdf", sep = "")
+
+pdf(name_Fig, width = 15, height = 10, bg = "transparent")
+plot_trends4
+dev.off()
+
+plot_trends5<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname5), aes(x = year, y = mean_change, group = scenario))+
+    geom_line(aes(color = scenario))+
+    geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
+                  fill = scenario), alpha = .2) +
+    theme_bw()+
+    scale_fill_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    scale_color_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    geom_vline(xintercept = 2014.5, color = "black", linetype ="dashed")+
+    ylab("Change in exploitable \n fish biomass (%)") + 
+    xlab("Year")+
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())+
+    facet_wrap(~GEONAME)
+    
+name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends5.pdf", sep = "")
+
+pdf(name_Fig, width = 15, height = 10, bg = "transparent")
+plot_trends5
+dev.off()
 
 
+```
 
-
-
-
+### Much better code for plotting
 ##### better to do as function (as per tcblog10) once continent info is available
 
+```{r}
 plot_trend<-function(df, 
                      country_name, 
                      endYear){
