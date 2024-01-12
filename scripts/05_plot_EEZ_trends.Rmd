@@ -50,9 +50,43 @@ We will add information about the continents where each EEZ is located.
   
 ```{r}
 
-# #FAO_EEZ key - Contains continent information
-# fao_eez <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
-# 
+# FishMIP data
+maps_data_asia <- maps_data |>
+  filter(region=="Asia")
+
+#Base map of the world
+world <- ne_countries(returnclass = "sf") |> 
+  st_shift_longitude() |>
+  filter(continent %in% c("Asia")) 
+
+asia_fao_eez<-filter(fao_eez,region=="Asia")
+
+#EEZ boundaries
+eez <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_short.shp") |> 
+  #Removing Antarctic EEZ
+  filter(str_detect(GEONAME, "Antarctic", negate = T)) |>
+  filter(SOVEREIGN1 %in%  asia_fao_eez$SOVEREIGN1) 
+
+
+## FAO_EEZ key - Contains continent information
+fao_eez <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+
+fao_eez$GEONAME<-fao_eez$nm_mrgd
+
+# # # Merge with biomass data
+ head(df)
+ df <- df |> 
+   left_join(fao_eez, by = "GEONAME") 
+
+ # check
+ length(unique(df$GEONAME))
+ match(unique(df$GEONAME),df_fao_eez$nm_mrgd)
+ #match returns a vector of the positions of (first) matches of its first argument in its second.
+ 
+# # df[2,]
+# # filter(df, eez == 8489)
+
+
 # #FAO_EEZ mask - Contains IDs for FAO and EEZ areas
 # fao_eez_mask <- read_csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
 #    rename(x = Lon, y = Lat, ID_mrgd = mask)
@@ -95,20 +129,21 @@ We will add information about the continents where each EEZ is located.
 ## trends of % change
 
 ```{r}
+# full join to df and arrange by continent
 
-df<-df %>% arrange(GEONAME)
+df<-df %>% arrange(region)
   
 SumsAllBio_df<-df %>% 
   # filter(GEONAME == country_name) %>%
-  dplyr::select(year, scenario, esm, mem, sum_biomass, GEONAME) %>% 
-  group_by(year, scenario, esm, mem, GEONAME) %>% 
+  dplyr::select(year, scenario, esm, mem, sum_biomass, GEONAME,region) %>% 
+  group_by(year, scenario, esm, mem, GEONAME,region) %>% 
   # we cannot do the same for mean_biomass, we would need to re-run the code that extracts data and calcualtes mean_biomass based on GEONAME as grouping
   dplyr::summarise(sum_biomass = sum(sum_biomass)) %>% 
   ungroup() %>% 
   filter(year>=1970, year<=2100) # start from 1970? 
   
 temp<-SumsAllBio_df %>% 
-  mutate(id = paste0(esm, mem, GEONAME)) 
+  mutate(id = paste0(esm, mem, GEONAME,region)) 
 
 temp<-split(temp, temp$id)
   
@@ -134,7 +169,7 @@ perc_change<-do.call(rbind, temp2)
 
 # multimodel mean and SD 
 mean_perc_chenge_trends<-perc_change %>% 
-  group_by(year, scenario, GEONAME) %>% 
+  group_by(year, scenario, region, GEONAME) %>% 
   dplyr::summarise(mean_change = mean(perc_change, na.rm = TRUE),
                    sd_change = sd(perc_change, na.rm = TRUE)) %>% 
   ungroup()
@@ -147,14 +182,21 @@ head(mean_perc_chenge_trends)
 mean_perc_chenge_trends<-mean_perc_chenge_trends %>% 
   mutate(GEONAME = str_replace(GEONAME, "Exclusive Economic Zone", "EEZ"))
 
-list_geoname<-unique(mean_perc_chenge_trends$GEONAME)
-geoname1<-list_geoname[1:50]
-geoname2<-list_geoname[50:100]
-geoname3<-list_geoname[100:150]
-geoname4<-list_geoname[150:200]
-geoname5<-list_geoname[200:238]
 
+#### instead of splitting by 50, split by continent
+list_Asia<-unique(subset(mean_perc_chenge_trends,region=="Asia")$GEONAME)
+list_Africa<-unique(subset(mean_perc_chenge_trends,region=="Africa")$GEONAME)
+list_Americas<-unique(subset(mean_perc_chenge_trends,region=="Americas")$GEONAME)
+list_Europe<-unique(subset(mean_perc_chenge_trends,region=="Europe")$GEONAME)
+list_Oceania<-unique(subset(mean_perc_chenge_trends,region=="Oceania")$GEONAME)
 
+geoname1<-list_Asia
+geoname2<-list_Africa
+geoname3<-list_Americas
+geoname4<-list_Europe
+geoname5<-list_Oceania
+
+# these will now be by continent
 plot_trends1<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname1), aes(x = year, y = mean_change, group = scenario))+
     geom_line(aes(color = scenario))+
     geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
@@ -168,7 +210,7 @@ plot_trends1<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
     theme(
       panel.grid.minor = element_blank(), 
       panel.background = element_blank())+
-    facet_wrap(~GEONAME)
+    facet_wrap(~GEONAME, scales = "free")
     
 name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends1.pdf", sep = "")
 
@@ -189,7 +231,7 @@ plot_trends2<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
     theme(
       panel.grid.minor = element_blank(), 
       panel.background = element_blank())+
-    facet_wrap(~GEONAME)
+    facet_wrap(~GEONAME, scales = "free")
     
 name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends2.pdf", sep = "")
 
@@ -210,7 +252,7 @@ plot_trends3<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
     theme(
       panel.grid.minor = element_blank(), 
       panel.background = element_blank())+
-    facet_wrap(~GEONAME)
+    facet_wrap(~GEONAME, scales = "free")
     
 name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends3.pdf", sep = "")
 
@@ -231,7 +273,7 @@ plot_trends4<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
     theme(
       panel.grid.minor = element_blank(), 
       panel.background = element_blank())+
-    facet_wrap(~GEONAME)
+    facet_wrap(~GEONAME, scales = "free")
     
 name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends4.pdf", sep = "")
 
@@ -252,7 +294,7 @@ plot_trends5<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname
     theme(
       panel.grid.minor = element_blank(), 
       panel.background = element_blank())+
-    facet_wrap(~GEONAME)
+    facet_wrap(~GEONAME, scales = "free")
     
 name_Fig = paste("figures/", Sys.Date(),"_" ,"plot_trends5.pdf", sep = "")
 

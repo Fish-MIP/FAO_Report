@@ -345,7 +345,7 @@ ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf"
 ### Global time series 
 
 
-### Asia
+### ASIA
 
 In this section the maps will focus on a particular region and EEZs in that region
 
