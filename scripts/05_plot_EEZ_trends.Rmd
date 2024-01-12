@@ -2,9 +2,7 @@
 title: "Extract tcblog10 data from FishMIP ecosystem models"
 author: "Camilla Novaglio"
 date: "13/10/2023"
-output: html_document
-editor_options: 
-  chunk_output_type: console
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -189,13 +187,36 @@ list_Africa<-unique(subset(mean_perc_chenge_trends,region=="Africa")$GEONAME)
 list_Americas<-unique(subset(mean_perc_chenge_trends,region=="Americas")$GEONAME)
 list_Europe<-unique(subset(mean_perc_chenge_trends,region=="Europe")$GEONAME)
 list_Oceania<-unique(subset(mean_perc_chenge_trends,region=="Oceania")$GEONAME)
+list_Top_7_SOV<-c("Chinese EEZ", "Indian EEZ","Indonesian EEZ","Peruvian EEZ","Russian Exclusive economic Zone","United States EEZ","Vietnamese EEZ")
+# I think these need to be SOVERIGN1 but not in the data
+
+
+plot_trends6<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% list_Top_7_SOV), aes(x = year, y = mean_change, group = scenario))+
+    geom_line(aes(color = scenario))+
+    geom_ribbon(aes(y = mean_change, ymin = mean_change - sd_change, ymax = mean_change + sd_change, 
+                  fill = scenario), alpha = .2) +
+    theme_bw()+
+    scale_fill_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    scale_color_manual("Scenario", values=c("black", "blue", "red"), labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+    geom_vline(xintercept = 2014.5, color = "black", linetype ="dashed")+
+    ylab("Change in exploitable \n fish biomass (%)") + 
+    xlab("Year")+
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.background = element_blank())+
+    facet_wrap(~GEONAME, scales = "free",nrow = 7,ncol=1)
+
+plot_trends6
+
+
+
 
 geoname1<-list_Asia
 geoname2<-list_Africa
 geoname3<-list_Americas
 geoname4<-list_Europe
 geoname5<-list_Oceania
-
+geoname6<-list_Top_7
 # these will now be by continent
 plot_trends1<-ggplot(data = filter(mean_perc_chenge_trends, GEONAME %in% geoname1), aes(x = year, y = mean_change, group = scenario))+
     geom_line(aes(color = scenario))+
