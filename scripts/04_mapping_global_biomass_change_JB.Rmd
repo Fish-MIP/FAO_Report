@@ -208,7 +208,8 @@ p50_126 <- maps_data |>
   # theme(axis.title = element_blank(), 
   #       plot.title = element_text(hjust = 0.5),
   #       legend.position = "none") +
-  my_theme_map 
+  my_theme_map +
+  theme(legend.position = "none")
 
 #SSP5-8.5 2041-2050
 p50_585 <- maps_data |>
@@ -239,7 +240,8 @@ p50_585 <- maps_data |>
   # theme(axis.title = element_blank(), 
   #       plot.title = element_text(hjust = 0.5),
   #       legend.position = "none")
-  my_theme_map 
+  my_theme_map +
+  theme(legend.position = "none")
 
 #SSP1-2.6 2091-2100
 p00_126 <- maps_data |>
@@ -268,9 +270,10 @@ p00_126 <- maps_data |>
   theme_bw()+
   labs(title = "SSP1-2.6: 2091-2100")+
   # theme(axis.title = element_blank(), 
-  #       plot.title = element_text(hjust = 0.5),
-  #       legend.position = "none")
-  my_theme_map 
+  #        plot.title = element_text(hjust = 0.5),
+  #        legend.position = "none")
+  my_theme_map +
+  theme(legend.position = "none")
 
 #SSP5-8.5 2091-2100
 
@@ -284,10 +287,10 @@ p00_585 <- maps_data |>
                                            title = "% change",
                                            title.position = "top",
                                            title.hjust = 0.5),
-                                         breaks = breaks_vector,
-                                         labels = labels_vector,
-                                         limits=c(min, max),
-                                         oob = scales::squish,
+                                         # breaks = breaks_vector,
+                                         # labels = labels_vector,
+                                         # limits=c(min, max),
+                                         # oob = scales::squish,
                                          na.value = "black") +
   
   # scale_fill_distiller(palette = "RdYlBu", direction = 1,
@@ -300,49 +303,53 @@ p00_585 <- maps_data |>
   geom_sf(inherit.aes = F, data = world)+
   geom_sf(inherit.aes = F, data = eez, fill = NA,
           show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP5-8.5: 2091-2100")+
-  # guides(fill = guide_legend(title = "% change", title.position = "top", 
-  #                            title.hjust = 0.5, 
-  #                            label.position = "bottom", nrow = 1))+
-  # theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-  #       legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-  #       legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-  #       legend.key.height = unit(0.75, "cm"))
+  guides(fill = guide_legend(title = "% change", title.position = "top",
+                             title.hjust = 0.5,
+                             label.position = "bottom", nrow = 1))+
+  theme(axis.title = element_blank(),
+        legend.spacing.x = unit(0, "cm"), legend.position = "bottom",
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"),
+        legend.key.height = unit(0.75, "cm"))
   my_theme_map 
 
 #Get legend
 legend <- get_legend(p00_585)
 
 #Remove legend from last plot
-#p00_585 <- p00_585+theme(legend.position = "none")
+p00_585 <- p00_585+theme(legend.position = "none")
 
 #Create title for 
-title <- ggdraw()+
-  draw_label("Mean % change in fish biomass from 2005-2014")+
-  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+# title <- ggdraw()+
+#   draw_label("Mean % change in exploitable fish biomass from 2005-2014")+
+#   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+all_plots <- plot_grid(plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #checking patchwork layout
-library(patchwork)
-all_plots<-p50_126+p50_585 +p00_126+p00_585
+# library(patchwork)
+# all_plots<-p50_126+p50_585 +p00_126+p00_585
 
 all_plots
 ```
   
-### Saving final plot
+### GLOBAL - Saving final global plot
   
 ```{r}
-ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf",
-       width = 14, height = 9)
+ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf", width = 14, height = 9)
+
+name_Fig = paste("figures/", Sys.Date(),"_" ,"global_perc_change_map.pdf", sep = "")
+
+pdf(name_Fig)
+all_plots
+dev.off()
+
 ```
 
-### Global time series 
 
 
 ### ASIA
@@ -498,14 +505,32 @@ p00_585 <- maps_data_asia  |>
   geom_sf(inherit.aes = F, data = eez, fill = NA, 
           show.legend = F, linewidth = 0.25)+
   geom_sf(inherit.aes = F, data = world)+
-  theme_bw()  + 
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5))
+  # theme_bw()  + 
+  # theme(axis.title = element_blank(), 
+  #       plot.title = element_text(hjust = 0.5))
 
 p00_585
 ```
 
 Without  mitigation-  the losses are great max -50% by 2100 
+
+
+#### ASIA PLOT
+```{r}
+#Plotting everything together
+all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
+  (p50_585 +  labs(title = "SSP5-8.5: 2050"))+ 
+  (p00_126+  labs(title = "SSP1-2.6: 2100"))+ 
+  (p00_585+  labs(title = "SSP5-8.5: 2100"))
+# all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+#                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+#                        legend, ncol = 1, nrow = 4, 
+#                        rel_heights = c(0.15, 1, 1, 0.4))
+
+ggsave(file.path(out_folder, "ASIA_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+```
+
 
 
 ### AFRICA
@@ -668,6 +693,23 @@ p00_585
 Losses more widespread under ssp585 for most EEZ up to - 30%
 Isolated regions where increases projected, but smaller
 
+#### AFRICA PLOTS
+
+```{r}
+#Plotting everything together
+all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
+  (p50_585 +  labs(title = "SSP5-8.5: 2050"))+ 
+  (p00_126+  labs(title = "SSP1-2.6: 2100"))+ 
+  (p00_585+  labs(title = "SSP5-8.5: 2100"))
+# all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+#                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+#                        legend, ncol = 1, nrow = 4, 
+#                        rel_heights = c(0.15, 1, 1, 0.4))
+
+ggsave(file.path(out_folder, "AFRICA_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+```
+
 
 
 ### EUROPE
@@ -730,6 +772,10 @@ p50_126 <- maps_data_region  |>
 
 
 p50_126
+
+
+
+
 ```
 
 Max losses - 30% 
@@ -831,6 +877,26 @@ max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
 ```
 Dominated by large gains (+243) in polar, ocmpared to reductions (-39% still pretty bad though for some EEZs), highly uncertain region
 Starting to think we show focus on 2050...
+
+
+#### EUROPE PLOT
+
+```{r}
+#Plotting everything together
+all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
+  (p50_585 +  labs(title = "SSP5-8.5: 2050"))+ 
+  (p00_126+  labs(title = "SSP1-2.6: 2100"))+ 
+  (p00_585+  labs(title = "SSP5-8.5: 2100"))
+# all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+#                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+#                        legend, ncol = 1, nrow = 4, 
+#                        rel_heights = c(0.15, 1, 1, 0.4))
+
+ggsave(file.path(out_folder, "AFRICA_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+all_plots
+```
+
 
 
 ### AMERICAS
@@ -1002,6 +1068,25 @@ max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
 ```
 ALSO : Dominated by large gains (+244) in polar, ocmpared to reductions (-57% still pretty bad though for some EEZs), highly uncertain region
 Starting to think we show focus on 2050...
+
+#### AMERICAS MAP
+
+```{r}
+#Plotting everything together
+all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
+  (p50_585 +  labs(title = "SSP5-8.5: 2050"))+ 
+  (p00_126+  labs(title = "SSP1-2.6: 2100"))+ 
+  (p00_585+  labs(title = "SSP5-8.5: 2100"))
+# all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+#                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+#                        legend, ncol = 1, nrow = 4, 
+#                        rel_heights = c(0.15, 1, 1, 0.4))
+
+ggsave(file.path(out_folder, "AFRICA_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+all_plots
+```
+
 
 ### OCEANIA
 
@@ -1181,5 +1266,23 @@ max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
 Scary losses up to -50%, extremly small pockets of increase
 
 We dont account for reef habitats
+
+#### OCEANIA MAP
+
+```{r}
+#Plotting everything together
+all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
+  (p50_585 +  labs(title = "SSP5-8.5: 2050"))+ 
+  (p00_126+  labs(title = "SSP1-2.6: 2100"))+ 
+  (p00_585+  labs(title = "SSP5-8.5: 2100"))
+# all_plots <- plot_grid(title, plot_grid(p50_126, p50_126, ncol = 2, nrow = 1),
+#                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+#                        legend, ncol = 1, nrow = 4, 
+#                        rel_heights = c(0.15, 1, 1, 0.4))
+
+ggsave(file.path(out_folder, "AFRICA_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+all_plots
+```
 
 

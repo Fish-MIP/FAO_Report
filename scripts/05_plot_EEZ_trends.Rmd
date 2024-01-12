@@ -303,6 +303,9 @@ plot_trends5
 dev.off()
 
 
+
+plot_trends5
+
 ```
 
 ### Much better code for plotting
@@ -506,3 +509,12 @@ names(plots_2100)<-countries
 
 
 ```
+
+
+
+##### TOP SEVEN FISH PRODUCER COUNTRIES PLOT
+
+```{r}
+
+```
+
