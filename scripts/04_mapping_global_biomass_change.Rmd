@@ -201,37 +201,26 @@ maps_data_proj <- maps_data |>
   rast(type = "xyz", crs = "epsg:4326") |> 
   project(y = rob_proj) 
 
-ggplot()+
-  geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, na.value = "white")+
-  # scale_fill_distiller(palette = "RdYlBu", direction = 1,
-  #                      na.value = "white", 
-  #                      rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-  #                                                      to = c(-50, 50),
-  #                                                      mid = 0))+
-  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#bcbcbc",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")
+
+scale_fill_custom <- function (..., alpha = 1, begin = 0, end = 1, direction = 1, 
+  option = "D", values = NULL, space = "Lab", na.value = "white", 
+  guide = "colourbar", aesthetics = "fill") {
+  continuous_scale(aesthetics, scale_name = "custom", 
+    palette = scales:::gradient_n_pal(pal, 
+    values, space), na.value = na.value, 
+    guide = guide, ...)
+}
 ```
 
   
 ```{r}
 #SSP1-2.6 2041-2050
-p50_126 <- maps_data |>
-  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
-  scale_fill_distiller(palette = "RdYlBu", direction = 1,
-                       na.value = "white", 
-                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-                                                       to = c(-50, 50),
-                                                       mid = 0))+
-  geom_sf(inherit.aes = F, data = world_proj)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA,
+p50_126 <- ggplot()+
+  geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP1-2.6: 2041-2050")+
@@ -240,16 +229,12 @@ p50_126 <- maps_data |>
         legend.position = "none")
 
 #SSP5-8.5 2041-2050
-p50_585 <- maps_data |>
-  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
-  scale_fill_distiller(palette = "RdYlBu", direction = 1,
-                       na.value = "white", 
-                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-                                                       # to = c(-50, 50),
-                                                       mid = 0))+
-  geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = eez, fill = NA,
+p50_585 <- ggplot()+
+  geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp585_mean)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP5-8.5: 2041-2050")+
@@ -258,16 +243,12 @@ p50_585 <- maps_data |>
         legend.position = "none")
 
 #SSP1-2.6 2091-2100
-p00_126 <- maps_data |>
-  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
-  scale_fill_distiller(palette = "RdYlBu", direction = 1,
-                       na.value = "white", 
-                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-                                                       # to = c(-50, 50),
-                                                       mid = 0))+
-  geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = eez, fill = NA,
+p00_126 <- ggplot()+
+  geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp126_mean)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP1-2.6: 2091-2100")+
@@ -276,18 +257,12 @@ p00_126 <- maps_data |>
         legend.position = "none")
 
 #SSP5-8.5 2091-2100
-p00_585 <- maps_data |>
-  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
-  scale_fill_distiller(palette = "RdYlBu", direction = 1,
-                       na.value = "white", limits = c(-70, 260),
-                       breaks = c(seq(-70, 0, length.out = 5),
-                                  seq(32.5, 260, length.out = 8)),
-                       rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-                                                       # to = c(-50, 50),
-                                                       mid = 0))+
-  geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = eez, fill = NA,
+p00_585 <- ggplot()+
+  geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp585_mean)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP5-8.5: 2091-2100")+
