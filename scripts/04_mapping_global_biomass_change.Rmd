@@ -38,7 +38,7 @@ if(!dir.exists(out_folder)){
 }
 
 #Defining location of model outputs
-data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_10kg/EEZsummaries/gridded_outputs/" 
+data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/" 
 
 #Getting a list of files containing biomass data
 global_files <- list.files(data_dir, full.names = T)
@@ -51,7 +51,7 @@ members <- str_extract(global_files, "outputs//(.*)_(h|s)", group = 1) |>
 ## Calculating percentage change in fish biomass estimates from global FishMIP models
 We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios). Finally, we will calculate the percentage change between these two decades.  
   
-```{r}
+```{r, eval = F}
 #Looping through each FishMIP model
 for(m in members){
   #Load all data available for a single FishMIP model
@@ -88,7 +88,6 @@ for(m in members){
   df_model |> 
     fwrite(f_out)
 }
-  
 ```
   
 ### Calculating ensemble mean
@@ -126,19 +125,100 @@ In this section, we will plot individual maps for fish biomass change per decade
 ### Loading relevant shapefiles
   
 ```{r}
+#Robinson projection
+rob_proj <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
+
 #Base map of the world
-world <- ne_countries(returnclass = "sf")
+world_proj <- ne_countries(returnclass = "sf") |> 
+  st_transform(rob_proj)
 
 #EEZ boundaries
-eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |> 
+eez_proj <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |> 
   #Removing Antarctic EEZ
-  filter(str_detect(GEONAME, "Antarctic", negate = T))
+  filter(str_detect(GEONAME, "Antarctic", negate = T)) |> 
+  #Adding continent and sub region information 
+  left_join(fao_eez |> drop_na(MRGID), by = join_by(MRGID)) |> 
+  #Removing continent from Clipperton
+  mutate(region = case_when(str_detect(nm_mrgd, "Clipperton") ~ NA,
+                            T ~ region)) |> 
+  st_transform(rob_proj)
+
+#FAO and EEZ shapefile
+fao_eez_shp_proj <- read_sf("../../Merged_FAO_EEZ/FAO_MajorAreas_EEZ.shp") |> 
+  st_transform(rob_proj)
 ```
+  
+### Map showing regions used in report
+FAO regions are coloured by ocean basin, and EEZs are classified by continent.  
+  
+```{r}
+#Getting FAO regions only
+fao_proj <- fao_eez_shp_proj |> 
+  drop_na(OCEAN)
+
+main <- ggplot()+
+  #Plotting FAO classified by ocean basin
+  geom_sf(data = fao_proj, aes(fill = OCEAN))+
+  #Plotting EEZ classified by continent
+  geom_sf(data = eez_proj, aes(fill = region))+
+  #Using colour blind friendly colours
+  scale_fill_manual(values = c("Pacific" = "#222255", "Atlantic" = "#225555", "Indian" = "#225522",
+                               "Arctic" = "#666633", "Southern Ocean" = "#663333", 
+                               "Oceania" = "#bbccee", "Europe" = "#cceeff", "Americas" = "#ccddaa",
+                               "Asia" = "#ffcccc", "Africa" = "#eeeebb"))+
+  #Plotting base map
+  geom_sf(data = world_proj)+
+  #Removing grey background
+  theme_bw()+
+  #Formatting legend title
+  guides(fill = guide_legend(title = "FAO and EEZ classification", title.position = "top", 
+                             title.hjust = 0.5))+
+  #Formatting legend
+  theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
+        legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(0, 0, 0, 0),
+        legend.title = element_text(size = 13), legend.text = element_text(size = 13))
+
+#Checking result
+main
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main, device = "pdf",
+       width = 14, height = 9)
+```
+
   
 ### Creating individual maps
 All maps share the same colour palette, so we will not include legends in any of them except for the last one.
 
 Grey cells are areas with no data in the models.  
+  
+```{r}
+#Extract data for scenario, transform to raster and reproject
+maps_data_proj <- maps_data |> 
+  select(x, y, starts_with("rel_change")) |> 
+  rast(type = "xyz", crs = "epsg:4326") |> 
+  project(y = rob_proj) 
+
+ggplot()+
+  geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, na.value = "white")+
+  # scale_fill_distiller(palette = "RdYlBu", direction = 1,
+  #                      na.value = "white", 
+  #                      rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
+  #                                                      to = c(-50, 50),
+  #                                                      mid = 0))+
+  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#bcbcbc",
+          show.legend = F, linewidth = 0.25)+
+  theme_bw()+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  theme(axis.title = element_blank(), 
+        plot.title = element_text(hjust = 0.5),
+        legend.position = "none")
+```
+
   
 ```{r}
 #SSP1-2.6 2041-2050
@@ -148,10 +228,10 @@ p50_126 <- maps_data |>
   scale_fill_distiller(palette = "RdYlBu", direction = 1,
                        na.value = "white", 
                        rescaler = ~scales::rescale_mid(.x, from = c(-70, 260), 
-                                                       # to = c(-50, 50),
+                                                       to = c(-50, 50),
                                                        mid = 0))+
-  geom_sf(inherit.aes = F, data = world)+
-  geom_sf(inherit.aes = F, data = eez, fill = NA,
+  geom_sf(inherit.aes = F, data = world_proj)+
+  geom_sf(inherit.aes = F, data = eez_proj, fill = NA,
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP1-2.6: 2041-2050")+
