@@ -340,13 +340,13 @@ all_plots
 ### GLOBAL - Saving final global plot
   
 ```{r}
-ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf", width = 14, height = 9)
+#ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf", width = 14, height = 9)
 
-name_Fig = paste("figures/", Sys.Date(),"_" ,"global_perc_change_map.pdf", sep = "")
-
-pdf(name_Fig)
-all_plots
-dev.off()
+# name_Fig = paste("figures/", Sys.Date(),"_" ,"global_perc_change_map.pdf", sep = "")
+# 
+# pdf(name_Fig)
+# all_plots
+# dev.off()
 
 ```
 
@@ -738,6 +738,8 @@ eez <- read_sf("/rd/gem/private/users/ldfierro/World_EEZ_v11_20191118/eez_short.
   # mutate(ID_1 = as.factor(ID_1)) |> 
   # #Ensuring shapefile crosses the international dateline
   #st_shift_longitude() 
+
+
 ```
 
 
@@ -774,6 +776,18 @@ p50_126 <- maps_data_region  |>
 p50_126
 
 
+# need to get area weighted means:
+europe_summaries<-maps_data_region |>
+    group_by(nm_mrgd) %>%
+    summarise(spatialMeanChange50_ssp126=mean(rel_change_mean50_ssp126_mean,na.rm=T),
+      spatialMeanChange00_ssp126=mean(rel_change_mean00_ssp126_mean,na.rm=T), 
+      spatialMeanChange50_ssp585=mean(rel_change_mean50_ssp585_mean,na.rm=T), spatialMeanChange00_ssp585=mean(rel_change_mean00_ssp585_mean),na.rm=T )
+
+
+europe_summaries[which(europe_summaries$spatialMeanChange50_ssp126<0),]
+length(europe_summaries$spatialMeanChange50_ssp126)
+europe_summaries[which(europe_summaries$spatialMeanChange50_ssp126>=0),]
+
 
 
 ```
@@ -809,6 +823,11 @@ p50_585 <- maps_data_region  |>
 
 
 p50_585
+
+min(maps_data_region$rel_change_mean50_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean50_ssp585_mean,na.rm=T)
+min(maps_data_region$rel_change_mean00_ssp126_mean,na.rm=T)
+max(maps_data_region$rel_change_mean00_ssp585_mean,na.rm=T)
 ```
 More pronouced losses by 2050 under ssp585 - up to -30%, less extreme gains
 
@@ -895,6 +914,12 @@ all_plots <-(p50_126+  labs(title = "SSP1-2.6: 2050"))+
 ggsave(file.path(out_folder, "AFRICA_perc_change_map_50-00.pdf"), device = "pdf",
        width = 14, height = 9)
 all_plots
+
+
+
+
+
+
 ```
 
 
