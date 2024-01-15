@@ -41,26 +41,26 @@ if(!dir.exists(out_folder)){
 }
 
 #Defining location of model outputs
-data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/" 
+data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/" 
 
 #Getting a list of files containing biomass data
-global_files <- list.files(data_dir, full.names = T)
+global_files <- list.files(data_dir, pattern = "rds$", full.names = T)
 
 #Getting a list of models
-members <- str_extract(global_files, "outputs//(.*)_(h|s)", group = 1) |> 
+members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
   unique()
 ```
   
 ## Calculating percentage change in fish biomass estimates from global FishMIP models
-We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios). Finally, we will calculate the percentage change between these two decades.  
+We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
   
 ```{r, eval = F}
 #Looping through each FishMIP model
 for(m in members){
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
-    #Ignore columns SOVEREIGN1-3 - not needed here
-    map_df(~fread(., drop = c(paste0("SOVEREIGN", 1:3), "area_m", "GEONAME", "eez"))) |> 
+    map(~readRDS(.)) |> 
+    map_df(~bind_rows(.)) |> 
     #Extract data only for years to be used in maps
     filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
     #Create new group column to calculate means
@@ -209,7 +209,7 @@ scale_fill_custom <- function (..., alpha = 1, begin = 0, end = 1, direction = 1
   continuous_scale(aesthetics, scale_name = "custom", 
     palette = scales:::gradient_n_pal(c(cmocean("matter", start = 0.1, end = 0.8, direction = -1)(123),
                                         cmocean("delta", start = 0.49, end = 0.5)(20),
-                                        cmocean("deep", start = 0.1, end = 0.3)(123)), 
+                                        cmocean("deep", start = 0.1, end = 0.8)(123)), 
                                       values, space), 
     na.value = na.value, guide = guide, ...)
 }
@@ -531,79 +531,79 @@ ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), device = "pdf"
        width = 10, height = 9)
 ```
   
-### Figure 5 FAO report - Europe
+## Figure 5 FAO report - Europe
   
 ```{r}
-#Extract data for scenario, transform to raster and reproject
-europe_data <- maps_data |> 
-  filter(region == "Europe") #|> 
-  # mutate(x = x%%360)
+#Extracting data for Europe
+europe_data <- maps_data |>
+  filter(region == "Europe") |>
+  #Removing Clipperton
+  filter(str_detect(nm_mrgd, "Clipperton", negate = T))
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
 #SSP1-2.6 2041-2050
-# p50_126 <- 
-europe_data |> 
+p50_126 <- europe_data |>
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                     type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = st_shift_longitude(world), show.legend = F)+
-  # geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
+  geom_sf(inherit.aes = F, data = world, show.legend = F)+
+  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP1-2.6: 2041-2050")+
   theme(axis.title = element_blank(), 
         plot.title = element_text(hjust = 0.5),
         legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
+  coord_sf(ylim = c(23, 87), expand = F)
 
 #SSP5-8.5 2041-2050
-p50_585 <- africa_data |> 
+p50_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                     type = scale_fill_custom, oob = scales::oob_squish)+
   geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
+  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP5-8.5: 2041-2050")+
   theme(axis.title = element_blank(), 
         plot.title = element_text(hjust = 0.5),
         legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
+  coord_sf(ylim = c(23, 87), expand = F)
 
 #SSP1-2.6 2091-2100
-p00_126 <- africa_data |> 
+p00_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                     type = scale_fill_custom, oob = scales::oob_squish)+
   geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
+  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP1-2.6: 2091-2100")+
   theme(axis.title = element_blank(), 
         plot.title = element_text(hjust = 0.5),
         legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
+  coord_sf(ylim = c(23, 87), expand = F)
   
 #SSP5-8.5 2091-2100
-p00_585 <- africa_data |> 
+p00_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                     type = scale_fill_custom, oob = scales::oob_squish)+
   geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
+  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
           show.legend = F, linewidth = 0.25)+
   theme_bw()+
   labs(title = "SSP5-8.5: 2091-2100")+
-  lims(x = c(-29, 85), y = c(-55, 40))+
+  coord_sf(ylim = c(23, 87), expand = F)+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
@@ -620,7 +620,7 @@ p00_585 <- p00_585+theme(legend.position = "none")
 
 #Create title for 
 title <- ggdraw()+
-  draw_label("Mean % change in fish biomass in African EEZs between 2005-2014")+
+  draw_label("Mean % change in fish biomass in European EEZs between 2005-2014")+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
@@ -635,8 +635,8 @@ all_plots
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), device = "pdf",
-       width = 10, height = 9)
+ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 12, height = 6)
 ```
 ### Figure 6 FAO report - Americas
 
