@@ -920,14 +920,416 @@ atlantic_plots
 ggsave(file.path(out_folder, "atlantic_perc_change_map_50-00.pdf"), device = "pdf",
        width = 8, height = 9)
 ```
+  
+## Figure 9 FAO report - Pacific
+  
+```{r}
+#Defining projection to be used for Pacific maps
+plate_caree <- "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=-149 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
 
+#Split world in two hemispheres 
+west <- world |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = -65, xmax = -60, ymax = 65))) |> 
+  st_transform(plate_caree)
+east <- world |> 
+  st_crop(st_bbox(c(xmin = 120, ymin = -65, xmax = 180, ymax = 65))) |> 
+  st_transform(plate_caree)
+#Merge them together
+pacificcent <- rbind(west, east)
 
-### Figure 9 FAO report - Pacific
+#Remove variables not needed
+rm(west, east)
 
+#Getting FAO regions for the Pacific 
+pacific_fao <- fao_eez_shp |> 
+  filter(OCEAN == "Pacific") |> 
+  st_transform(plate_caree)
 
-### Figure 10 FAO report - Indian
+#Extract data for scenario, transform to raster and reproject
+pacific_data <- maps_data |> 
+  filter(OCEAN == "Pacific") |> 
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in Europe
+  project(y = plate_caree) |> 
+  #Return to data frame
+  as.data.frame(xy = T)
+```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = pacificcent, show.legend = F),
+                geom_sf(inherit.aes = F, data = pacific_fao,
+                        fill = NA, colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
 
-### Figure 11 FAO report - Southern Ocean
+#SSP1-2.6 2041-2050
+p50_126 <- pacific_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
 
-### Figure 12 FAO report - Arctic
+#SSP5-8.5 2041-2050
+p50_585 <- pacific_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
 
+#SSP1-2.6 2091-2100
+p00_126 <- pacific_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
+  
+#SSP5-8.5 2091-2100
+p00_585 <- pacific_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, label.position = "bottom", 
+                             nrow = 1))+
+  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
+        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in FAO Pacific regions between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+pacific_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                        labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+pacific_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "pacific_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 10, height = 9)
+```
+  
+## Figure 10 FAO report - Indian
+  
+```{r}
+#Extract data for scenario, transform to raster and reproject
+indian_data <- maps_data |> 
+  filter(OCEAN == "Indian")
+```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world, show.legend = F),
+                geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Indian",], 
+                        fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5), 
+                      legend.position = "none"),
+                lims(x = c(30, 150), y = c(-60, 25)))
+
+#SSP1-2.6 2041-2050
+p50_126 <- indian_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
+
+#SSP5-8.5 2041-2050
+p50_585 <- indian_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
+
+#SSP1-2.6 2091-2100
+p00_126 <- indian_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
+  
+#SSP5-8.5 2091-2100
+p00_585 <- indian_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in Indian FAO regions between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+indian_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                          labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+indian_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "indian_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 10, height = 9)
+```
+    
+## Figure 11 FAO report - Southern Ocean
+  
+```{r}
+#Getting Antarctic continent and reprojecting
+ant <- world |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = -90, xmax = 180, ymax = -40))) |> 
+  st_transform(3976)
+
+#FAO regions for the Southern Ocean
+so_fao <- fao_eez_shp |> 
+  filter(str_detect(OCEAN, "Southern")) |> 
+  st_transform(3976)
+
+#Extract data for scenario, transform to raster and reproject
+so_data <- maps_data |> 
+  filter(str_detect(OCEAN, "Southern")) |> 
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in Europe
+  project(y = "epsg:3976") |> 
+  #Return to data frame
+  as.data.frame(xy = T)
+```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = ant, show.legend = F),
+                geom_sf(inherit.aes = F, data = so_fao, 
+                        fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5), 
+                      legend.position = "none"),
+                coord_sf(ylim = c(-3323160.27, 4323160.27)))
+
+#SSP1-2.6 2041-2050
+p50_126 <- so_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
+
+#SSP5-8.5 2041-2050
+p50_585 <- so_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
+
+#SSP1-2.6 2091-2100
+p00_126 <- so_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
+  
+#SSP5-8.5 2091-2100
+p00_585 <- so_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in Southern Ocean FAO regions between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+so_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                          labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+so_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "southern-ocean_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 8, height = 9)
+```
+  
+## Figure 12 FAO report - Arctic
+  
+```{r}
+#Getting Antarctic continent and reprojecting
+art <- world |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = 0, xmax = 180, ymax = 90))) |> 
+  st_transform(3413) |>
+  st_crop(st_bbox(c(xmin = -3314693.24, ymin = -3314693.24, 
+                    xmax = 3314693.24, ymax = 3314693.24)))
+
+#FAO regions for the Arctic
+art_fao <- fao_eez_shp |> 
+  filter(OCEAN == "Arctic") |> 
+  st_transform(3413)
+
+#Extract data for scenario, transform to raster and reproject
+art_data <- maps_data |> 
+  filter(OCEAN == "Arctic") |> 
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in Europe
+  project(y = "epsg:3413") |> 
+  #Return to data frame
+  as.data.frame(xy = T)
+```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = art, show.legend = F),
+                geom_sf(inherit.aes = F, data = art_fao, 
+                        fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5), 
+                      legend.position = "none"))
+
+#SSP1-2.6 2041-2050
+p50_126 <- art_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
+
+#SSP5-8.5 2041-2050
+p50_585 <- art_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
+
+#SSP1-2.6 2091-2100
+p00_126 <- art_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
+  
+#SSP5-8.5 2091-2100
+p00_585 <- art_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in Arctic FAO regions between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+art_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                          labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+art_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "arctic_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 8, height = 9)
+```
