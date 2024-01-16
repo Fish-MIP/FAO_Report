@@ -14,14 +14,20 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
+#Data wrangling
 library(tidyverse)
+library(data.table)
+#Dealing with raster data
 library(terra)
 library(tidyterra)
-library(cmocean)
-library(rnaturalearth)
-library(data.table)
-library(cowplot)
+#Dealing with vector data
 library(sf)
+#Base maps
+library(rnaturalearth)
+#Color palettes
+library(cmocean)
+#Combining plots
+library(cowplot)
 ```
 
 ## Setting up notebook
@@ -213,69 +219,49 @@ scale_fill_custom <- function (..., alpha = 1, begin = 0, end = 1, direction = 1
                                       values, space), 
     na.value = na.value, guide = guide, ...)
 }
-
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world_proj, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
+
 #SSP1-2.6 2041-2050
 p50_126 <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp585_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP5-8.5: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")
+  base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp126_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP1-2.6: 2091-2100")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")
+  base_gg
 
 #SSP5-8.5 2091-2100
 p00_585 <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp585_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world_proj, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
         legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
         legend.key.height = unit(0.75, "cm"))
 
@@ -291,8 +277,10 @@ title <- ggdraw()+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                        labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
@@ -330,71 +318,50 @@ asia_data <- maps_data |>
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], 
+                        fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5), 
+                      legend.position = "none"),
+                lims(x = c(25, 160), y = c(-15, 50)))
+
 #SSP1-2.6 2041-2050
 p50_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(25, 160), y = c(-15, 50))
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP5-8.5: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(25, 160), y = c(-15, 50))
+  base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP1-2.6: 2091-2100")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(25, 160), y = c(-15, 50))
+  base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
   labs(title = "SSP5-8.5: 2091-2100")+
-  lims(x = c(25, 160), y = c(-15, 50))+
+  base_gg+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
         legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
         legend.key.height = unit(0.75, "cm"))
 
@@ -410,13 +377,15 @@ title <- ggdraw()+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+asia_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                          labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
-all_plots
+asia_plots
 ```
   
 ```{r}
@@ -436,71 +405,49 @@ africa_data <- maps_data |>
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], 
+                        fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"),
+                lims(x = c(-29, 85), y = c(-55, 40)))
+
 #SSP1-2.6 2041-2050
 p50_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
 
 #SSP5-8.5 2041-2050
 p50_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP5-8.5: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
-
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
 #SSP1-2.6 2091-2100
 p00_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2091-2100")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-29, 85), y = c(-55, 40))
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
   
 #SSP5-8.5 2091-2100
 p00_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
+  base_gg+
   labs(title = "SSP5-8.5: 2091-2100")+
-  lims(x = c(-29, 85), y = c(-55, 40))+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
         legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
         legend.key.height = unit(0.75, "cm"))
 
@@ -516,13 +463,15 @@ title <- ggdraw()+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+africa_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                            labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
-all_plots
+africa_plots
 ```
   
 ```{r}
@@ -532,78 +481,87 @@ ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), device = "pdf"
 ```
   
 ## Figure 5 FAO report - Europe
+Since we want to show Europe in the middle of the map, we will have to project our data and split the base map in two hemispheres.  
   
 ```{r}
+sf_use_s2(F)
+
+#Split world in two hemispheres
+east <- st_crop(world, st_bbox(c(xmin = -50, ymin = 20, xmax = 180, ymax = 90)))
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = 20, xmax = -150, ymax = 90)))
+#Merge them together
+eurocent <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
+                             st_crs(east)), east) 
+
+#Split EEZ in two hemispheres
+eez_east <- st_crop(eez[eez$region == "Europe",], 
+                    st_bbox(c(xmin = -50, ymin = 20, xmax = 180, ymax = 90)))
+eez_west <- st_crop(eez[eez$region == "Europe",], 
+                    st_bbox(c(xmin = -180, ymin = 20, xmax = -150, ymax = 90)))
+#Merge together
+eez_euro <- rbind(st_set_crs(st_transform(eez_west, "+proj=longlat +lon_wrap=180"), 
+                             st_crs(eez_east)), eez_east) 
+
+#Removing variables that are not needed
+rm(eez_east, eez_west, east, west)
+
 #Extracting data for Europe
 europe_data <- maps_data |>
   filter(region == "Europe") |>
   #Removing Clipperton
-  filter(str_detect(nm_mrgd, "Clipperton", negate = T))
+  filter(str_detect(nm_mrgd, "Clipperton", negate = T)) |> 
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in Europe
+  project(rast(ext(-50, 210, 20, 90), res = 1)) |> 
+  #Return to data frame
+  as.data.frame(xy = T)
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = eurocent, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_euro, fill = NA, 
+                        colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"),
+                coord_sf(ylim = c(23, 87), expand = F))
+
 #SSP1-2.6 2041-2050
 p50_126 <- europe_data |>
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  coord_sf(ylim = c(23, 87), expand = F)
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
 
 #SSP5-8.5 2041-2050
 p50_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP5-8.5: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  coord_sf(ylim = c(23, 87), expand = F)
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
 
 #SSP1-2.6 2091-2100
 p00_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2091-2100")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  coord_sf(ylim = c(23, 87), expand = F)
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
   
 #SSP5-8.5 2091-2100
 p00_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = eez[eez$region == "Europe",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
+  base_gg+
   labs(title = "SSP5-8.5: 2091-2100")+
-  coord_sf(ylim = c(23, 87), expand = F)+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
                              title.hjust = 0.5, 
                              label.position = "bottom", nrow = 1))+
@@ -624,13 +582,15 @@ title <- ggdraw()+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+europe_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                            labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
-all_plots
+europe_plots
 ```
   
 ```{r}
@@ -638,15 +598,239 @@ all_plots
 ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"), device = "pdf",
        width = 12, height = 6)
 ```
-### Figure 6 FAO report - Americas
+  
+## Figure 6 FAO report - Americas
+As we did with Europe, we would like the Americas to show in the middle of the map, so we will have to pre-process our data before plotting the maps.  
+  
+```{r}
+#Split world in two hemispheres 
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -60, xmax = 20, ymax = 90)))
+east <- st_crop(world, st_bbox(c(xmin = 160, ymin = -60, xmax = 180, ymax = 90)))
+#Merge them together
+amercent <- rbind(west, st_set_crs(st_transform(east, "+proj=longlat +lon_wrap=-120"),
+                                   st_crs(west)))
 
-### Figure 7 FAO report - Pacific
+#Split EEZ in two hemispheres
+eez_west <- eez |> 
+  filter(str_detect(region, "America")) |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = 20, ymax = 90)))
+eez_east <- eez |> 
+  filter(str_detect(region, "America")) |> 
+  st_crop(st_bbox(c(xmin = 160, ymin = -60, xmax = 180, ymax = 90)))
+#Merge together
+eez_amer <- rbind(eez_west, st_set_crs(st_transform(eez_east, "+proj=longlat +lon_wrap=-120"),
+                                   st_crs(eez_west))) 
+
+#Removing variables that are not needed
+rm(eez_east, eez_west, east, west)
+
+#Extracting data for the Americas
+americas_data <- maps_data |>
+  filter(str_detect(region, "America")) |>
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in the Americas
+  project(rast(ext(-200, 20, -60, 90), res = 1)) |> 
+  #Return to data frame
+  as.data.frame(xy = T)
+```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = amercent, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_amer, fill = NA, 
+                        colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"),
+                coord_sf(ylim = c(-60, 87), expand = F))
+
+#SSP1-2.6 2041-2050
+p50_126 <- americas_data |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
+
+#SSP5-8.5 2041-2050
+p50_585 <- americas_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
+
+#SSP1-2.6 2091-2100
+p00_126 <- americas_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
+  
+#SSP5-8.5 2091-2100
+p00_585 <- americas_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
+        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in American EEZs between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+americas_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                            labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+americas_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "americas_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 10, height = 9)
+```
+  
+## Figure 7 FAO report - Oceania
 
 ```{r}
+#Split world in two hemispheres 
+west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -60, xmax = -120, ymax = 30)))
+east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -60, xmax = 180, ymax = 30)))
+#Merge them together
+oceancent <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
+                              st_crs(east)), east)
 
+#Split EEZ in two hemispheres
+eez_west <- eez |> 
+  filter(str_detect(region, "Oceania")) |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = -120, ymax = 30)))
+eez_east <- eez |> 
+  filter(str_detect(region, "Oceania")) |> 
+  st_crop(st_bbox(c(xmin = 60, ymin = -60, xmax = 180, ymax = 30)))
+#Merge together
+eez_ocean <- rbind(st_set_crs(st_transform(eez_west, "+proj=longlat +lon_wrap=180"), 
+                              st_crs(eez_east)), eez_east) 
+
+#Removing variables that are not needed
+rm(eez_east, eez_west, east, west)
+
+#Extracting data for the Americas
+ocean_data <- maps_data |>
+  filter(str_detect(region, "Oceania")) |>
+  #Selecting relevant columns
+  select(x, y, starts_with("rel_change")) |> 
+  #Converting to raster
+  rast(crs = "epsg:4326") |> 
+  #Reprojecting so raster is centered in Europe
+  project(rast(ext(60, 240, -60, 30), res = 1)) |> 
+  #Return to data frame
+  as.data.frame(xy = T)
 ```
+  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = oceancent, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_ocean, fill = NA, 
+                        colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
 
+#SSP1-2.6 2041-2050
+p50_126 <- ocean_data |>
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
 
+#SSP5-8.5 2041-2050
+p50_585 <- ocean_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
+
+#SSP1-2.6 2091-2100
+p00_126 <- ocean_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
+  
+#SSP5-8.5 2091-2100
+p00_585 <- ocean_data |> 
+  ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  geom_tile()+
+  base_gg+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  guides(fill = guide_legend(title = "% change", title.position = "top", 
+                             title.hjust = 0.5, 
+                             label.position = "bottom", nrow = 1))+
+  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
+        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
+        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
+        legend.key.height = unit(0.75, "cm"))
+
+#Get legend
+legend <- get_legend(p00_585)
+
+#Remove legend from last plot
+p00_585 <- p00_585+theme(legend.position = "none")
+
+#Create title for 
+title <- ggdraw()+
+  draw_label("Mean % change in fish biomass in Oceanian EEZs between 2005-2014")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
+
+#Plotting everything together
+oceania_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                            labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                  labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
+
+#Check final map
+oceania_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"), device = "pdf",
+       width = 10, height = 9)
+```
+  
 ## Figure 8 FAO report - Atlantic
   
 ```{r}
@@ -661,69 +845,48 @@ atlantic_data <- maps_data |>
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world, show.legend = F),
+                geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Atlantic",],
+                        fill = NA, colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"),
+                lims(x = c(-80, 70), y = c(-60, 90)))
+
 #SSP1-2.6 2041-2050
 p50_126 <- atlantic_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Atlantic",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-80, 70), y = c(-60, 90))
+  base_gg+
+  labs(title = "SSP1-2.6: 2041-2050")
 
 #SSP5-8.5 2041-2050
 p50_585 <- atlantic_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Atlantic",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP5-8.5: 2041-2050")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-80, 70), y = c(-60, 90))
+  base_gg+
+  labs(title = "SSP5-8.5: 2041-2050")
 
 #SSP1-2.6 2091-2100
 p00_126 <- atlantic_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Atlantic",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
-  labs(title = "SSP1-2.6: 2091-2100")+
-  theme(axis.title = element_blank(), 
-        plot.title = element_text(hjust = 0.5),
-        legend.position = "none")+
-  lims(x = c(-80, 70), y = c(-60, 90))
+  base_gg+
+  labs(title = "SSP1-2.6: 2091-2100")
   
 #SSP5-8.5 2091-2100
 p00_585 <- atlantic_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish)+
-  geom_sf(inherit.aes = F, data = world, show.legend = F)+
-  geom_sf(inherit.aes = F, data = fao_eez_shp[fao_eez_shp$OCEAN == "Atlantic",], fill = NA, colour = "#5b5b5b",
-          show.legend = F, linewidth = 0.25)+
-  theme_bw()+
+  base_gg+
   labs(title = "SSP5-8.5: 2091-2100")+
-  lims(x = c(-80, 70), y = c(-60, 90))+
   guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
+                             title.hjust = 0.5, label.position = "bottom", 
+                             nrow = 1))+
   theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
         legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
         legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
@@ -741,13 +904,15 @@ title <- ggdraw()+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1),
+atlantic_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                        labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
                        legend, ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
-all_plots
+atlantic_plots
 ```
   
 ```{r}
@@ -756,9 +921,13 @@ ggsave(file.path(out_folder, "atlantic_perc_change_map_50-00.pdf"), device = "pd
        width = 8, height = 9)
 ```
 
-### Figure 9 FAO report - Indian
 
-### Figure 10 FAO report - Southern Ocean
+### Figure 9 FAO report - Pacific
 
-### Figure 11 FAO report - Arctic
+
+### Figure 10 FAO report - Indian
+
+### Figure 11 FAO report - Southern Ocean
+
+### Figure 12 FAO report - Arctic
 
