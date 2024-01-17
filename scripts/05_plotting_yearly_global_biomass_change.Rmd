@@ -1,0 +1,366 @@
+---
+title: "Temporal biomass change"
+author: "Denisse Fierro Arcos"
+date: "2024-01-17"
+output: pdf_document
+---
+
+# Introduction
+
+In this notebook, we will calculate the mean percentage change in fish biomass between 2041 and 2050 under two climate emission scenarios: `SSP1-2.6` (low emissions) and `SSP5-8.5` (very high emissions). The last decade from the historical period (2005-2014) was used as the reference period.  
+  
+Note that outputs from all [global FishMIP models](https://fishmip.org/modellingteams.html) were used to calculate the mean percentage change for the entire ensemble.  
+  
+## Loading libraries
+  
+```{r, message=FALSE, warning=FALSE}
+#Data wrangling
+library(tidyverse)
+library(data.table)
+#Combining plots
+library(cowplot)
+```
+
+## Setting up notebook
+  
+```{r}
+#FAO_EEZ key - Contains continent information
+fao_eez <- read_csv("../../Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+
+#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
+fao_eez_mask <- read_csv("../../Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
+  rename(x = Lon, y = Lat, ID_mrgd = mask)
+
+#Defining location of notebook outputs
+out_folder <- "/rd/gem/private/users/camillan/FAO_Report"
+if(!dir.exists(out_folder)){
+  dir.create(out_folder)
+}
+
+#Defining location of model outputs
+data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/" 
+
+#Getting a list of files containing biomass data
+global_files <- list.files(data_dir, pattern = "rds$", full.names = T)
+
+#Getting a list of models
+members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
+  unique()
+```
+  
+## Calculating percentage change in fish biomass estimates from global FishMIP models
+We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
+  
+```{r, eval = F}
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    map(~readRDS(.)) |> 
+    map_df(~bind_rows(.)) |> 
+    #Apply mask
+    left_join(fao_eez_mask, by = join_by(x, y)) |> 
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario, ID_mrgd) |> 
+    summarise(mean_bio = mean(biomass, na.rm = T))
+  
+  #Create name to save file  
+  f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
+  
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+```
+  
+## Calculating mean for reference period
+Plots created here will show percentage change in biomass over time under two emissions scenarios: `SSP1-2.6` and `SSP5-8.5`. Our reference period is 2005-2014.  
+  
+```{r eval = F}
+#Listing all relevant files to calculate biomass projections
+bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv", full.names = T) |> 
+  map_df(~fread(.)) |> 
+  #Remove rows outside regions of interest
+  drop_na(ID_mrgd)
+
+#Calcuting reference period
+ref_bio <- bio_data |> 
+  filter(year >= 2005 & year <= 2014) |> 
+  #Calculate mean per ensemble member
+  group_by(mem, esm, ID_mrgd) |> 
+  summarise(ref_bio = mean(mean_bio, na.rm = T))
+
+bio_data <- bio_data |> 
+  #Add reference period to yearly biomass data
+  left_join(ref_bio, by = c("mem", "esm", "ID_mrgd")) |> 
+  #Calculate percentage change per model/year(scenario)/region
+  mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
+  #Calculate mean and standard deviation for percentage change 
+  #per year(scenario)/region
+  group_by(year, scenario, ID_mrgd) |> 
+  summarise(mean_change = mean(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T)) |> 
+  #Add names in FAO-EEZ keys
+  left_join(fao_eez, by = "ID_mrgd") |> 
+  ungroup()
+
+#Check results
+bio_data
+```
+  
+We can now save the results for future reference.  
+  
+```{r}
+#Create name to save file  
+f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
+
+#Saving results for each model
+bio_data |> 
+  write_csv(f_out)
+```
+  
+## Defining basic plot design
+  
+```{r}
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Adding no change line at 0 for reference 
+                geom_hline(yintercept = 1, color = "#709fcc", linewidth = 0.65, 
+                           linetype = 2),
+                #Adding line dividing historical period and future projections
+                geom_vline(xintercept = 2015, color = "#709fcc", linewidth = 0.65),
+                #Adding SD as shading 
+                geom_ribbon(aes(ymin = mean_change-sd_change,
+                                ymax = mean_change+sd_change, fill = scenario),
+                            alpha = 0.3, color = NA),
+                #Manually setting colours to be used in plots
+                scale_color_manual(values = c("historical" = "black", "ssp126" = "#33bbee", 
+                                              "ssp585" = "#ee3377"), name = "Scenarios",
+                                   labels = c("Historical", "SSP1-2.6", "SSP5-8.5")),
+                scale_fill_manual(values = c("historical" = "black", "ssp126" = "#33bbee", 
+                                             "ssp585" = "#ee3377"), name = "Scenarios",
+                                  labels = c("Historical", "SSP1-2.6", "SSP5-8.5")),
+                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                theme_bw(),
+                labs(y = "Change in exploitable\nfish biomass (%)"),
+                theme(legend.position = "top", legend.justification = "center", 
+                      legend.text = element_text(size = 10),
+                      panel.grid.minor.y = element_blank(), axis.title.x = element_blank(),
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65)))
+```
+
+  
+## Figure 1 - Top 7 countries with highest catches
+Note that data used here correspond to EEZs linked to each country main landmass where areas are not disputed. Overseas territories and disputed areas are not included here.  
+  
+```{r}
+#Defining top 7 countries by catch
+top_7 <- str_c(c("chinese", "indian", "indonesian", "peruvian", "russian", "united states", "vietnamese"), 
+               " exclusive economic zone")
+
+#Filtering data
+bio_data |> 
+  filter(str_detect(str_to_lower(nm_mrgd), paste0(top_7, collapse = "|"))) |>
+  #Calculating mean of biomass per country
+  group_by(year, scenario, SOVEREIGN1) |> 
+  summarise(mean_change = mean(mean_change),
+            sd_change = mean(sd_change)) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  #Applying base plot design
+  base_gg+
+  #Plotting by country
+  facet_wrap(~SOVEREIGN1, scales = "free_y", nrow = 7)
+```
+  
+
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), device = "pdf",
+       width = 6, height = 10)
+```
+  
+## Figure 2 - Asia
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(region == "Asia") |>
+  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"), device = "pdf",
+       width = 10, height = 14.35)
+```
+  
+## Figure 3 - Africa
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(region == "Africa") |>
+  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"), device = "pdf",
+       width = 10, height = 14.35)
+```
+  
+## Figure 4 - Europe
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(region == "Europe") |>
+  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"), device = "pdf",
+       width = 12, height = 17.22)
+```
+  
+## Figure 5 - Americas
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(str_detect(region, "America")) |>
+  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"), device = "pdf",
+       width = 12, height = 17.22)
+```
+  
+## Figure 6 - Oceania
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(region == "Oceania") |>
+  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"), device = "pdf",
+       width = 10, height = 11.48)
+```
+  
+## Figure 7 - Atlantic
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(OCEAN == "Atlantic") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y")
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "atlantic_perc_change.pdf"), device = "pdf",
+       width = 10, height = 6)
+```
+  
+## Figure 8 - Pacific
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(OCEAN == "Pacific") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y")
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "pacific_perc_change.pdf"), device = "pdf",
+       width = 10, height = 6)
+```
+  
+## Figure 9 - Indian
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(OCEAN == "Indian") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y")
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "indian_perc_change.pdf"), device = "pdf",
+       width = 10, height = 4)
+```
+  
+## Figure 10 - Southern Ocean
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(OCEAN == "Southern Ocean") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 1)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "southern-ocean_perc_change.pdf"), device = "pdf",
+       width = 10, height = 8)
+```
+  
+## Figure 11 - Arctic
+  
+```{r}
+#Filtering data
+bio_data |> 
+  filter(OCEAN == "Arctic") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~nm_mrgd, scales = "free_y")
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(out_folder, "arctic_perc_change.pdf"), device = "pdf",
+       width = 8, height = 4)
+```
+  
