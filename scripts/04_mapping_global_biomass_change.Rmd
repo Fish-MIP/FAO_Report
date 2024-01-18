@@ -31,6 +31,7 @@ library(cowplot)
 ```
 
 ## Setting up notebook
+This notebook uses Exclusive Economic Zones boundaries (version 11) from the [Flanders Marine Institute (2019)](https://doi.org/10.14284/386). Available [online](https://www.marineregions.org/).  
   
 ```{r}
 #FAO_EEZ key - Contains continent information

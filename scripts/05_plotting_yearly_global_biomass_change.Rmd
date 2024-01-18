@@ -22,6 +22,7 @@ library(cowplot)
 ```
 
 ## Setting up notebook
+This notebook uses Exclusive Economic Zones boundaries (version 11) from the [Flanders Marine Institute (2019)](https://doi.org/10.14284/386). Available [online](https://www.marineregions.org/).  
   
 ```{r}
 #FAO_EEZ key - Contains continent information
@@ -180,16 +181,21 @@ ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), device = "pd
 ```
   
 ## Figure 2 - Asia
+In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Jointly managed areas were kept and are clearly labelled.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Asia") |>
+  #Extract EEZs in Asia, but with NO overlapping claims
+  filter(region == "Asia" & str_detect(nm_mrgd, "Overlapping", negate = T)) |> 
+  #Shorten Exclusive Economic Zone to EEZ
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
@@ -199,16 +205,22 @@ ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"), device = "pdf",
 ```
   
 ## Figure 3 - Africa
+In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). French and British overseas territories were also removed from this figure. Jointly managed areas were kept and are clearly labelled.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Africa") |>
+  #African EEZs, excluding areas with overlapping claims
+  filter(region == "Africa" & str_detect(nm_mrgd, "Overlapping", negate = T) &
+           #Excluding French and Bristish territories
+           !SOVEREIGN1 %in% c("France", "United Kingdom")) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5, 
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
@@ -218,35 +230,42 @@ ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"), device = "pdf
 ```
   
 ## Figure 4 - Europe
+In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Clipperton, a French overseas territory, has been excluded because the island is geographically located in the Americas. Jointly managed areas were kept and are clearly labelled.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Europe") |>
+  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton", negate = T)) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
 #Saving plot
 ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"), device = "pdf",
-       width = 12, height = 17.22)
+       width = 12, height = 16)
 ```
   
 ## Figure 5 - Americas
+In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Overseas territories from Denmark, France, the Netherlands and the United Kingdom. Jointly managed areas were kept and are clearly labelled.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(str_detect(region, "America")) |>
+  filter(str_detect(region, "America") & str_detect(nm_mrgd, "Overlapping", negate = T)
+         & str_detect(SOVEREIGN1, "Denmark|France|Netherlands|Kingdom", negate = T)) |>
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
@@ -256,22 +275,25 @@ ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"), device = "p
 ```
   
 ## Figure 6 - Oceania
+In this figure, we will exclude overseas territories for France, United States and United Kingdom. Jointly managed areas were kept and are clearly labelled.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Oceania") |>
+  filter(region == "Oceania" & str_detect(SOVEREIGN1, "France|United", negate = T)) |>
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5)
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
 #Saving plot
 ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"), device = "pdf",
-       width = 10, height = 11.48)
+       width = 10, height = 9)
 ```
   
 ## Figure 7 - Atlantic
