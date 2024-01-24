@@ -296,93 +296,27 @@ ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"), device = "pd
        width = 10, height = 9)
 ```
   
-## Figure 7 - Atlantic
+## Figure 7 - FAO regions
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(OCEAN == "Atlantic") |> 
+  #Removing EEZs
+  drop_na(OCEAN) |> 
+  #Plotting data
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
-  #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y")
+  #Plotting by FAO sector
+  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "atlantic_perc_change.pdf"), device = "pdf",
+ggsave(filename = file.path(out_folder, "fao_regions_perc_change.pdf"), device = "pdf",
        width = 10, height = 6)
 ```
   
-## Figure 8 - Pacific
-  
-```{r}
-#Filtering data
-bio_data |> 
-  filter(OCEAN == "Pacific") |> 
-  ggplot(aes(x = year, y = mean_change, colour = scenario))+
-  base_gg+
-  #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y")
-```
-  
-```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(out_folder, "pacific_perc_change.pdf"), device = "pdf",
-       width = 10, height = 6)
-```
-  
-## Figure 9 - Indian
-  
-```{r}
-#Filtering data
-bio_data |> 
-  filter(OCEAN == "Indian") |> 
-  ggplot(aes(x = year, y = mean_change, colour = scenario))+
-  base_gg+
-  #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y")
-```
-  
-```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(out_folder, "indian_perc_change.pdf"), device = "pdf",
-       width = 10, height = 4)
-```
-  
-## Figure 10 - Southern Ocean
-  
-```{r}
-#Filtering data
-bio_data |> 
-  filter(OCEAN == "Southern Ocean") |> 
-  ggplot(aes(x = year, y = mean_change, colour = scenario))+
-  base_gg+
-  #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 1)
-```
-  
-```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(out_folder, "southern-ocean_perc_change.pdf"), device = "pdf",
-       width = 10, height = 8)
-```
-  
-## Figure 11 - Arctic
-  
-```{r}
-#Filtering data
-bio_data |> 
-  filter(OCEAN == "Arctic") |> 
-  ggplot(aes(x = year, y = mean_change, colour = scenario))+
-  base_gg+
-  #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y")
-```
-  
-```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(out_folder, "arctic_perc_change.pdf"), device = "pdf",
-       width = 8, height = 4)
-```
+
   
