@@ -1084,3 +1084,67 @@ ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"), device = 
        width = 14, height = 9)
 ```
   
+## Figure 9 FAO report - FAO sustainable fisheries
+Finally, we will create a choropleth map for the proportion of sustainable fisheries within FAO regions.  
+  
+```{r}
+#Loading FAO fisheries data
+fao_fisheries <- read_csv("../data/FAO_fisheries_data.csv", 
+                          #Keeping only relevant columns
+                          col_select = c("GEO_AREA_NAME", "TIME_PERIOD", "OBS_VALUE")) |> 
+  #We will use data for FAO regions only and for 2019 only
+  filter(TIME_PERIOD == 2019 & str_detect(GEO_AREA_NAME, "FAO")) |> 
+  #We will simplify the names of the regions to merge with our FAO data
+  mutate(GEO_AREA_NAME = str_remove(GEO_AREA_NAME, "FAO Major Fishing Area: ")) |> 
+  #We will remove the year column because we do not need it
+  select(!TIME_PERIOD) 
+
+fao_fisheries <- fao_proj |> 
+  left_join(fao_fisheries, by = join_by("NAME_EN" == "GEO_AREA_NAME"))
+
+#Checking result
+fao_fisheries
+```
+  
+Finally, we can map this information.  
+  
+```{r}
+ ggplot()+
+  geom_sf(data = fao_eez_shp_proj, fill = "white")+
+  #Plotting FAO classified by ocean basin
+  geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
+  scale_fill_distiller(palette = "YlGnBu", direction = 1)+
+  #Plotting base map
+  geom_sf(data = world_proj)+
+  #Removing grey background
+  theme_bw()+
+  #Formatting legend title
+  guides(fill = guide_colorbar(title = "% sustainable fisheries", title.position = "top", 
+                             title.hjust = 0.5, barwidth = 15))+
+  #Formatting legend
+  theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
+        legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(0, 0, 0, 0),
+        legend.title = element_text(size = 13), legend.text = element_text(size = 13))
+```
+  
+```{r}
+# Saving fisheries map
+ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), device = "pdf",
+       width = 14, height = 9)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
