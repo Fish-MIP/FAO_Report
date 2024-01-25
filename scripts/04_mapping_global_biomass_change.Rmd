@@ -204,7 +204,7 @@ ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main, device 
 We will load the data to be plotted on land from Google Drive.  
   
 ```{r}
-human_pop <- drive_read_string("https://drive.google.com/file/d/1adH-7AbNJln9E9_vaGcyit-czMmkGndo/view?usp=drive_link") |> 
+fisheries_catch <- drive_read_string("https://drive.google.com/file/d/1adH-7AbNJln9E9_vaGcyit-czMmkGndo/view?usp=drive_link") |> 
   #Read as csv and convert to data frame
   read_csv(col_select = c(C_Name, CCode, MarCap1014)) |> 
   #Remove duplicates
@@ -212,7 +212,7 @@ human_pop <- drive_read_string("https://drive.google.com/file/d/1adH-7AbNJln9E9_
 
 #Now we can add this information to the world map by performing a data frame join
 world_proj <- world_proj |> 
-  left_join(human_pop |> select(!C_Name), by = join_by("adm0_a3" == "CCode"))
+  left_join(fisheries_catch |> select(!C_Name), by = join_by("adm0_a3" == "CCode"))
 ```
   
 We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection. We will also create a custom-made colour palette for the maps.  
@@ -347,6 +347,51 @@ eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |>
 #Extract data for scenario, transform to raster and reproject
 asia_data <- maps_data |> 
   filter(region == "Asia")
+```
+  
+```{r}
+#Population change data
+pop_sum <- function(file){
+  df <- read_csv(file, skip = 4) |> 
+    #Reorganise data calculate relative change
+    pivot_longer(!c(iso, country), names_to = "year", values_to = "population") |> 
+    mutate(year = as.numeric(year)) |> 
+    #Keep only relevant years
+    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    #Create new group column to calculate means
+    mutate(scenario = str_extract(file, "population_(.*)_nat", group = 1),
+           group = case_when(year <= 2014 ~ "reference",
+                             year >= 2041 & year <= 2050 ~ "mean50",
+                             year >= 2091 & year <= 2100 ~ "mean00"),
+           #The new group column also need to have the scenario as part of the label
+           group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
+                             T ~ group)) |> 
+    #Calculate mean population per country and group
+    group_by(iso, country, group) |> 
+    summarise(mean_pop = mean(population, na.rm = T))
+}
+
+#Getting list of all relevant files
+file_list <- list.files("../data/", pattern = "national_annual", full.names = T)
+
+#Apply function to all relevant files
+pop_change <- file_list |> 
+  map(~pop_sum(.)) |> 
+  #Join all data frames
+  map_df(~bind_rows(.)) |> 
+  #Reorganise data
+  pivot_wider(names_from = group, values_from = mean_pop) |> 
+  ungroup() |> 
+  #Calculate % change in fish biomass for the two emissions scenarios
+  mutate(rel_change_mean50_ssp126 = ((mean50_ssp126-reference)/reference)*100,
+         rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
+         rel_change_mean00_ssp126 = ((mean00_ssp126-reference)/reference)*100,
+         rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100)
+
+
+#Now we can add this information to the world map by performing a data frame join
+world <- world |> 
+  left_join(fisheries_catch |> select(!country), by = join_by("adm0_a3" == "iso"))
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
