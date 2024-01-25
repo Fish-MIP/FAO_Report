@@ -329,7 +329,8 @@ ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), device = "pdf"
 ```
   
 ## Figure 3 FAO report - Asia 
-
+Loading relevant shapefiles and extracting data for Asia.  
+  
 ```{r}
 #Unprojected world base map
 world <- ne_countries(returnclass = "sf")
@@ -348,6 +349,8 @@ eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |>
 asia_data <- maps_data |> 
   filter(region == "Asia")
 ```
+  
+Loading population data and calculating percentage difference in human populations.  
   
 ```{r}
 #Population change data
@@ -386,22 +389,23 @@ pop_change <- file_list |>
   mutate(rel_change_mean50_ssp126 = ((mean50_ssp126-reference)/reference)*100,
          rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
          rel_change_mean00_ssp126 = ((mean00_ssp126-reference)/reference)*100,
-         rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100)
-
+         rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100) |> 
+  #Matching ISO codes to world shapefile
+  mutate(iso = case_when(country == "Western Sahara" ~ "SAH",
+                         str_detect(country, "Palestine") ~ "PSX",
+                         country == "South Sudan" ~ "SDS",
+                         T ~ iso))
 
 #Now we can add this information to the world map by performing a data frame join
 world <- world |> 
-  left_join(fisheries_catch |> select(!country), by = join_by("adm0_a3" == "iso"))
+  left_join(pop_change |> select(!country), by = join_by("adm0_a3" == "iso"))
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = world, show.legend = F),
-                geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], 
+base_gg <- list(geom_sf(inherit.aes = F, data = eez[eez$region == "Asia",], 
                         fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
                 theme_bw(),
@@ -410,47 +414,88 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       legend.position = "none"),
                 lims(x = c(25, 160), y = c(-15, 50)))
 
+#Plotting land masses to get legend
+land <- ggplot()+
+  geom_sf(data = world, aes(fill = rel_change_mean50_ssp126), colour = "#5b5b5b",
+          linewidth = 0.25)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish,
+                    guides(title = "% changes in human population"))+
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = 15))+
+  theme(legend.position = "bottom")
+  
+#Get legend for land
+leg_land <- get_legend(land)
+
+#Plotting fish biomass to get legend
+fish <- ggplot()+
+  geom_tile(data = asia_data, aes(x, y, fill = rel_change_mean50_ssp126_mean))+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish,
+                    guides(title = "% change in fish biomass"))+
+  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, 
+                               barwidth = 15))+
+  theme(legend.position = "bottom")
+#Get legend for land
+leg_fish <- get_legend(fish)
+
 #SSP1-2.6 2041-2050
 p50_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
-  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))
+  base_gg
 
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
-
-#Create title for 
+#Create title for plot
 title <- ggdraw()+
   draw_label("Mean % change in fish biomass in Asian EEZs between 2005-2014")+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
@@ -460,7 +505,8 @@ asia_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                           labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 4, 
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                       ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
@@ -485,10 +531,7 @@ We will plot each decade/scenario combination separately and then create a multi
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = world, show.legend = F),
-                geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], 
+base_gg <- list(geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], 
                         fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
                 theme_bw(),
@@ -500,41 +543,58 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 #SSP1-2.6 2041-2050
 p50_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP5-8.5: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
+
 #SSP1-2.6 2091-2100
 p00_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2091-2100")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
-  base_gg+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
-  theme(legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
+  base_gg
 
 #Create title for 
 title <- ggdraw()+
@@ -546,7 +606,8 @@ africa_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                             labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 4, 
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                       ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
@@ -603,10 +664,7 @@ We will plot each decade/scenario combination separately and then create a multi
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = eurocent, show.legend = F),
-                geom_sf(inherit.aes = F, data = eez_euro, fill = NA, 
+base_gg <- list(geom_sf(inherit.aes = F, data = eez_euro, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
                 theme_bw(),
                 theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
@@ -615,47 +673,62 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 coord_sf(ylim = c(23, 87), expand = F))
 
 #SSP1-2.6 2041-2050
-p50_126 <- europe_data |>
+p50_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = eurocent, aes(fill = rel_change_mean50_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP5-8.5: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = eurocent, aes(fill = rel_change_mean50_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2091-2100")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = eurocent, aes(fill = rel_change_mean00_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
-  base_gg+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = eurocent, aes(fill = rel_change_mean00_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))
+  base_gg
 
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
-
-#Create title for 
+#Create title for plot
 title <- ggdraw()+
   draw_label("Mean % change in fish biomass in European EEZs between 2005-2014")+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
@@ -665,7 +738,8 @@ europe_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                             labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 4, 
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                       ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
@@ -720,10 +794,7 @@ We will plot each decade/scenario combination separately and then create a multi
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = amercent, show.legend = F),
-                geom_sf(inherit.aes = F, data = eez_amer, fill = NA, 
+base_gg <- list(geom_sf(inherit.aes = F, data = eez_amer, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
                 theme_bw(),
                 theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
@@ -732,45 +803,60 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 coord_sf(ylim = c(-60, 87), expand = F))
 
 #SSP1-2.6 2041-2050
-p50_126 <- americas_data |>
+p50_126 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = amercent, aes(fill = rel_change_mean50_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP5-8.5: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = amercent, aes(fill = rel_change_mean50_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2091-2100")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = amercent, aes(fill = rel_change_mean00_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
-  base_gg+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = amercent, aes(fill = rel_change_mean00_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
+  base_gg
 
 #Create title for 
 title <- ggdraw()+
@@ -782,7 +868,8 @@ americas_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 
                                             labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 4, 
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                       ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
@@ -836,10 +923,7 @@ We will plot each decade/scenario combination separately and then create a multi
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                    type = scale_fill_custom, oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = oceancent, show.legend = F),
-                geom_sf(inherit.aes = F, data = eez_ocean, fill = NA, 
+base_gg <- list(geom_sf(inherit.aes = F, data = eez_ocean, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
                 theme_bw(),
                 theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
@@ -847,45 +931,60 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       legend.position = "none"))
 
 #SSP1-2.6 2041-2050
-p50_126 <- ocean_data |>
+p50_126 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = oceancent, aes(fill = rel_change_mean50_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP5-8.5: 2041-2050")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = oceancent, aes(fill = rel_change_mean50_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  geom_tile()+
-  base_gg+
-  labs(title = "SSP1-2.6: 2091-2100")
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = oceancent, aes(fill = rel_change_mean00_ssp126), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
   
 #SSP5-8.5 2091-2100
 p00_585 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  geom_tile()+
-  base_gg+
+  geom_tile(show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                    type = scale_fill_custom, oob = scales::oob_squish)+
+  new_scale_fill()+
+  geom_sf(inherit.aes = F, data = oceancent, aes(fill = rel_change_mean00_ssp585), 
+          colour = "#5b5b5b", linewidth = 0.25, show.legend = F)+
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_distiller, 
+                    palette = "PRGn", oob = scales::oob_squish)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  guides(fill = guide_legend(title = "% change", title.position = "top", 
-                             title.hjust = 0.5, 
-                             label.position = "bottom", nrow = 1))+
-  theme(axis.title = element_blank(), plot.title = element_text(hjust = 0.5), 
-        legend.spacing.x = unit(0, "cm"), legend.position = "bottom", 
-        legend.direction = "horizontal", legend.key.width = unit(1.5, "cm"), 
-        legend.key.height = unit(0.75, "cm"))
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
+  base_gg
 
 #Create title for 
 title <- ggdraw()+
@@ -897,7 +996,8 @@ oceania_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1
                                             labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 4, 
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                       ncol = 1, nrow = 4, 
                        rel_heights = c(0.15, 1, 1, 0.4))
 
 #Check final map
