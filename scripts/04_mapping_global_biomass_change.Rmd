@@ -208,7 +208,12 @@ fisheries_catch <- drive_read_string("https://drive.google.com/file/d/1adH-7AbNJ
   #Read as csv and convert to data frame
   read_csv(col_select = c(C_Name, CCode, MarCap1014)) |> 
   #Remove duplicates
-  distinct()
+  distinct() |> 
+  #Create new column with classification
+  mutate(class_fish = cut(MarCap1014, 
+                     breaks = quantile(fisheries_catch$MarCap1014,
+                                       probs = seq(0, 1, length.out = 4)), 
+                     labels = c("low", "medium", "high")))
 
 #Now we can add this information to the world map by performing a data frame join
 world_proj <- world_proj |> 
@@ -247,10 +252,9 @@ We will plot each decade/scenario combination separately and then create a multi
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom, oob = scales::oob_squish),
                 new_scale_fill(),
-                geom_sf(inherit.aes = F, data = world_proj, aes(fill = MarCap1014),
+                geom_sf(inherit.aes = F, data = world_proj, aes(fill = class_fish),
                         show.legend = F),
-                scale_fill_continuous(trans = "log10", type = scale_fill_viridis_c, 
-                        option = "D"),
+                scale_fill_brewer(palette = "Blues", na.value = "#bcbcbc"),
                 geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
                 theme_bw(),
@@ -260,11 +264,11 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 
 #Plotting land masses to get legend
 land <- ggplot()+
-  geom_sf(data = world_proj, aes(fill = MarCap1014))+
-  scale_fill_continuous(trans = "log10", type = scale_fill_viridis_c, 
-                        option = "D", 
-                        guides(title = "Mean yearly landings between 2005-2014\n(Log10 tonnes)"))+
-  guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = 15))+
+  geom_sf(data = world_proj, aes(fill = class_fish))+
+  scale_fill_brewer(palette = "Blues", na.value = "#bcbcbc", 
+                    guides(title = "Yearly landings between 2005-2014"),
+                    labels = c("low", "medium", "high", "no data"))+
+  guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, barwidth = 15))+
   theme(legend.position = "bottom")
 #Get legend for land
 leg_land <- get_legend(land)
@@ -274,7 +278,7 @@ fish <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom, oob = scales::oob_squish,
-                    guides(title = "\n% change in fish biomass"))+
+                    guides(title = "Change in fish biomass"))+
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, barwidth = 15))+
   theme(legend.position = "bottom")
 #Get legend for land
@@ -304,7 +308,7 @@ p00_585 <- ggplot()+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg
 
-#Create title for 
+#Create title for plot
 title <- ggdraw()+
   draw_label("Mean % change in fish biomass from 2005-2014")+
   theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
@@ -1019,7 +1023,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom, oob = scales::oob_squish),
                 geom_sf(inherit.aes = F, data = fao_proj, fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
-                geom_sf(inherit.aes = F, data = eez_proj, fill = "white", alpha = 0.2,
+                geom_sf(inherit.aes = F, data = eez_proj, fill = "white",
                         colour = "white", show.legend = F, linewidth = 0.25),
                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F),
                 theme_bw(),
@@ -1132,17 +1136,103 @@ Finally, we can map this information.
 ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), device = "pdf",
        width = 14, height = 9)
 ```
+  
+## Figure 10 FAO report - FAO standard deviation
+### Calculating standard deviation in fish biomass estimates from global FishMIP models
+We will go through each FishMIP model and calculate the standard deviation for fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
+  
+```{r, eval = F}
+#Listing all relevant files to calculate biomass projections
+maps_data_sd <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", full.names = T) |> 
+  map_df(~fread(.)) |> 
+  #Calculations performed by year and EEZ
+  group_by(x, y, ID_mrgd) |> 
+  #Apply calculations to biases only
+  summarise(across(mean00_ssp126:mean50_ssp585, 
+                   #Listing statistics to be calculated
+                   list(sd = sd), 
+                   #Setting column names
+                   .names = "{.col}_{.fn}")) |> 
+  ungroup()
 
+#Extract data for scenario, transform to raster and reproject
+maps_data_sd_proj <- maps_data_sd |> 
+  #Selecting coordinate columns and percentage change columns
+  select(x, y, ends_with("_sd")) |> 
+  #Transform to multi-layer raster
+  rast(type = "xyz", crs = "epsg:4326") |> 
+  #Reproject to Robinson
+  project(y = rob_proj) 
+```
+  
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, na.value = NA,
+                                     limits = c(0, 100), oob = scales::oob_squish),
+                geom_sf(inherit.aes = F, data = world_proj, show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_proj, fill = NA, colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                theme_bw(),
+                theme(axis.title = element_blank(), panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
 
+#SSP1-2.6 2041-2050
+p50_126 <- ggplot()+
+  geom_spatraster(data = maps_data_sd_proj$mean50_ssp126_sd)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
 
+#SSP5-8.5 2041-2050
+p50_585 <- ggplot()+
+  geom_spatraster(data = maps_data_sd_proj$mean50_ssp585_sd)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
 
+#SSP1-2.6 2091-2100
+p00_126 <- ggplot()+
+  geom_spatraster(data = maps_data_sd_proj$mean00_ssp126_sd)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
 
+#SSP5-8.5 2091-2100
+p00_585 <- ggplot()+
+  geom_spatraster(data = maps_data_sd_proj$mean00_ssp585_sd)+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_colorbar(title = "Ensemble standard deviation in fish biomass",
+                               title.position = "top", title.hjust = 0.5, barwidth = 15))+
+  theme(legend.position = "bottom")
 
+#Get legend for land
+legend <- get_legend(p00_585)
 
+#Remove legend from last plot
+p00_585 <- p00_585+
+  theme(legend.position = "none")
 
+#Create a title for plot
+title <- ggdraw()+
+  draw_label("Ensemble standard deviation in fish biomass")+
+  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
 
+#Plotting everything together
+all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                        labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 4, 
+                       rel_heights = c(0.15, 1, 1, 0.4))
 
-
+#Checking results
+all_plots
+```
+  
+```{r}
+# Saving multi-panel plot
+ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), device = "pdf",
+       width = 14, height = 9)
+```
 
 
 
