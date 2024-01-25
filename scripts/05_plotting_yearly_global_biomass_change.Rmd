@@ -159,25 +159,39 @@ Note that data used here correspond to EEZs linked to each country main landmass
 top_7 <- str_c(c("chinese", "indian", "indonesian", "peruvian", "russian", "united states", "vietnamese"), 
                " exclusive economic zone")
 
-#Filtering data
-bio_data |> 
+#Filtering data for top 7 and calculating mean and sd for catches
+top7 <- bio_data |> 
   filter(str_detect(str_to_lower(nm_mrgd), paste0(top_7, collapse = "|"))) |>
   #Calculating mean of biomass per country
   group_by(year, scenario, SOVEREIGN1) |> 
   summarise(mean_change = mean(mean_change),
+            sd_change = mean(sd_change)) 
+
+#Calculate mean and sd for catches globally
+bio_data |> 
+  group_by(year, scenario) |> 
+  summarise(mean_change = mean(mean_change),
             sd_change = mean(sd_change)) |> 
+  mutate(SOVEREIGN1 = "Global") |> 
+  relocate(SOVEREIGN1, .after = "scenario") |> 
+  #Joining to top7 data
+  bind_rows(top7) |> 
+  #Create an order category for SOVEREIGN1
+  mutate(SOVEREIGN1 = factor(SOVEREIGN1, levels = c("Global", unique(top7$SOVEREIGN1)), 
+                             ordered = T)) |> 
+  #Plotting
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
   base_gg+
   #Plotting by country
-  facet_wrap(~SOVEREIGN1, scales = "free_y", nrow = 7)
+  facet_wrap(~SOVEREIGN1, scales = "free_y", nrow = 8)
 ```
   
 
 ```{r, eval = F}
 #Saving plot
 ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), device = "pdf",
-       width = 6, height = 10)
+       width = 6, height = 12)
 ```
   
 ## Figure 2 - Asia
