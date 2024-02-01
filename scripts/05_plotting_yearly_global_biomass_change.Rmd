@@ -17,6 +17,7 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 #Data wrangling
 library(tidyverse)
 library(data.table)
+library(terra)
 #Combining plots
 library(cowplot)
 ```
@@ -332,7 +333,7 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 #Filtering data
 bio_data |> 
   #Extract EEZs in Asia, but with NO overlapping claims
-  filter(region == "Asia" & str_detect(nm_mrgd, "Overlapping", negate = T)) |> 
+  filter(region == "Asia" & str_detect(nm_mrgd, "Overlapping|Joint", negate = T)) |>
   #Shorten Exclusive Economic Zone to EEZ
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
@@ -356,7 +357,7 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 #Filtering data
 bio_data |> 
   #African EEZs, excluding areas with overlapping claims
-  filter(region == "Africa" & str_detect(nm_mrgd, "Overlapping", negate = T) &
+  filter(region == "Africa" & str_detect(nm_mrgd, "Overlapping|Joint", negate = T) &
            #Excluding French and Bristish territories
            !SOVEREIGN1 %in% c("France", "United Kingdom")) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
@@ -365,7 +366,7 @@ bio_data |>
   #Plotting by country
   facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5, 
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(nm_mrgd = label_wrap_gen(20)))
 ```
   
 ```{r, eval = F}
@@ -380,7 +381,7 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton", 
+  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton|Joint", 
                                          negate = T)) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
@@ -403,7 +404,8 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(str_detect(region, "America") & str_detect(nm_mrgd, "Overlapping", 
+  filter(str_detect(region, "America") & str_detect(nm_mrgd, 
+                                                    "Overlapping|Joint", 
                                                     negate = T)
          & str_detect(SOVEREIGN1, "Denmark|France|Netherlands|Kingdom", 
                       negate = T)) |>
@@ -428,15 +430,16 @@ In this figure, we will exclude overseas territories for France, United States a
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Oceania" & str_detect(SOVEREIGN1, "France|United", 
-                                          negate = T)) |>
+  filter(region == "Oceania" & 
+           str_detect(SOVEREIGN1, "France|United", negate = T) & 
+           str_detect(nm_mrgd, "Protected", negate = T)) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
   facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(nm_mrgd = label_wrap_gen(20)))
 ```
   
 ```{r, eval = F}
