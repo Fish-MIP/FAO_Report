@@ -25,24 +25,39 @@ library(cowplot)
 This notebook uses Exclusive Economic Zones boundaries (version 11) from the [Flanders Marine Institute (2019)](https://doi.org/10.14284/386). Available [online](https://www.marineregions.org/).  
   
 ```{r}
-#FAO_EEZ key - Contains continent information
-fao_eez <- read_csv("../../Merged_FAO_EEZ/FAO-MajorAreas_EEZs_keys.csv")
-
-#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv("../../Merged_FAO_EEZ/Outputs/masked_area_1deg.csv") |> 
-  rename(x = Lon, y = Lat, ID_mrgd = mask)
+#Base folder for project
+base_folder <- "/rd/gem/private/users/camillan"
 
 #Defining location of notebook outputs
-out_folder <- "/rd/gem/private/users/camillan/FAO_Report"
+out_folder <- file.path(base_folder, "FAO_Report")
 if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
 
-#Defining location of model outputs
-data_dir <- "/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/" 
+#FAO_EEZ key - Contains continent information
+fao_eez <- read_csv(list.files(out_folder, 
+                               pattern = "FAO-MajorAreas_EEZs_keys.csv", 
+                               full.names = T, recursive = T))
+
+#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
+fao_eez_mask <- read_csv(list.files(out_folder, 
+                                    pattern = "masked_area_1deg.csv",
+                                    full.names = T, recursive = T)) |> 
+  rename(x = Lon, y = Lat, ID_mrgd = mask)
+
+#Loading area per grid cell
+area_grid <- rast(list.files(out_folder, pattern = "^area_1deg.nc", 
+                             recursive = T, full.names = T)) |> 
+  #Transform to data frame
+  as.data.frame(xy = T) |> 
+  #Join with FAO keys
+  left_join(fao_eez_mask, by = join_by(x, y))
+#Remove original mask
+rm(fao_eez_mask)
 
 #Getting a list of files containing biomass data
-global_files <- list.files(data_dir, pattern = "rds$", full.names = T)
+global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
+                           full.names = T, recursive = T)
 
 #Getting a list of models
 members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
@@ -60,10 +75,10 @@ for(m in members){
     map(~readRDS(.)) |> 
     map_df(~bind_rows(.)) |> 
     #Apply mask
-    left_join(fao_eez_mask, by = join_by(x, y)) |> 
+    left_join(area_grid, by = join_by(x, y)) |> 
     #Calculate mean per ensemble member
     group_by(year, mem, esm, scenario, ID_mrgd) |> 
-    summarise(mean_bio = mean(biomass, na.rm = T))
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
   
   #Create name to save file  
   f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
@@ -79,12 +94,13 @@ Plots created here will show percentage change in biomass over time under two em
   
 ```{r eval = F}
 #Listing all relevant files to calculate biomass projections
-bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv", full.names = T) |> 
+bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv",
+                       full.names = T) |> 
   map_df(~fread(.)) |> 
   #Remove rows outside regions of interest
   drop_na(ID_mrgd)
 
-#Calcuting reference period
+#Calculating reference period
 ref_bio <- bio_data |> 
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per ensemble member
@@ -125,59 +141,175 @@ bio_data |>
 ```{r}
 base_gg <- list(geom_line(linewidth = 0.5),
                 #Adding no change line at 0 for reference 
-                geom_hline(yintercept = 1, color = "#709fcc", linewidth = 0.65, 
+                geom_hline(yintercept = 0, color = "#709fcc", linewidth = 0.65, 
                            linetype = 2),
                 #Adding line dividing historical period and future projections
-                geom_vline(xintercept = 2015, color = "#709fcc", linewidth = 0.65),
+                geom_vline(xintercept = 2015, color = "#709fcc", 
+                           linewidth = 0.65),
                 #Adding SD as shading 
                 geom_ribbon(aes(ymin = mean_change-sd_change,
                                 ymax = mean_change+sd_change, fill = scenario),
                             alpha = 0.3, color = NA),
                 #Manually setting colours to be used in plots
-                scale_color_manual(values = c("historical" = "black", "ssp126" = "#33bbee", 
-                                              "ssp585" = "#ee3377"), name = "Scenarios",
-                                   labels = c("Historical", "SSP1-2.6", "SSP5-8.5")),
-                scale_fill_manual(values = c("historical" = "black", "ssp126" = "#33bbee", 
-                                             "ssp585" = "#ee3377"), name = "Scenarios",
-                                  labels = c("Historical", "SSP1-2.6", "SSP5-8.5")),
+                scale_color_manual(values = c("historical" = "black",
+                                              "ssp126" = "#33bbee", 
+                                              "ssp585" = "#ee3377"), 
+                                   name = "Scenarios",
+                                   labels = c("Historical", "SSP1-2.6", 
+                                              "SSP5-8.5")),
+                scale_fill_manual(values = c("historical" = "black", 
+                                             "ssp126" = "#33bbee", 
+                                             "ssp585" = "#ee3377"), 
+                                  name = "Scenarios",
+                                  labels = c("Historical", "SSP1-2.6", 
+                                             "SSP5-8.5")),
                 guides(color = guide_legend(nrow = 1, title.position = "left")),
                 theme_bw(),
                 labs(y = "Change in exploitable\nfish biomass (%)"),
                 theme(legend.position = "top", legend.justification = "center", 
                       legend.text = element_text(size = 10),
-                      panel.grid.minor.y = element_blank(), axis.title.x = element_blank(),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_blank(),
                       axis.title.y = element_text(size = 12),
-                      axis.text.x = element_text(angle = 45, vjust = 0.765, hjust = 0.65)))
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)))
 ```
 
   
-## Figure 1 - Top 7 countries with highest catches
+## Figure 1 - Trends globally and for top 7 countries with highest catches
 Note that data used here correspond to EEZs linked to each country main landmass where areas are not disputed. Overseas territories and disputed areas are not included here.  
+
+### Calculating global trends
+  
+```{r eval = F}
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    map(~readRDS(.)) |> 
+    map_df(~bind_rows(.)) |> 
+    #Apply mask
+    left_join(area_grid, by = join_by(x, y)) |> 
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario) |> 
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+  
+  #Create name to save file  
+  f_out <- file.path(out_folder, 
+                     str_c(m, "_yearly_global_perc_bio_change_data.csv"))
+  
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+```
+  
+Now we can calculate the global trends.  
+  
+```{r eval = F}
+#Listing all relevant files to calculate biomass projections
+global_data <- list.files(out_folder, pattern = "_yearly_global_perc_bio_change_data.csv",
+                       full.names = T) |> 
+  map_df(~fread(.))
+
+#Calculating global reference period
+global_ref_bio <- global_data |> 
+  filter(year >= 2005 & year <= 2014) |> 
+  #Calculate mean per ensemble member
+  group_by(mem, esm) |> 
+  summarise(ref_bio = mean(mean_bio, na.rm = T))
+
+global_data <- global_data |> 
+  #Add reference period to yearly biomass data
+  left_join(global_ref_bio, ref_bio, by = c("mem", "esm")) |> 
+  #Calculate percentage change per model/year(scenario)
+  mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
+  #Calculate annual mean and standard deviation for percentage change 
+  group_by(year, scenario) |> 
+  summarise(mean_change = mean(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T))
+
+#Check results
+global_data
+```
+  
+### Calculating trends for top 7 countries
   
 ```{r}
 #Defining top 7 countries by catch
-top_7 <- str_c(c("chinese", "indian", "indonesian", "peruvian", "russian", "united states", "vietnamese"), 
-               " exclusive economic zone")
+top_7 <- str_c(c("chinese", "indian", "indonesian", "peruvian", "russian", 
+                 "united states", "vietnamese"), " exclusive economic zone")
 
-#Filtering data for top 7 and calculating mean and sd for catches
-top7 <- bio_data |> 
-  filter(str_detect(str_to_lower(nm_mrgd), paste0(top_7, collapse = "|"))) |>
-  #Calculating mean of biomass per country
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    map(~readRDS(.)) |> 
+    map_df(~bind_rows(.)) |> 
+    #Apply mask
+    left_join(area_grid, by = join_by(x, y)) |> 
+    #Add region names
+    left_join(fao_eez, by = "ID_mrgd") |> 
+    #Select top 7 producers
+    filter(str_detect(str_to_lower(nm_mrgd), paste0(top_7, collapse = "|"))) |>
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario, SOVEREIGN1) |> 
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+  
+  #Create name to save file  
+  f_out <- file.path(out_folder, 
+                     str_c(m, "_yearly_top7_perc_bio_change_data.csv"))
+  
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+```
+  
+Now we can calculate the trends for top 7 countries.  
+  
+```{r}
+#Listing all relevant files to calculate biomass projections
+top7_data <- list.files(out_folder, 
+                        pattern = "_yearly_top7_perc_bio_change_data.csv",
+                       full.names = T) |> 
+  map_df(~fread(.))
+
+#Calculating top 7 reference period
+top7_ref_bio <- top7_data |> 
+  #Select reference period
+  filter(year >= 2005 & year <= 2014) |> 
+  #Calculate mean per country
+  group_by(mem, esm, SOVEREIGN1) |> 
+  summarise(ref_bio = mean(mean_bio, na.rm = T))
+
+top7_base_data <- top7_data |> 
+  #Add reference period to yearly biomass data
+  left_join(top7_ref_bio, by = c("mem", "esm", "SOVEREIGN1")) |> 
+  #Calculate percentage change per model/year(scenario)/region
+  mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
+  #Calculate mean and standard deviation for percentage change 
+  #per year(scenario)/region
   group_by(year, scenario, SOVEREIGN1) |> 
-  summarise(mean_change = mean(mean_change),
-            sd_change = mean(sd_change)) 
-
-#Calculate mean and sd for catches globally
-bio_data |> 
-  group_by(year, scenario) |> 
-  summarise(mean_change = mean(mean_change),
-            sd_change = mean(sd_change)) |> 
+  summarise(mean_change = mean(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T)) |> 
+  ungroup()
+```
+  
+### Plotting trends globally and for top 7 countries
+  
+```{r}
+#Merging global and top 7 countries data
+global_data |> 
+  #Add an extra column to match top 7 countries
   mutate(SOVEREIGN1 = "Global") |> 
   relocate(SOVEREIGN1, .after = "scenario") |> 
   #Joining to top7 data
-  bind_rows(top7) |> 
+  bind_rows(top7_base_data) |> 
   #Create an order category for SOVEREIGN1
-  mutate(SOVEREIGN1 = factor(SOVEREIGN1, levels = c("Global", unique(top7$SOVEREIGN1)), 
+  mutate(SOVEREIGN1 = factor(SOVEREIGN1, 
+                             levels = c("Global", 
+                                        unique(top7_base_data$SOVEREIGN1)), 
                              ordered = T)) |> 
   #Plotting
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
@@ -187,11 +319,10 @@ bio_data |>
   facet_wrap(~SOVEREIGN1, scales = "free_y", nrow = 8)
 ```
   
-
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), device = "pdf",
-       width = 6, height = 12)
+ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), 
+       device = "pdf", width = 6, height = 12)
 ```
   
 ## Figure 2 - Asia
@@ -214,8 +345,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"), device = "pdf",
-       width = 10, height = 14.35)
+ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 14.35)
 ```
   
 ## Figure 3 - Africa
@@ -239,8 +370,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"), device = "pdf",
-       width = 10, height = 14.35)
+ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 14.35)
 ```
   
 ## Figure 4 - Europe
@@ -249,7 +380,8 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton", negate = T)) |> 
+  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton", 
+                                         negate = T)) |> 
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
@@ -261,8 +393,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"), device = "pdf",
-       width = 12, height = 16)
+ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"), 
+       device = "pdf", width = 12, height = 16)
 ```
   
 ## Figure 5 - Americas
@@ -271,8 +403,10 @@ In this figure, we will exclude any EEZs were overlapping claims have been repor
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(str_detect(region, "America") & str_detect(nm_mrgd, "Overlapping", negate = T)
-         & str_detect(SOVEREIGN1, "Denmark|France|Netherlands|Kingdom", negate = T)) |>
+  filter(str_detect(region, "America") & str_detect(nm_mrgd, "Overlapping", 
+                                                    negate = T)
+         & str_detect(SOVEREIGN1, "Denmark|France|Netherlands|Kingdom", 
+                      negate = T)) |>
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
@@ -284,8 +418,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"), device = "pdf",
-       width = 12, height = 17.22)
+ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"), 
+       device = "pdf", width = 12, height = 17.22)
 ```
   
 ## Figure 6 - Oceania
@@ -294,7 +428,8 @@ In this figure, we will exclude overseas territories for France, United States a
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Oceania" & str_detect(SOVEREIGN1, "France|United", negate = T)) |>
+  filter(region == "Oceania" & str_detect(SOVEREIGN1, "France|United", 
+                                          negate = T)) |>
   mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
@@ -306,8 +441,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"), device = "pdf",
-       width = 10, height = 9)
+ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 9)
 ```
   
 ## Figure 7 - FAO regions
@@ -328,8 +463,8 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "fao_regions_perc_change.pdf"), device = "pdf",
-       width = 10, height = 6)
+ggsave(filename = file.path(out_folder, "fao_regions_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 6)
 ```
   
 
