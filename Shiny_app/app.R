@@ -116,7 +116,7 @@ server <- function(input, output) {
 
   #Create name for downloaded data that contains EEZ name
   file_name <- reactive({
-    name <- str_remove(input$EEZ, " (e|E)xclusive (e|E)conomic Zone")
+    name <- str_remove(input$region, " (e|E)xclusive (e|E)conomic Zone")
     glue("perc_change_fish_biomass_{name}.csv")})
 
   output$download_data <- downloadHandler(
