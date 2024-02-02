@@ -10,8 +10,9 @@ Due to the size of the input files, the data used in the scripts within this rep
 To produce the maps in this repository, we used the following publicly available datasets:  
 - Exclusive Economic Zones (EEZs) boundaries (version 11) from the Flanders Marine Institute [[1]](#1)  
 - Global fisheries catches (1950-2021) from the FAO [[2]](#2)  
-- Percentage of sustainable fisheries per countries from the FAO [[3]](#3)  
+- FAO statistical areas for fishery purposes [[3]](#3)  
 - Historic and future country-level population data (1950-2100) from ISIMIP [[4]](#4), [[5]](#5), [[6]](#6)  
+- Percentage of sustainable fisheries per countries from the FAO [[7]](#7)  
   
 ## Requirements to run these notebooks
 All scripts included in these notebooks were developed in `R` version 4.3.0. Please ensure you have this `R` version or later installed in your computer for notebooks to run correctly.  
@@ -28,6 +29,11 @@ You will also need to have the following packages installed prior to running the
 If you are familiar with `git` and GitHub, you can clone this repository to your computer. Alternatively, you can click on the green **<> Code** button on the right hand side at the top of this page to see the options available. Then click on *Download ZIP* option. This will download an exact copy of this repository to your computer. Make sure you uncompress (unzip) the downloaded folder before attempting to open any files.  
   
 Since this repository has an open software license, once you have a copy of this repository, feel free to not only run the notebooks as they are, but you can also adapt them to suit your needs. But if you use any of the scripts (partially or in full), make sure you acknowledge this work (this is a license condition). You can find our preferred citation by clicking on *Cite this repository* in the **About** section of this repository (top right panel).  
+  
+## Estimates of fish biomass change from FishMIP model ensemble (Shiny app)
+If you do not have experience in `R`, but would still like to have access to the temporal trends of fish biomass change (plots and data) as produced by the script named [05_plotting_yearly_global_biomass_change](https://github.com/Fish-MIP/FAO_Report/blob/main/scripts/05_plotting_yearly_global_biomass_change.Rmd), we are providing an alternative.  
+  
+We have developed a Shiny app, which you can access [here](https://rstudio.global-ecosystem-model.cloud.edu.au/shiny/FAO_Report/Shiny_app/). You can select the Exclusive Economic Zone [[1]](#1) or the FAO area for fishery purposes [[3]](#3) of your interest, which will produce an interactive plot of temporal trends of fish biomass changes in the area you selected. It will also show the entire dataset used to create the interactive plot. Additionally, there is a download button (on the left panel) that allows you to download the data shown in the table as a csv file.  
   
 ## How to report issues or suggest changes
 You can check reported issue or create a new issue [here](https://github.com/Fish-MIP/FAO_Report/issues).  
@@ -51,3 +57,5 @@ KC S., Lutz W. (2017). The human core of the shared socioeconomic pathways: Popu
 <a id="6">[6]</a> 
 KC, S. (2020). Updated demographic SSP4 and SSP5 scenarios complementing the SSP1-3 scenarios published in 2018. IIASA Working Paper. Laxenburg, Austria: WP-20-016  
   
+<a id="7">[7]</a> 
+FAO. (2022). The State of World Fisheries and Aquaculture. Food and Agriculture Organisation of the United Nations (FAO), Fisheries and Aquaculture Department.
