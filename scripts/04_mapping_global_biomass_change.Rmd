@@ -14,9 +14,6 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
-#Connecting to Google Drive
-library(googlesheets4)
-#Opening excel spreadsheets
 library(readxl)
 #Data wrangling
 library(tidyverse)
@@ -216,50 +213,49 @@ ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main,
 ## Figure 2 FAO report - Percentage change per decade and scenario.
 In this figure, we will show percentage fish biomass change in the ocean, while yearly mean capture fisheries production per country (2012-2021) will be shown on land.
 
-Capture fisheries production data comes from the [FAO's FishStatJ tool](www.fao.org/fishery/en/statistics/software/fishstatj). 
+Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity). 
   
 ```{r}
 #Load fisheries data
-fisheries_catch <- read_sheet("https://docs.google.com/spreadsheets/d/1_nD2TWJGUR6DStHwPMgwLm7VIoPOiDl3DKM5pa2rk64/edit#gid=162477025", 
-                              sheet = 2) |> 
+fisheries_catch <- read_csv(list.files(out_folder, 
+                                       pattern = "global_production_quantity.csv", 
+                                       full.name = T)) |> 
+  #Keeping only columns that are relevant to us (country name and years)
+  #The flag column identifies which values are estimates (E) and which values
+  #are "more than zero but less than half the unit used" (N)
+  select(!c(contains("Flag")|`Unit Name`)) |> 
   #Simplify column names
   clean_names() |> 
   #Reclassifying Zanzibar as Tanzania
-  mutate(country_name = case_when(str_detect(country_name, "Tanzania") ~
+  mutate(country_name_en = case_when(str_detect(country_name_en, "Tanzania") ~
                                     "United Republic of Tanzania",
                                   #Matching country names to FAO country list
-                                  str_detect(country_name, "Congo,") ~
+                                  str_detect(country_name_en, "Congo,") ~
                                     "Democratic Republic of the Congo",
-                                  str_detect(country_name, "Falkland") ~
+                                  str_detect(country_name_en, "Falkland") ~
                                     "Falkland Islands (Malvinas)",
-                                  str_detect(country_name, "French Southern") ~
+                                  str_detect(country_name_en, "French Southern") ~
                                     "French Southern Territories",
-                                  str_detect(country_name, "Bolivia") ~ 
-                                    "Bolivia (Plurinational State of)",
-                                  str_detect(country_name, "Venezuela") ~
+                                  str_detect(country_name_en, "Venezuela") ~
                                     "Venezuela (Bolivarian Republic of)",
-                                  str_detect(country_name, "Lao") ~
-                                    "Lao People's Democratic Republic",
-                                  str_detect(country_name, "Korea, Dem") ~
+                                  str_detect(country_name_en, "Korea, Dem") ~
                                     "Democratic People's Republic of Korea",
-                                  str_detect(country_name, "Korea, Republic") ~
+                                  str_detect(country_name_en, "Korea, Republic") ~
                                     "Republic of Korea",
-                                  str_detect(country_name, "Iran") ~
+                                  str_detect(country_name_en, "Iran") ~
                                     "Iran (Islamic Republic of)",
-                                  str_detect(country_name, "Moldova") ~
-                                    "Republic of Moldova",
-                                  str_detect(country_name, "United Kingdom") ~
+                                  str_detect(country_name_en, "United Kingdom") ~
                                     "United Kingdom of Great Britain and Northern Ireland",
-                                  T ~ country_name)) |> 
+                                  T ~ country_name_en)) |>
   #Select relevant columns
-  select(c(country_name, x2012:x2021)) |> 
+  # select(c(country_name, x2012:x2021)) |> 
   #Add rows with the same country name
-  group_by(country_name) |> 
+  group_by(country_name_en) |> 
   summarise(across(x2012:x2021, list(sum = sum), .names = "{.col}")) |> 
   #Reorganise table to calculate means
-  pivot_longer(!country_name, values_to = "annual_catch", names_to = "year") |> 
+  pivot_longer(!country_name_en, values_to = "annual_catch", names_to = "year") |> 
   #Calculate mean annual catch per country
-  group_by(country_name) |> 
+  group_by(country_name_en) |> 
   #Dividing by 1,000,000 to show data in maps as millions of tonnes
   summarise(mean_annual_catch = mean(annual_catch, na.rm = T)*1e-6) |> 
   #Create new column with classification
@@ -288,11 +284,11 @@ fao_countries <- read_excel(list.files(out_folder,
   
 #Add ISO codes to fisheries data
 fisheries_catch <- fisheries_catch |> 
-  left_join(fao_countries, by = c("country_name" = "list_name"))
+  left_join(fao_countries, by = c("country_name_en" = "list_name"))
 
 #Now we can add this information to the world map by performing a data frame join
 world_proj <- world_proj |> 
-  left_join(fisheries_catch |> select(!country_name), 
+  left_join(fisheries_catch |> select(!country_name_en), 
             by = join_by("adm0_a3" == "iso3"))
 ```
   
