@@ -35,7 +35,10 @@ library(cowplot)
 ```
 
 ## Setting up notebook
-This notebook uses Exclusive Economic Zones boundaries (version 11) from the [Flanders Marine Institute (2019)](https://doi.org/10.14284/386). Available [online](https://www.marineregions.org/).  
+This notebook uses a modified version of the Exclusive Economic Zones boundaries (version 11) from the [Flanders Marine Institute (2019)](https://doi.org/10.14284/386). Available [online](https://www.marineregions.org/). The following modifications were made:  
+- Boundaries for South Georgia and Sandwich Islands were updated to boundaries provided by the UN  
+- Boundaries around Bouvet Island (Norway) in the south Atlantic were added to this shapefile  
+- Country boundaries were dissolved and polygons were reclassified by continent  
   
 ```{r}
 #Base folder for project
@@ -144,29 +147,29 @@ We will apply a Robinson projection to all shapefiles before plotting them.
 #Robinson projection
 rob_proj <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
 
-#Base map of the world
+#Base map
 world_proj <- ne_countries(returnclass = "sf") |> 
   st_transform(rob_proj)
 
+#Boundaries provided by UN
+world_bound <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
+                                  full.names = T, recursive = T)) |> 
+  #Selecting boundary types to be included in the map
+  filter(TYPE >= 1 & TYPE <= 4) |> 
+  st_transform(rob_proj)
+
 #EEZ boundaries
-eez_proj <- read_sf(list.files(out_folder, pattern = "eez_short.shp", 
+fao_eez_proj <- read_sf(list.files(out_folder, 
+                               pattern = "FAO_MajorAreas_200NM_cont.shp", 
                                recursive = T, full.names = T)) |> 
-  #Removing Antarctic EEZ
-  filter(str_detect(GEONAME, "Antarctic", negate = T)) |> 
-  #Adding continent and sub region information 
-  left_join(fao_eez |> drop_na(MRGID), by = join_by(MRGID)) |> 
-  #Removing continent from Clipperton
-  mutate(region = case_when(str_detect(nm_mrgd, "Clipperton") ~ NA,
-                            T ~ region)) |> 
   st_transform(rob_proj)
 
 #FAO and EEZ shapefile
-fao_eez_shp_proj <- read_sf(list.files(out_folder, pattern = "EEZ.shp", 
-                                       recursive = T, full.names = T)) |> 
-  st_transform(rob_proj)
+eez_proj <- fao_eez_proj |> 
+  drop_na(MRGID)
 
 #Getting FAO regions only
-fao_proj <- fao_eez_shp_proj |> 
+fao_proj <- fao_eez_proj |>
   drop_na(OCEAN)
 ```
   
@@ -175,10 +178,14 @@ FAO regions are coloured by ocean basin, and EEZs are classified by continent.
   
 ```{r}
 main <- ggplot()+
+  #Plotting base map and country boundaries
+  geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
+  geom_sf(data = world_bound, aes(linetype = as.factor(TYPE)), lwd = 0.25,
+          color = "#838285", show.legend = F)+
   #Plotting FAO classified by ocean basin
   geom_sf(data = fao_proj, aes(fill = OCEAN))+
   #Plotting EEZ classified by continent
-  geom_sf(data = eez_proj, aes(fill = region))+
+  geom_sf(data = eez_proj, aes(fill = CONTINENT))+
   #Using colour blind friendly colours
   scale_fill_manual(values = c("Pacific" = "#222255", "Atlantic" = "#225555", 
                                "Indian" = "#225522", "Arctic" = "#666633", 
@@ -186,8 +193,7 @@ main <- ggplot()+
                                "Americas" = "#ccddaa", "Africa" = "#eeeebb",
                                "Southern Ocean" = "#663333", 
                                "Asia" = "#ffcccc"))+
-  #Plotting base map
-  geom_sf(data = world_proj)+
+  
   #Removing grey background
   theme_bw()+
   #Formatting legend title
