@@ -148,14 +148,15 @@ We will apply a Robinson projection to all shapefiles before plotting them.
 rob_proj <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
 
 #Base map
-world_proj <- ne_countries(returnclass = "sf") |> 
+world_proj <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
+                                 full.names = T, recursive = T)) |> 
   st_transform(rob_proj)
 
 #Boundaries provided by UN
 world_bound <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
                                   full.names = T, recursive = T)) |> 
   #Selecting boundary types to be included in the map
-  filter(TYPE >= 1 & TYPE <= 4) |> 
+  filter(TYPE < 99) |> 
   st_transform(rob_proj)
 
 #EEZ boundaries
@@ -178,10 +179,6 @@ FAO regions are coloured by ocean basin, and EEZs are classified by continent.
   
 ```{r}
 main <- ggplot()+
-  #Plotting base map and country boundaries
-  geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
-  geom_sf(data = world_bound, aes(linetype = as.factor(TYPE)), lwd = 0.25,
-          color = "#838285", show.legend = F)+
   #Plotting FAO classified by ocean basin
   geom_sf(data = fao_proj, aes(fill = OCEAN))+
   #Plotting EEZ classified by continent
@@ -193,7 +190,16 @@ main <- ggplot()+
                                "Americas" = "#ccddaa", "Africa" = "#eeeebb",
                                "Southern Ocean" = "#663333", 
                                "Asia" = "#ffcccc"))+
-  
+  #Plotting base map and country boundaries
+  geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
+  #Adding coastlines and international boundaries
+  geom_sf(data = world_bound, lwd = 0.25, color = "black", show.legend = F, 
+          aes(linetype = as.factor(TYPE)))+
+  scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
+                                   "2" = "dotdash", "3" = "dashed", 
+                                   "4" = "dotted"))+
+  geom_sf(data = world_bound[world_bound$TYPE == 8,], linetype = "longdash", lwd = 0.25,
+  color = "#838285", show.legend = F)+
   #Removing grey background
   theme_bw()+
   #Formatting legend title
