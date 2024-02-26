@@ -295,7 +295,7 @@ fisheries_catch <- fisheries_catch |>
 #Now we can add this information to the world map by performing a data frame join
 world_proj <- world_proj |> 
   left_join(fisheries_catch |> select(!country_name_en), 
-            by = join_by("ISO_3" == "iso3"))
+            by = join_by("ISO3CD" == "iso3"))
 ```
   
 We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection. We will also create a custom-made colour palette for the maps.  
@@ -346,7 +346,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                                  "4" = "dotted")),
                 geom_sf(inherit.aes = F, 
                         data = world_bound[world_bound$ISO3_CNT1 == "ATA",],
-                        lwd = 0.25, linetype = "solid", color = "black", 
+                        lwd = 0.25, linetype = "solid", color = "#5b5b5b", 
                         show.legend = F),
                 geom_sf(inherit.aes = F, 
                         data = world_bound[world_bound$TYPE == 8,], 
@@ -432,22 +432,24 @@ ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"),
 Loading relevant shapefiles and extracting data for Asia.  
   
 ```{r}
-#Unprojected world base map
-world <- ne_countries(returnclass = "sf")
+#Unprojected UN-approved world base map
+world <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
+                                 full.names = T, recursive = T))
+#Boundaries provided by UN
+world_bound_wgs84 <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
+                                  full.names = T, recursive = T)) |> 
+  #Selecting boundary types to be included in the map
+  filter(TYPE < 99) 
 
 #EEZ boundaries
-eez <- read_sf("../../World_EEZ_v11_20191118/eez_short.shp") |> 
-  #Removing Antarctic EEZ
-  filter(str_detect(GEONAME, "Antarctic", negate = T)) |> 
-  #Adding continent and sub region information 
-  left_join(fao_eez |> drop_na(MRGID), by = join_by(MRGID)) |> 
-  #Removing continent from Clipperton
-  mutate(region = case_when(str_detect(nm_mrgd, "Clipperton") ~ NA,
-                            T ~ region))
+eez <- read_sf(list.files(out_folder, 
+                          pattern = "FAO_MajorAreas_200NM_cont.shp", 
+                          recursive = T, full.names = T)) |> 
+  drop_na(MRGID)
 
 #Extract data for scenario, transform to raster and reproject
 asia_data <- maps_data |> 
-  filter(region == "Asia")
+  filter(CONTINENT == "Asia")
 ```
   
 Loading population data and calculating percentage difference in human populations.  
@@ -491,16 +493,11 @@ pop_change <- file_list |>
   mutate(rel_change_mean50_ssp126 = ((mean50_ssp126-reference)/reference)*100,
          rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
          rel_change_mean00_ssp126 = ((mean00_ssp126-reference)/reference)*100,
-         rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100) |> 
-  #Matching ISO codes to world shapefile
-  mutate(iso = case_when(country == "Western Sahara" ~ "SAH",
-                         str_detect(country, "Palestine") ~ "PSX",
-                         country == "South Sudan" ~ "SDS",
-                         T ~ iso))
+         rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100)
 
 #Now we can add this information to the world map by performing a data frame join
 world <- world |> 
-  left_join(pop_change |> select(!country), by = join_by("adm0_a3" == "iso"))
+  left_join(pop_change |> select(!country), by = join_by("ISO3CD" == "iso"))
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
