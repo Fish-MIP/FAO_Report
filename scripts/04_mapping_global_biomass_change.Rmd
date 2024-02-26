@@ -128,6 +128,7 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
                    .names = "{.col}_{.fn}")) |> 
   ungroup()
 ```
+  
 ## Loading information about continents
 We will add information about the continents where each EEZ is located.  
   
@@ -198,8 +199,8 @@ main <- ggplot()+
   scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
                                    "2" = "dotdash", "3" = "dashed", 
                                    "4" = "dotted"))+
-  geom_sf(data = world_bound[world_bound$TYPE == 8,], linetype = "longdash", lwd = 0.25,
-  color = "#838285", show.legend = F)+
+  geom_sf(data = world_bound[world_bound$TYPE == 8,], linetype = "longdash", 
+          lwd = 0.25, color = "#838285", show.legend = F)+
   #Removing grey background
   theme_bw()+
   #Formatting legend title
@@ -259,8 +260,6 @@ fisheries_catch <- read_csv(list.files(out_folder,
                                   str_detect(country_name_en, "United Kingdom") ~
                                     "United Kingdom of Great Britain and Northern Ireland",
                                   T ~ country_name_en)) |>
-  #Select relevant columns
-  # select(c(country_name, x2012:x2021)) |> 
   #Add rows with the same country name
   group_by(country_name_en) |> 
   summarise(across(x2012:x2021, list(sum = sum), .names = "{.col}")) |> 
@@ -287,12 +286,7 @@ fao_countries <- read_excel(list.files(out_folder,
   #Simplify column names
   clean_names() |> 
   #Select columns of interest
-  select(list_name, iso3) |> 
-  #Matching codes world shapefile
-  mutate(iso3 = case_when(iso3 == "PSE" ~ "PSX",
-                          iso3 == "SSD" ~ "SDS",
-                          iso3 == "ESH" ~ "SAH",
-                          T ~ iso3))
+  select(list_name, iso3)
   
 #Add ISO codes to fisheries data
 fisheries_catch <- fisheries_catch |> 
@@ -301,7 +295,7 @@ fisheries_catch <- fisheries_catch |>
 #Now we can add this information to the world map by performing a data frame join
 world_proj <- world_proj |> 
   left_join(fisheries_catch |> select(!country_name_en), 
-            by = join_by("adm0_a3" == "iso3"))
+            by = join_by("ISO_3" == "iso3"))
 ```
   
 We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection. We will also create a custom-made colour palette for the maps.  
@@ -339,10 +333,26 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom,
                                   oob = scales::oob_squish),
                 new_scale_fill(),
-                geom_sf(inherit.aes = F, data = world_proj, 
+                geom_sf(inherit.aes = F, data = world_proj, color = NA, 
                         aes(fill = class_fish), show.legend = F),
                 scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
-                geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
+                #Adding coastlines and international boundaries
+                geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
+                        color = "black", show.legend = F, 
+                        aes(linetype = as.factor(TYPE))),
+                scale_linetype_manual(values = c("1" = "twodash", 
+                                                 "2" = "dotdash", 
+                                                 "3" = "dashed", 
+                                                 "4" = "dotted")),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound[world_bound$ISO3_CNT1 == "ATA",],
+                        lwd = 0.25, linetype = "solid", color = "black", 
+                        show.legend = F),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound[world_bound$TYPE == 8,], 
+                        linetype = "longdash", lwd = 0.25, color = "#838285",
+                        show.legend = F),
+                geom_sf(inherit.aes = F, data = eez_proj, fill = NA,
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
                 theme_bw(),
                 theme(axis.title = element_blank(), 
@@ -400,19 +410,13 @@ p00_585 <- ggplot()+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg
 
-#Create title for plot
-title <- ggdraw()+
-  draw_label("Mean % change in fish biomass from 2005-2014")+
-  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
-
 #Plotting everything together
-all_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
-                                        labels = c("a", "b"), label_x = 0.1),
+all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                 labels = c("a", "b"), label_x = 0.1),
                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                  labels = c("c", "d"), label_x = 0.1),
                        plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
-                       ncol = 1, nrow = 4, 
-                       rel_heights = c(0.15, 1, 1, 0.4))
+                       ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
 all_plots
