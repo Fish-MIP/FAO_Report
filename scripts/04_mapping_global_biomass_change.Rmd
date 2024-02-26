@@ -600,7 +600,7 @@ ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), device = "pdf",
 ```{r}
 #Extract data for scenario, transform to raster and reproject
 africa_data <- maps_data |> 
-  filter(region == "Africa")
+  filter(CONTINENT == "Africa")
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
@@ -610,11 +610,23 @@ We will plot each decade/scenario combination separately and then create a multi
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
                                   oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = eez[eez$region == "Africa",], 
+                geom_sf(inherit.aes = F, data = eez[eez$CONTINENT == "Africa",], 
                         fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
                 geom_sf(inherit.aes = F, 
-                        data = world[world$continent != "Africa",]),
+                        data = world[world$CONTCD != "AFR",]),
+                #Adding coastlines and international boundaries
+                geom_sf(inherit.aes = F, data = world_bound_wgs84, lwd = 0.25, 
+                        color = "black", show.legend = F, 
+                        aes(linetype = as.factor(TYPE))),
+                scale_linetype_manual(values = c("1" = "twodash", 
+                                                 "2" = "dotdash", 
+                                                 "3" = "dashed", 
+                                                 "4" = "dotted")),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound_wgs84[world_bound_wgs84$TYPE == 8,], 
+                        linetype = "longdash", lwd = 0.25, color = "#838285",
+                        show.legend = F),
                 theme_bw(),
                 theme(axis.title = element_blank(), 
                       panel.border = element_rect(colour = NA),
@@ -627,7 +639,7 @@ p50_126 <- africa_data |>
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
   geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp126), 
-          colour = "#5b5b5b", linewidth = 0.25)+
+          colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -636,7 +648,7 @@ p50_585 <- africa_data |>
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
   geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp585), 
-          colour = "#5b5b5b", linewidth = 0.25)+
+          colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -645,7 +657,7 @@ p00_126 <- africa_data |>
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
   geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp126), 
-          colour = "#5b5b5b", linewidth = 0.25)+
+          colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -654,7 +666,7 @@ p00_585 <- africa_data |>
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
   geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp585), 
-          colour = "#5b5b5b", linewidth = 0.25)+
+          colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
   guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
@@ -669,18 +681,12 @@ legend <- get_legend(p00_585)
 p00_585 <- p00_585+
   theme(legend.position = "none")
 
-#Create title for maps
-title <- ggdraw()+
-  draw_label("Mean % change in fish biomass in African EEZs between 2005-2014")+
-  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
-
 #Plotting everything together
-africa_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
-                                           labels = c("a", "b"), label_x = 0.1),
+africa_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                    labels = c("a", "b"), label_x = 0.1),
                           plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                     labels = c("c", "d"), label_x = 0.1),
-                          legend, ncol = 1, nrow = 4, 
-                          rel_heights = c(0.15, 1, 1, 0.4))
+                          legend, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
 africa_plots
