@@ -1,0 +1,284 @@
+ISO3CD,ROMNAM,MAPLAB,CONTCD,STSCOD,TYP025,DEL025,ISOADM,Char12_Ide,Name_En,Name_Es,Name_Fr,O_Name_En,O_Name_Es,O_Name_Fr,M49,ISO_3,ISO3_CNT1,ISO3_CNT2
+BRN,Brunei Darussalam,Brunei Darussalam,ASI,1,0,0,BRN,Brunei Darsm,Brunei Darussalam,Brunei Darussalam,Brun�i Darussalam,Brunei Darussalam,Brunei Darussalam,le Brun�i Darussalam,096,BRN,BRN,BRN
+SWZ,Eswatini,Eswatini,AFR,1,0,0,SWZ,Eswatini,Eswatini,Eswatini,Eswatini,the Kingdom of Eswatini,el Reino de Eswatini,le Royaume d?Eswatini,748,SWZ,SWZ,SWZ
+GNQ,Equatorial Guinea,Equatorial Guinea,AFR,1,2,0,GNQ,Eq Guinea,Equatorial Guinea,Guinea Ecuatorial,Guin�e �quatoriale,the Republic of Equatorial Guinea,la Rep�blica de Guinea Ecuatorial,la R�publique de Guin�e �quatoriale,226,GNQ,GNQ,GNQ
+MAC,Macao,"Macao, China",ASI,5,1,0,CHN,"China, Macao","China, Macao SAR","China, RAE de Macao","Chine, RAS de Macao","China, Macao SAR","China, Regi�n Administrativa Especial de Macao",Chine - RAS de Macao,446,CHN,CHN,CHN
+MTQ,Martinique,Martinique (Fr.),AME,4,1,0,FRA,Martinique,Martinique,Martinica,Martinique,Martinique,Martinica,Martinique,474,FRA,FRA,FRA
+CIV,Cote dIvoire,C�te d'Ivoire,AFR,1,0,0,CIV,C�te dIvoire,Cote dIvoire,C�te d'Ivoire,C�te d'Ivoire,the Republic of C�te d'Ivoire,la Rep�blica de C�te d'Ivoire,la R�publique de C�te d'Ivoire,384,CIV,CIV,CIV
+MRT,Mauritania,Mauritania,AFR,1,2,0,MRT,Mauritania,Mauritania,Mauritania,Mauritanie,the Islamic Republic of Mauritania,la Rep�blica Isl�mica de Mauritania,la R�publique islamique de Mauritanie,478,MRT,MRT,MRT
+TGO,Togo,Togo,AFR,1,0,0,TGO,Togo,Togo,Togo,Togo,the Togolese Republic,la Rep�blica Togolesa,la R�publique togolaise,768,TGO,TGO,TGO
+TUV,Tuvalu,Tuvalu,OCE,1,1,0,TUV,Tuvalu,Tuvalu,Tuvalu,Tuvalu,Tuvalu,Tuvalu,Tuvalu,798,TUV,TUV,TUV
+LKA,Sri Lanka,Sri Lanka,ASI,1,1,0,LKA,Sri Lanka,Sri Lanka,Sri Lanka,Sri Lanka,the Democratic Socialist Republic of Sri Lanka,la Rep�blica Socialista Democr�tica de Sri Lanka,la R�publique socialiste d�mocratique de Sri Lanka,144,LKA,LKA,LKA
+BRB,Barbados,Barbados,AME,1,0,0,BRB,Barbados,Barbados,Barbados,Barbade,Barbados,Barbados,la Barbade,052,BRB,BRB,BRB
+AGO,Angola,Angola,AFR,1,0,0,AGO,Angola,Angola,Angola,Angola,the Republic of Angola,la Rep�blica de Angola,la R�publique d'Angola,024,AGO,AGO,AGO
+NFK,Norfolk Island,Norfolk Island (Aust.),OCE,4,1,0,AUS,Norfolk Is,Norfolk Island,Isla Norfolk,�le Norfolk,Territory of Norfolk Island,Isla Norfolk,�le Norfolk,574,AUS,AUS,AUS
+CHN,China,China,ASI,1,2,0,CHN,China,China,China,Chine,the People's Republic of China,la Rep�blica Popular China,la R�publique populaire de Chine,156,CHN,CHN,CHN
+SLE,Sierra Leone,Sierra Leone,AFR,1,2,0,SLE,Sierra Leone,Sierra Leone,Sierra Leona,Sierra Leone,the Republic of Sierra Leone,la Rep�blica de Sierra Leona,la R�publique de Sierra Leone,694,SLE,SLE,SLE
+COM,Comoros,Comoros,AFR,1,1,0,COM,Comoros,Comoros,Comoras,Comores,the Union of the Comoros,la Uni�n de las Comoras,l'Union des Comores,174,COM,COM,COM
+KOR,Republic of Korea,Republic of Korea,ASI,1,2,0,KOR,Korea Rep,"Korea, Republic of",Rep�blica de Corea,R�publique de Cor�e,the Republic of Korea,la Rep�blica de Corea,la R�publique de Cor�e,410,KOR,KOR,KOR
+PYF,Clipperton Island,Clipperton Island,OCE,4,0,0,FRA,Fr Polynesia,French Polynesia,Polinesia Francesa,Polyn�sie fran�aise,French Polynesia,Polinesia Francesa,la Polyn�sie fran�aise,258,FRA,FRA,FRA
+PHL,Philippines,Philippines,ASI,1,1,0,PHL,Philippines,Philippines,Filipinas,Philippines,the Republic of the Philippines,la Rep�blica de Filipinas,la R�publique des Philippines,608,PHL,PHL,PHL
+BHS,Bahamas,Bahamas,AME,1,1,0,BHS,Bahamas,Bahamas,Bahamas,Bahamas,the Commonwealth of the Bahamas,el Commonwealth de las Bahamas,le Commonwealth des Bahamas,044,BHS,BHS,BHS
+ARM,Armenia,Armenia,ASI,1,0,0,ARM,Armenia,Armenia,Armenia,Arm�nie,the Republic of Armenia,la Rep�blica de Armenia,la R�publique d'Arm�nie,051,ARM,ARM,ARM
+ROU,Romania,Romania,EUR,1,0,0,ROU,Romania,Romania,Rumania,Roumanie,Romania,Rumania,la Roumanie,642,ROU,ROU,ROU
+CXR,Christmas Island,Christmas Is. (Aust.),OCE,4,0,0,AUS,Christmas Is,Christmas Island,Isla Christmas,�le Christmas,Christmas Island,Isla Christmas,�le Christmas,162,AUS,AUS,AUS
+HMD,Heard Island and McDonald Islands,Heard Is. & McDonald Is. (Aust.),AFR,4,1,0,AUS,Heard Is,Heard and McDonald Is.,Islas Heard y McDonald,�les Heard et McDonald,Heard Island and McDonald Island,Islas Heard y McDonald,�les Heard et McDonald,334,AUS,AUS,AUS
+ZAF,South Africa,South Africa,AFR,1,2,0,ZAF,South Africa,South Africa,Sud�frica,Afrique du Sud,the Republic of South Africa,la Rep�blica de Sud�frica,la R�publique sud-africaine,710,ZAF,ZAF,ZAF
+SLB,Solomon Islands,Solomon Islands,OCE,1,1,0,SLB,Solomon Is,Solomon Islands,Islas Salom�n,�les Salomon,Solomon Islands,las Islas Salom�n,les �les Salomon,090,SLB,SLB,SLB
+FIN,Finland,Finland,EUR,1,2,0,FIN,Finland,Finland,Finlandia,Finlande,the Republic of Finland,la Rep�blica de Finlandia,la R�publique de Finlande,246,FIN,FIN,FIN
+ATF,Bassas da India,Bassas da India (Fr.),AFR,4,0,1,FRA,Fr South Tr,French Southern Terr,Tierras Australes Fr.,Terres australes fr.,French Southern and Antarctic Territories,las Tierras Australes y Ant�rticas Francesas,les Terres australes et antarctiques fran�aises,260,FRA,FRA,FRA
+CZE,Czechia,Czechia,EUR,1,0,0,CZE,Czechia,Czechia,Chequia,Tch�quie,the Czech Republic,la Rep�blica Checa,la R�publique tch�que,203,CZE,CZE,CZE
+BEN,Benin,Benin,AFR,1,0,0,BEN,Benin,Benin,Benin,B�nin,the Republic of Benin,la Rep�blica de Benin,la R�publique du B�nin,204,BEN,BEN,BEN
+SDN,Sudan,Sudan,AFR,1,2,0,SDN,Sudan,Sudan,Sud�n,Soudan,the Republic of the Sudan,la Rep�blica del Sud�n,la R�publique du Soudan,729,SDN,SDN,SDN
+BMU,Bermuda,Bermuda *,AME,3,1,0,GBR,Bermuda,Bermuda,Bermudas,Bermudes,Bermuda,Bermudas,les Bermudes,060,GBR,GBR,GBR
+NIC,Nicaragua,Nicaragua,AME,1,2,0,NIC,Nicaragua,Nicaragua,Nicaragua,Nicaragua,the Republic of Nicaragua,la Rep�blica de Nicaragua,la R�publique du Nicaragua,558,NIC,NIC,NIC
+MNE,Montenegro,Montenegro,EUR,1,0,0,MNE,Montenegro,Montenegro,Montenegro,Mont�n�gro,Montenegro,Montenegro,le Mont�n�gro,499,MNE,MNE,MNE
+GTM,Guatemala,Guatemala,AME,1,0,0,GTM,Guatemala,Guatemala,Guatemala,Guatemala,the Republic of Guatemala,la Rep�blica de Guatemala,la R�publique du Guatemala,320,GTM,GTM,GTM
+SLV,El Salvador,El Salvador,AME,1,2,0,SLV,El Salvador,El Salvador,El Salvador,El Salvador,the Republic of El Salvador,la Rep�blica de El Salvador,la R�publique d'El Salvador,222,SLV,SLV,SLV
+SSD,Ilemi Triangle,,AFR,99,0,0,SSD,South Sudan,South Sudan,Sud�n del Sur,Soudan du Sud,the Republic of South Sudan,la Rep�blica de Sud�n del Sur,la R�publique du Soudan du Sud,728,SSD,SSD,SSD
+SGP,Singapore,Singapore,ASI,1,1,0,SGP,Singapore,Singapore,Singapur,Singapour,the Republic of Singapore,la Rep�blica de Singapur,la R�publique de Singapour,702,SGP,SGP,SGP
+ASM,American Samoa,American Samoa *,OCE,3,1,0,USA,Amer Samoa,American Samoa,Samoa Americana,Samoa am�ricaines,American Samoa,Samoa Americana,Samoa am�ricaines,016,USA,USA,USA
+PLW,Palau,Palau,OCE,1,1,0,PLW,Palau,Palau,Palau,Palaos,the Republic of Palau,la Rep�blica de Palau,la R�publique des Palaos,585,PLW,PLW,PLW
+MLT,Malta,Malta,EUR,1,1,0,MLT,Malta,Malta,Malta,Malte,the Republic of Malta,la Rep�blica de Malta,la R�publique de Malte,470,MLT,MLT,MLT
+NRU,Nauru,Nauru,OCE,1,0,0,NRU,Nauru,Nauru,Nauru,Nauru,the Republic of Nauru,la Rep�blica de Nauru,la R�publique de Nauru,520,NRU,NRU,NRU
+VEN,Venezuela,Venezuela,AME,1,0,0,VEN,Venezuela,"Venezuela, Boliv Rep of","Venezuela, Rep Boliv de","Venezuela, R�p boliv du",the Bolivarian Republic of Venezuela,la Rep�blica Bolivariana de Venezuela,la R�publique bolivarienne du Venezuela,862,VEN,VEN,VEN
+WLF,Wallis and Futuna,,OCE,4,1,0,FRA,Wallis Fut I,Wallis and Futuna Is.,Islas Wallis y Futuna,�les Wallis et Futuna,Wallis and Futuna Islands,Islas Wallis y Futuna,les �les Wallis et Futuna,876,FRA,FRA,FRA
+PAK,Pakistan,Pakistan,ASI,1,2,0,PAK,Pakistan,Pakistan,Pakist�n,Pakistan,the Islamic Republic of Pakistan,la Rep�blica Isl�mica del Pakist�n,la R�publique islamique du Pakistan,586,PAK,PAK,PAK
+BFA,Burkina Faso,Burkina Faso,AFR,1,0,0,BFA,Burkina Faso,Burkina Faso,Burkina Faso,Burkina Faso,Burkina Faso,Burkina Faso,le Burkina Faso,854,BFA,BFA,BFA
+SDN,Halaib Triangle,,AFR,99,2,0,SDN,Sudan,Sudan,Sud�n,Soudan,the Republic of the Sudan,la Rep�blica del Sud�n,la R�publique du Soudan,729,SDN,SDN,SDN
+WSM,Samoa,Samoa,OCE,1,1,0,WSM,Samoa,Samoa,Samoa,Samoa,the Independent State of Samoa,el Estado Independiente de Samoa,l'�tat ind�pendant du Samoa,882,WSM,WSM,WSM
+CAF,Central African Republic,Central African Republic,AFR,1,0,0,CAF,Cent Afr Rep,Central African Republic,Rep�blica Centroafricana,R�p. centrafricaine,the Central African Republic,la Rep�blica Centroafricana,la R�publique centrafricaine,140,CAF,CAF,CAF
+xSK,Senkaku Islands,,ASI,99,1,1,JPN,,,,,,,,,JPN,JPN,JPN
+ISL,Iceland,Iceland,EUR,1,1,0,ISL,Iceland,Iceland,Islandia,Islande,the Republic of Iceland,la Rep�blica de Islandia,la R�publique d'Islande,352,ISL,ISL,ISL
+FJI,Fiji,Fiji,OCE,1,1,0,FJI,Fiji,Fiji,Fiji,Fidji,the Republic of Fiji,la Rep�blica de Fiji,la R�publique des Fidji,242,FJI,FJI,FJI
+CUB,Cuba,Cuba,AME,1,1,0,CUB,Cuba,Cuba,Cuba,Cuba,the Republic of Cuba,la Rep�blica de Cuba,la R�publique de Cuba,192,CUB,CUB,CUB
+GLP,Guadeloupe,Guadeloupe (Fr.),AME,4,1,0,FRA,Guadeloupe,Guadeloupe,Guadalupe,Guadeloupe,Guadeloupe,Guadalupe,la Guadeloupe,312,FRA,FRA,FRA
+UKR,Ukraine,Ukraine,EUR,1,0,0,UKR,Ukraine,Ukraine,Ucrania,Ukraine,Ukraine,Ucrania,l'Ukraine,804,UKR,UKR,UKR
+ESP,Canary Islands,Canary Islands (Sp.),EUR,4,2,0,ESP,Spain,Spain,Espa�a,Espagne,the Kingdom of Spain,el Reino de Espa�a,le Royaume d'Espagne,724,ESP,ESP,ESP
+MSR,Montserrat,Montserrat *,AME,3,0,0,GBR,Montserrat,Montserrat,Montserrat,Montserrat,Montserrat,Montserrat,Montserrat,500,GBR,GBR,GBR
+AUS,Australia,Australia,OCE,1,2,0,AUS,Australia,Australia,Australia,Australie,Australia,Australia,l'Australie,036,AUS,AUS,AUS
+DEU,Germany,Germany,EUR,1,0,0,DEU,Germany,Germany,Alemania,Allemagne,the Federal Republic of Germany,la Rep�blica Federal de Alemania,la R�publique f�d�rale d'Allemagne,276,DEU,DEU,DEU
+SPM,Saint Pierre et Miquelon,Saint Pierre et Miquelon (Fr.),AME,4,1,0,FRA,St Pier Mq,St. Pierre and Miquelon,San Pedro y Miquel�n,Saint-Pierre-et-Miquelon,Saint Pierre and Miquelon,Saint-Pierre y Miquelon,Saint-Pierre-et-Miquelon,666,FRA,FRA,FRA
+TUN,Tunisia,Tunisia,AFR,1,2,0,TUN,Tunisia,Tunisia,T�nez,Tunisie,the Republic of Tunisia,la Rep�blica de T�nez,la R�publique tunisienne,788,TUN,TUN,TUN
+xPI,Paracel Islands,,ASI,99,1,1,xPI,,,,,,,,,xPI,xPI,xPI
+xSR,Scarborough Reef,,ASI,99,1,1,xSR,,,,,,,,,xSR,xSR,xSR
+BES,Saba,Saba (Neth.),AME,4,0,0,NLD,Bonaire/Eust,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,"Bonaire, Sint Eustatius and Saba","Bonaire, Sint Eustatius y Saba","Bonaire, Sint Eustatius et Saba",535,NLD,NLD,NLD
+PSE,Gaza,Gaza,ASI,2,0,0,PSE,Palestine,Palestine,Palestina,Palestine,Palestine,Palestina,Palestine,275,PSE,PSE,PSE
+xAP,Arunachal Pradesh,,ASI,99,0,0,IND,,,,,,,,,IND,IND,IND
+xRI,,,ASI,99,1,0,RUS,,,,,,,,,RUS,RUS,RUS
+GUF,French Guiana,French Guiana (Fr.),AME,4,2,0,FRA,Fr Guiana,French Guiana,Guayana Francesa,Guyane fran�aise,French Guiana,Guayana francesa,Guyane fran�aise,254,FRA,FRA,FRA
+MYS,Malaysia,Malaysia,ASI,1,2,0,MYS,Malaysia,Malaysia,Malasia,Malaisie,Malaysia,Malasia,la Malaisie,458,MYS,MYS,MYS
+PSE,West Bank,West Bank,ASI,2,0,0,PSE,Palestine,Palestine,Palestina,Palestine,Palestine,Palestina,Palestine,275,PSE,PSE,PSE
+YEM,Yemen,Yemen,ASI,1,2,0,YEM,Yemen,Yemen,Yemen,Y�men,the Republic of Yemen,la Rep�blica del Yemen,la R�publique du Y�men,887,YEM,YEM,YEM
+LBN,Lebanon,Lebanon,ASI,1,0,0,LBN,Lebanon,Lebanon,L�bano,Liban,the Lebanese Republic,la Rep�blica libanesa,la R�publique libanaise,422,LBN,LBN,LBN
+NGA,Nigeria,Nigeria,AFR,1,0,0,NGA,Nigeria,Nigeria,Nigeria,Nig�ria,the Federal Republic of Nigeria,la Rep�blica Federal de Nigeria,la R�publique f�d�rale du Nig�ria,566,NGA,NGA,NGA
+ALA,0land Islands,�land Islands,EUR,4,1,0,FIN,�land Is,0land Islands,Islas �land,�les d'�land,�land Islands,Islas �land,�les d'�land,248,FIN,FIN,FIN
+FLK,Falkland Islands (Malvinas),Falkland Islands (Malvinas) ***,AME,3,1,0,GBR,Falkland Is,Falkland Is.(Malvinas),Islas Malvinas(Falkland),�les Falkland(Malvinas),the Falkland Islands (Malvinas),las Islas Malvinas (Falkland Islands),les �les Falkland (Malvinas),238,GBR,GBR,GBR
+JEY,Jersey,Jersey (UK),EUR,4,0,0,GBR,Jersey,Jersey,Jersey,Le Jersey,Bailiwick of Jersey,Jersey,Jersey,832,GBR,GBR,GBR
+GUY,Guyana,Guyana,AME,1,2,0,GUY,Guyana,Guyana,Guyana,Guyana,the Co-operative Republic of Guyana,la Rep�blica Cooperativa de Guyana,la R�publique coop�rative du Guyana,328,GUY,GUY,GUY
+VIR,United States Virgin Islands,United States Virgin Islands *,,3,1,0,USA,US Virgin Is,US Virgin Islands,Islas V�rgenes (EE.UU.),�les Vierges am�ricaines,the United States Virgin Islands,las Islas V�rgenes (EE.UU.),les �les Vierges am�ricaines,850,USA,USA,USA
+MDG,Madagascar,Madagascar,AFR,1,0,0,MDG,Madagascar,Madagascar,Madagascar,Madagascar,the Republic of Madagascar,la Rep�blica de Madagascar,la R�publique de Madagascar,450,MDG,MDG,MDG
+AND,Andorra,Andorra,EUR,1,0,0,AND,Andorra,Andorra,Andorra,Andorre,the Principality of Andorra,el Principado de Andorra,la Principaut� d'Andorre,020,AND,AND,AND
+SWE,Sweden,Sweden,EUR,1,2,0,SWE,Sweden,Sweden,Suecia,Su�de,the Kingdom of Sweden,el Reino de Suecia,le Royaume de Su�de,752,SWE,SWE,SWE
+MUS,Mauritius,Mauritius,AFR,1,1,0,MUS,Mauritius,Mauritius,Mauricio,Maurice,the Republic of Mauritius,la Rep�blica de Mauricio,la R�publique de Maurice,480,MUS,MUS,MUS
+UGA,Uganda,Uganda,AFR,1,0,0,UGA,Uganda,Uganda,Uganda,Ouganda,the Republic of Uganda,la Rep�blica de Uganda,la R�publique de l'Ouganda,800,UGA,UGA,UGA
+MDA,Moldova,Moldova,EUR,1,0,0,MDA,Moldova Rep,"Moldova, Republic of",Rep�blica de Moldova,R�publique de Moldova,the Republic of Moldova,la Rep�blica de Moldova,la R�publique de Moldova,498,MDA,MDA,MDA
+BES,Sint Eustatius,Sint Eustatius (Neth.),AME,4,0,0,NLD,Bonaire/Eust,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,"Bonaire, Sint Eustatius and Saba","Bonaire, Sint Eustatius y Saba","Bonaire, Sint Eustatius et Saba",535,NLD,NLD,NLD
+KWT,Kuwait,Kuwait,ASI,1,2,0,KWT,Kuwait,Kuwait,Kuwait,Kowe�t,the State of Kuwait,el Estado de Kuwait,l'�tat du Kowe�t,414,KWT,KWT,KWT
+TKL,Tokelau,Tokelau *,OCE,3,1,0,NZL,Tokelau,Tokelau,Tokelau,Tok�laou,Tokelau,Tokelau,les Tok�laou,772,NZL,NZL,NZL
+JAM,Jamaica,Jamaica,AME,1,0,0,JAM,Jamaica,Jamaica,Jamaica,Jama�que,Jamaica,Jamaica,la Jama�que,388,JAM,JAM,JAM
+EGY,Bir Tawil,,AFR,99,0,0,EGY,Egypt,Egypt,Egipto,�gypte,the Arab Republic of Egypt,la Rep�blica �rabe de Egipto,la R�publique arabe d'�gypte,818,EGY,EGY,EGY
+GMB,Gambia,Gambia,AFR,1,0,0,GMB,Gambia,Gambia,Gambia,Gambia,the Republic of the Gambia,la Rep�blica de Gambia,la R�publique de Gambie,270,GMB,GMB,GMB
+UMI,Baker Island,Baker Island (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+MCO,Monaco,Monaco,EUR,1,0,0,MCO,Monaco,Monaco,M�naco,Monaco,the Principality of Monaco,el Principado de M�naco,la Principaut� de Monaco,492,MCO,MCO,MCO
+IND,India,India,ASI,1,2,0,IND,India,India,India,Inde,the Republic of India,la Rep�blica de la India,la R�publique de l'Inde,356,IND,IND,IND
+SHN,Saint Helena,Ascencion *,AFR,3,1,0,GBR,St Helena,Saint Helena,Santa Elena,Sainte-H�l�ne,"Saint Helena, Ascension and Tristan da Cunha","Santa Elena, Ascension y Tristan da Cunha","Sainte-H�l�ne, Ascension et Tristan da Cunha",654,GBR,GBR,GBR
+ATF,French Southern Territories,French Southern Territories (Fr.),AFR,4,1,0,FRA,Fr South Tr,French Southern Terr,Tierras Australes Fr.,Terres australes fr.,French Southern and Antarctic Territories,las Tierras Australes y Ant�rticas Francesas,les Terres australes et antarctiques fran�aises,260,FRA,FRA,FRA
+SHN,Saint Helena,Tristan da Cunha *,AFR,3,1,0,GBR,St Helena,Saint Helena,Santa Elena,Sainte-H�l�ne,"Saint Helena, Ascension and Tristan da Cunha","Santa Elena, Ascension y Tristan da Cunha","Sainte-H�l�ne, Ascension et Tristan da Cunha",654,GBR,GBR,GBR
+THA,Thailand,Thailand,ASI,1,2,0,THA,Thailand,Thailand,Tailandia,Tha�lande,the Kingdom of Thailand,el Reino de Tailandia,le Royaume de Tha�lande,764,THA,THA,THA
+TCD,Chad,Chad,AFR,1,0,0,TCD,Chad,Chad,Chad,Tchad,the Republic of Chad,la Rep�blica del Chad,la R�publique du Tchad,148,TCD,TCD,TCD
+PYF,French Polynesia,French Polynesia *,OCE,3,0,0,FRA,Fr Polynesia,French Polynesia,Polinesia Francesa,Polyn�sie fran�aise,French Polynesia,Polinesia Francesa,la Polyn�sie fran�aise,258,FRA,FRA,FRA
+DZA,Algeria,Algeria,AFR,1,0,0,DZA,Algeria,Algeria,Argelia,Alg�rie,the People's Democratic Republic of Algeria,la Rep�blica Argelina Democr�tica y Popular,la R�publique alg�rienne d�mocratique et populaire,012,DZA,DZA,DZA
+BLZ,Belize,Belize,AME,1,2,0,BLZ,Belize,Belize,Belice,Belize,Belize,Belice,le Belize,084,BLZ,BLZ,BLZ
+UMI,Jarvis Island,Jarvis Island (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+ITA,Italy,Italy,EUR,1,2,0,ITA,Italy,Italy,Italia,Italie,the Republic of Italy,la Rep�blica Italiana,la R�publique italienne,380,ITA,ITA,ITA
+OMN,Oman,Oman,ASI,1,2,0,OMN,Oman,Oman,Om�n,Oman,the Sultanate of Oman,la Sultan�a de Om�n,le Sultanat d'Oman,512,OMN,OMN,OMN
+AZE,Azerbaijan,Azerbaijan,ASI,1,0,0,AZE,Azerbaijan,Azerbaijan,Azerbaiy�n,Azerba�djan,the Republic of Azerbaijan,la Rep�blica de Azerbaiy�n,la R�publique d'Azerba�djan,031,AZE,AZE,AZE
+GHA,Ghana,Ghana,AFR,1,0,0,GHA,Ghana,Ghana,Ghana,Ghana,the Republic of Ghana,la Rep�blica de Ghana,la R�publique du Ghana,288,GHA,GHA,GHA
+HRV,Croatia,Croatia,EUR,1,2,0,HRV,Croatia,Croatia,Croacia,Croatie,the Republic of Croatia,la Rep�blica de Croacia,la R�publique de Croatie,191,HRV,HRV,HRV
+EGY,Egypt,Egypt,AFR,1,2,0,EGY,Egypt,Egypt,Egipto,�gypte,the Arab Republic of Egypt,la Rep�blica �rabe de Egipto,la R�publique arabe d'�gypte,818,EGY,EGY,EGY
+FSM,Micronesia (Federated States of),Micronesia (Federated States of),OCE,1,1,0,FSM,Micronesia,"Micronesia, Fed.States of",Micronesia(Estados Fed.),Micron�sie(�tats f�d.de),the Federated States of Micronesia,los Estados Federados de Micronesia,les �tats f�d�r�s de Micron�sie,583,FSM,FSM,FSM
+UMI,Kingman Reef,Kingman Reef (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+MDV,Maldives,Maldives,ASI,1,1,0,MDV,Maldives,Maldives,Maldivas,Maldives,the Republic of Maldives,la Rep�blica de Maldivas,la R�publique des Maldives,462,MDV,MDV,MDV
+COD,Democratic Republic of the Congo,Democratic Republic of the Congo,AFR,1,0,0,COD,Congo Dem R,"Congo, Dem. Rep. of the",Rep. Dem. del Congo,R�p. d�m. du Congo,the Democratic Republic of the Congo,la Rep�blica Democr�tica del Congo,la R�publique d�mocratique du Congo,180,COD,COD,COD
+GEO,Georgia,Georgia,EUR,1,0,0,GEO,Georgia,Georgia,Georgia,G�orgie,Georgia,Georgia,la G�orgie,268,GEO,GEO,GEO
+ZMB,Zambia,Zambia,AFR,1,2,0,ZMB,Zambia,Zambia,Zambia,Zambie,the Republic of Zambia,la Rep�blica de Zambia,la R�publique de Zambie,894,ZMB,ZMB,ZMB
+SYC,Seychelles,Seychelles,AFR,1,1,0,SYC,Seychelles,Seychelles,Seychelles,Seychelles,the Republic of Seychelles,la Rep�blica de Seychelles,la R�publique des Seychelles,690,SYC,SYC,SYC
+BGR,Bulgaria,Bulgaria,EUR,1,0,0,BGR,Bulgaria,Bulgaria,Bulgaria,Bulgarie,the Republic of Bulgaria,la Rep�blica de Bulgaria,la R�publique de Bulgarie,100,BGR,BGR,BGR
+GRL,Greenland,Greenland (Denmark),--,4,2,0,DNK,Greenland,Greenland,Groenlandia,Groenland,Greenland,Groenlandia,Groenland,304,DNK,DNK,DNK
+IRQ,Iraq,Iraq,ASI,1,0,0,IRQ,Iraq,Iraq,Iraq,Iraq,the Republic of Iraq,la Rep�blica del Iraq,la R�publique d'Iraq,368,IRQ,IRQ,IRQ
+TLS,Timor-Leste,Timor-Leste,ASI,1,2,0,TLS,Timor-Leste,Timor-Leste,Timor-Leste,Timor-Leste,the Democratic Republic of Timor-Leste,la Rep�blica Democr�tica de Timor-Leste,la R�publique d�mocratique du Timor-Leste,626,TLS,TLS,TLS
+FRA,France,France,EUR,1,2,0,FRA,France,France,Francia,France,the French Republic,la Rep�blica Francesa,la R�publique fran�aise,250,FRA,FRA,FRA
+NER,Niger,Niger,AFR,1,0,0,NER,Niger,Niger,N�ger,Niger,the Republic of the Niger,la Rep�blica del N�ger,la R�publique du Niger,562,NER,NER,NER
+SJM,Svalbard and Jan Mayen Islands,Svalbard & Jan Mayen Is. (Norw.),EUR,4,1,0,NOR,Svalbard Is,Svalbard and Jan Mayen,Islas Svalbard/Jan Mayen,�les Svalbard/Jan Mayen,Svalbard and Jan Mayen Islands,Islas Svalbard y Jan Mayen,�les Svalbard et Jan Mayen,744,NOR,NOR,NOR
+BDI,Burundi,Burundi,AFR,1,0,0,BDI,Burundi,Burundi,Burundi,Burundi,the Republic of Burundi,la Rep�blica de Burundi,la R�publique du Burundi,108,BDI,BDI,BDI
+SMR,San Marino,San Marino,EUR,1,0,0,SMR,San Marino,San Marino,San Marino,Saint-Marin,the Republic of San Marino,la Rep�blica de San Marino,la R�publique de Saint-Marin,674,SMR,SMR,SMR
+EST,Estonia,Estonia,EUR,1,2,0,EST,Estonia,Estonia,Estonia,Estonie,the Republic of Estonia,la Rep�blica de Estonia,la R�publique d'Estonie,233,EST,EST,EST
+GBR,United Kingdom of Great Britain & Northern Ireland,United Kingdom of Great Britain & Northern Ireland,EUR,1,2,0,GBR,UK,United Kingdom,Reino Unido,Royaume-Uni,the United Kingdom of Great Britain and Northern Ireland,el Reino Unido de Gran Breta�a e Irlanda del Norte,le Royaume-Uni de Grande-Bretagne et d'Irlande du Nord,826,GBR,GBR,GBR
+SOM,Somalia,Somalia,AFR,1,0,0,SOM,Somalia,Somalia,Somalia,Somalie,the Federal Republic of Somalia,la Rep�blica Federal de Somalia,la R�publique f�d�rale de Somalie,706,SOM,SOM,SOM
+ALB,Albania,Albania,EUR,1,2,0,ALB,Albania,Albania,Albania,Albanie,the Republic of Albania,la Rep�blica de Albania,la R�publique d'Albanie,008,ALB,ALB,ALB
+xSI,Spratly Islands,,ASI,99,1,1,xSI,,,,,,,,,xSI,xSI,xSI
+BWA,Botswana,Botswana,AFR,1,0,0,BWA,Botswana,Botswana,Botswana,Botswana,the Republic of Botswana,la Rep�blica de Botswana,la R�publique du Botswana,072,BWA,BWA,BWA
+REU,Reunion,R�union (Fr.),AFR,4,0,0,FRA,R�union,Reunion,Reuni�n,R�union,R�union,Reuni�n,R�union,638,FRA,FRA,FRA
+NLD,Netherlands,Netherlands,EUR,1,2,0,NLD,Netherlands,Netherlands,Pa�ses Bajos,Pays-Bas,the Kingdom of the Netherlands,el Reino de los Pa�ses Bajos,le Royaume des Pays-Bas,528,NLD,NLD,NLD
+CHE,Switzerland,Switzerland,EUR,1,0,0,CHE,Switzerland,Switzerland,Suiza,Suisse,the Swiss Confederation,la Confederaci�n Suiza,la Conf�d�ration suisse,756,CHE,CHE,CHE
+ECU,Ecuador,Ecuador,AME,1,2,0,ECU,Ecuador,Ecuador,Ecuador,�quateur,the Republic of Ecuador,la Rep�blica del Ecuador,la R�publique de l'�quateur,218,ECU,ECU,ECU
+HTI,Haiti,Haiti,AME,1,2,0,HTI,Haiti,Haiti,Hait�,Ha�ti,the Republic of Haiti,la Rep�blica de Hait�,la R�publique d'Ha�ti,332,HTI,HTI,HTI
+AUS,Ashmore and Cartier Islands,Ashmore & Cartier Is. (Aust.),OCE,4,1,1,AUS,Australia,Australia,Australia,Australie,Australia,Australia,l'Australie,036,AUS,AUS,AUS
+SRB,Serbia,Serbia,EUR,1,0,0,SRB,Serbia,Serbia,Serbia,Serbie,the Republic of Serbia,la Rep�blica de Serbia,la R�publique de Serbie,688,SRB,SRB,SRB
+NOR,Norway,Norway,EUR,1,2,0,NOR,Norway,Norway,Noruega,Norv�ge,the Kingdom of Norway,el Reino de Noruega,le Royaume de Norv�ge,578,NOR,NOR,NOR
+VNM,Viet Nam,Viet Nam,ASI,1,2,0,VNM,Viet Nam,Viet Nam,Viet Nam,Viet Nam,the Socialist Republic of Viet Nam,la Rep�blica Socialista de Viet Nam,la R�publique socialiste du Viet Nam,704,VNM,VNM,VNM
+DNK,Denmark,Denmark,EUR,1,2,0,DNK,Denmark,Denmark,Dinamarca,Danemark,the Kingdom of Denmark,el Reino de Dinamarca,le Royaume du Danemark,208,DNK,DNK,DNK
+CAN,Canada,Canada,AME,1,2,0,CAN,Canada,Canada,Canad�,Canada,Canada,el Canad�,le Canada,124,CAN,CAN,CAN
+xAC,Aksai Chin,,ASI,99,0,0,xAC,,,,,,,,,xAC,xAC,xAC
+CMR,Cameroon,Cameroon,AFR,1,0,0,CMR,Cameroon,Cameroon,Camer�n,Cameroun,the Republic of Cameroon,la Rep�blica del Camer�n,la R�publique du Cameroun,120,CMR,CMR,CMR
+UMI,Navassa Island,Navassa Island (USA),AME,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+PRT,Portugal,Portugal,EUR,1,2,0,PRT,Portugal,Portugal,Portugal,Portugal,the Portuguese Republic,la Rep�blica Portuguesa,la R�publique portugaise,620,PRT,PRT,PRT
+PRY,Paraguay,Paraguay,AME,1,0,0,PRY,Paraguay,Paraguay,Paraguay,Paraguay,the Republic of Paraguay,la Rep�blica del Paraguay,la R�publique du Paraguay,600,PRY,PRY,PRY
+UMI,Howland Island,Howland Island (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+JOR,Jordan,Jordan,ASI,1,0,0,JOR,Jordan,Jordan,Jordania,Jordanie,the Hashemite Kingdom of Jordan,el Reino Hachemita de Jordania,le Royaume hach�mite de Jordanie,400,JOR,JOR,JOR
+MYT,Mayotte,Mayotte,AFR,4,1,0,FRA,Mayotte,Mayotte,Mayotte,Mayotte,Mayotte,Mayotte,Mayotte,175,FRA,FRA,FRA
+LIE,Liechtenstein,Liechtenstein,EUR,1,0,0,LIE,Liechtensten,Liechtenstein,Liechtenstein,Liechtenstein,the Principality of Liechtenstein,el Principado de Liechtenstein,la Principaut� du Liechtenstein,438,LIE,LIE,LIE
+USA,United States of America,United States of America,AME,1,2,0,USA,USA,United States of America,EstadosUnidos de Am�rica,�tats-Unis d'Am�rique,the United States of America,los Estados Unidos de Am�rica,les �tats-Unis d'Am�rique,840,USA,USA,USA
+BLR,Belarus,Belarus,EUR,1,0,0,BLR,Belarus,Belarus,Belar�s,B�larus,the Republic of Belarus,la Rep�blica de Belar�s,la R�publique du B�larus,112,BLR,BLR,BLR
+SVN,Slovenia,Slovenia,EUR,1,0,0,SVN,Slovenia,Slovenia,Eslovenia,Slov�nie,the Republic of Slovenia,la Rep�blica de Eslovenia,la R�publique de Slov�nie,705,SVN,SVN,SVN
+IRL,Ireland,Ireland,EUR,1,2,0,IRL,Ireland,Ireland,Irlanda,Irlande,Ireland,Irlanda,l'Irlande,372,IRL,IRL,IRL
+PRI,Puerto Rico (USA),Puerto Rico (USA),AME,4,1,0,USA,Puerto Rico,Puerto Rico,Puerto Rico,Porto Rico,Puerto Rico,Puerto Rico,Porto Rico,630,USA,USA,USA
+TKM,Turkmenistan,Turkmenistan,ASI,1,0,0,TKM,Turkmenistan,Turkmenistan,Turkmenist�n,Turkm�nistan,Turkmenistan,Turkmenist�n,le Turkm�nistan,795,TKM,TKM,TKM
+LBR,Liberia,Liberia,AFR,1,0,0,LBR,Liberia,Liberia,Liberia,Lib�ria,the Republic of Liberia,la Rep�blica de Liberia,la R�publique du Lib�ria,430,LBR,LBR,LBR
+MWI,Malawi,Malawi,AFR,1,0,0,MWI,Malawi,Malawi,Malawi,Malawi,the Republic of Malawi,la Rep�blica de Malawi,la R�publique du Malawi,454,MWI,MWI,MWI
+CPV,Cabo Verde,Cape Verde,AFR,1,1,0,CPV,Cabo Verde,Cabo Verde,Cabo Verde,Cabo Verde,Republic of Cabo Verde,la Rep�blica de Cabo Verde,la R�publique de Cabo Verde,132,CPV,CPV,CPV
+COG,Congo,Congo,AFR,1,0,0,COG,Congo,Congo,Congo,Congo,the Republic of the Congo,la Rep�blica del Congo,la R�publique du Congo,178,COG,COG,COG
+CHL,Chile,Chile,AME,1,2,0,CHL,Chile,Chile,Chile,Chili,the Republic of Chile,la Rep�blica de Chile,la R�publique du Chili,152,CHL,CHL,CHL
+HKG,Hong Kong,"Hong Kong, China",ASI,5,2,0,CHN,"China,H.Kong","China, Hong Kong SAR","China, RAE de Hong Kong","Chine, RAS de Hong-Kong","China, Hong Kong Special Administrative Region","China, Regi�n Administrativa Especial de Hong Kong",Chine - R�gion administrative sp�ciale de Hong-Kong,344,CHN,CHN,CHN
+ABW,Aruba,Aruba (Neth.),AME,4,0,0,NLD,Aruba,Aruba,Aruba,Aruba,Aruba,Aruba,Aruba,533,NLD,NLD,NLD
+BIH,Bosnia and Herzegovina,Bosnia and Herzegovina,EUR,1,0,0,BIH,Bosnia Herzg,Bosnia and Herzegovina,Bosnia y Herzegovina,Bosnie-Herz�govine,Bosnia and Herzegovina,Bosnia y Herzegovina,la Bosnie-Herz�govine,070,BIH,BIH,BIH
+ESP,Spain,Spain,EUR,1,2,0,ESP,Spain,Spain,Espa�a,Espagne,the Kingdom of Spain,el Reino de Espa�a,le Royaume d'Espagne,724,ESP,ESP,ESP
+SSD,South Sudan,South Sudan,AFR,1,0,0,SSD,South Sudan,South Sudan,Sud�n del Sur,Soudan du Sud,the Republic of South Sudan,la Rep�blica de Sud�n del Sur,la R�publique du Soudan du Sud,728,SSD,SSD,SSD
+GRD,Grenada,Grenada,AME,1,1,0,GRD,Grenada,Grenada,Granada,Grenade,Grenada,Granada,la Grenade,308,GRD,GRD,GRD
+MNG,Mongolia,Mongolia,ASI,1,0,0,MNG,Mongolia,Mongolia,Mongolia,Mongolie,Mongolia,Mongolia,la Mongolie,496,MNG,MNG,MNG
+CRI,Costa Rica,Costa Rica,AME,1,2,0,CRI,Costa Rica,Costa Rica,Costa Rica,Costa Rica,the Republic of Costa Rica,la Rep�blica de Costa Rica,la R�publique du Costa Rica,188,CRI,CRI,CRI
+ZWE,Zimbabwe,Zimbabwe,AFR,1,0,0,ZWE,Zimbabwe,Zimbabwe,Zimbabwe,Zimbabwe,the Republic of Zimbabwe,la Rep�blica de Zimbabwe,la R�publique du Zimbabwe,716,ZWE,ZWE,ZWE
+KNA,Saint Kitts and Nevis,Saint Kitts and Nevis,AME,1,1,0,KNA,St Kitts Nev,Saint Kitts and Nevis,Saint Kitts y Nevis,Saint-Kitts-et-Nevis,Saint Kitts and Nevis,Saint Kitts y Nevis,Saint-Kitts-et-Nevis,659,KNA,KNA,KNA
+UMI,Wake Island,Wake Island (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+TJK,Tajikistan,Tajikistan,ASI,1,0,0,TJK,Tajikistan,Tajikistan,Tayikist�n,Tadjikistan,the Republic of Tajikistan,la Rep�blica de Tayikist�n,la R�publique du Tadjikistan,762,TJK,TJK,TJK
+ATG,Antigua and Barbuda,Antigua and Barbuda,AME,1,1,0,ATG,Antigua Barb,Antigua and Barbuda,Antigua y Barbuda,Antigua-et-Barbuda,Antigua and Barbuda,Antigua y Barbuda,Antigua-et-Barbuda,028,ATG,ATG,ATG
+ATA,Antarctica,Antarctica,--,0,2,0,ATA,Antarctica,Antarctica others,Antartida otros,Antarctique autres,Antarctica,Ant�rtida,Antarctique,010,ATA,ATA,ATA
+ARG,Argentina,Argentina,AME,1,2,0,ARG,Argentina,Argentina,Argentina,Argentine,the Argentine Republic,la Rep�blica Argentina,la R�publique argentine,032,ARG,ARG,ARG
+SHN,Saint Helena,Saint Helena *,AFR,3,1,0,GBR,St Helena,Saint Helena,Santa Elena,Sainte-H�l�ne,"Saint Helena, Ascension and Tristan da Cunha","Santa Elena, Ascension y Tristan da Cunha","Sainte-H�l�ne, Ascension et Tristan da Cunha",654,GBR,GBR,GBR
+SHN,Saint Helena,Gough *,AFR,3,1,0,GBR,St Helena,Saint Helena,Santa Elena,Sainte-H�l�ne,"Saint Helena, Ascension and Tristan da Cunha","Santa Elena, Ascension y Tristan da Cunha","Sainte-H�l�ne, Ascension et Tristan da Cunha",654,GBR,GBR,GBR
+KIR,Kiribati,Kiribati,OCE,1,1,0,KIR,Kiribati,Kiribati,Kiribati,Kiribati,the Republic of Kiribati,la Rep�blica de Kiribati,la R�publique de Kiribati,296,KIR,KIR,KIR
+MAF,Saint Martin,Saint Martin (Fr.),AME,4,0,0,FRA,Saint-Martin,Saint-Martin,Saint-Martin,Saint-Martin,Saint-Martin (French Part),Saint-Martin (Parte francesa),Saint-Martin (Partie fran�aise),663,FRA,FRA,FRA
+LTU,Lithuania,Lithuania,EUR,1,0,0,LTU,Lithuania,Lithuania,Lituania,Lituanie,the Republic of Lithuania,la Rep�blica de Lituania,la R�publique de Lituanie,440,LTU,LTU,LTU
+IRN,Iran (Islamic Republic of),Iran (Islamic Republic of),ASI,1,2,0,IRN,Iran,Iran (Islamic Rep. of),Ir�n (Rep. Isl�mica del),Iran (R�p. islamique d'),the Islamic Republic of Iran,la Rep�blica Isl�mica del Ir�n,la R�publique islamique d'Iran,364,IRN,IRN,IRN
+VUT,Vanuatu,Vanuatu,OCE,1,1,0,VUT,Vanuatu,Vanuatu,Vanuatu,Vanuatu,the Republic of Vanuatu,la Rep�blica de Vanuatu,la R�publique de Vanuatu,548,VUT,VUT,VUT
+PRT,Azores Islands,Azores Islands (Port.),EUR,4,1,0,PRT,Portugal,Portugal,Portugal,Portugal,the Portuguese Republic,la Rep�blica Portuguesa,la R�publique portugaise,620,PRT,PRT,PRT
+GIB,Gibraltar,Gibraltar *,EUR,3,0,0,GBR,Gibraltar,Gibraltar,Gibraltar,Gibraltar,Gibraltar,Gibraltar,Gibraltar,292,GBR,GBR,GBR
+NIU,Niue,Niue,OCE,1,0,0,NZL,Niue,Niue,Niue,Niou�,the Republic of Niue,la Rep�blica de Niue,la R�publique de Niou�,570,NZL,NZL,NZL
+SVK,Slovakia,Slovakia,EUR,1,0,0,SVK,Slovakia,Slovakia,Eslovaquia,Slovaquie,the Slovak Republic,la Rep�blica Eslovaca,la R�publique slovaque,703,SVK,SVK,SVK
+TON,Tonga,Tonga,OCE,1,1,0,TON,Tonga,Tonga,Tonga,Tonga,the Kingdom of Tonga,el Reino de Tonga,le Royaume des Tonga,776,TON,TON,TON
+xAB,Abyei,Abyei,AFR,99,0,0,xAB,,,,,,,,,xAB,xAB,xAB
+GRC,Greece,Greece,EUR,1,2,0,GRC,Greece,Greece,Grecia,Gr�ce,the Hellenic Republic,la Rep�blica Hel�nica,la R�publique hell�nique,300,GRC,GRC,GRC
+VAT,Holy See,Holy See,EUR,1,0,0,VAT,Holy See,Holy See,Santa Sede,Saint-Si�ge,Holy See,la Santa Sede,le Saint-Si�ge,336,VAT,VAT,VAT
+TZA,United Republic of Tanzania,United Republic of Tanzania,AFR,1,2,0,TZA,Tanzania,"Tanzania, United Rep. of",Rep. Unida de Tanzan�a,R�p.-Unie de Tanzanie,the United Republic of Tanzania,la Rep�blica Unida de Tanzan�a,la R�publique-Unie de Tanzanie,834,TZA,TZA,TZA
+BLM,Saint Barthelemy,Saint Barth�lemy (Fr.),AME,4,0,0,FRA,StBarth�lemy,Saint Barth�lemy,San Bartolom�,Saint-Barth�lemy,Saint Barth�lemy,San Bartolom�,Saint-Barth�lemy,652,FRA,FRA,FRA
+POL,Poland,Poland,EUR,1,0,0,POL,Poland,Poland,Polonia,Pologne,the Republic of Poland,la Rep�blica de Polonia,la R�publique de Pologne,616,POL,POL,POL
+VEN,Bird Island,,AME,4,0,0,VEN,Venezuela,"Venezuela, Boliv Rep of","Venezuela, Rep Boliv de","Venezuela, R�p boliv du",the Bolivarian Republic of Venezuela,la Rep�blica Bolivariana de Venezuela,la R�publique bolivarienne du Venezuela,862,VEN,VEN,VEN
+MLI,Mali,Mali,AFR,1,0,0,MLI,Mali,Mali,Mal�,Mali,the Republic of Mali,la Rep�blica de Mal�,la R�publique du Mali,466,MLI,MLI,MLI
+COK,Cook Islands,Cook Islands,OCE,1,1,0,NZL,Cook Is,Cook Islands,Islas Cook,�les Cook,the Cook Islands,las Islas Cook,les �les Cook,184,NZL,NZL,NZL
+TWN,Taiwan,Taiwan,ASI,5,1,0,CHN,"China,Taiwan",Taiwan Province of China,Prov. china de Taiw�n,Prov. chinoise de Ta�wan,Taiwan Province of China,Provincia china de Taiw�n,Province chinoise de Ta�wan,158,CHN,CHN,CHN
+VCT,Saint Vincent and the Grenadines,Saint Vincent and the Grenadines,AME,1,1,0,VCT,St Vincent,Saint Vincent/Grenadines,San Vicente/Grenadinas,Saint-Vincent/Grenadines,Saint Vincent and the Grenadines,San Vicente y las Granadinas,Saint-Vincent-et-les Grenadines,670,VCT,VCT,VCT
+BTN,Bhutan,Bhutan,ASI,1,0,0,BTN,Bhutan,Bhutan,Bhut�n,Bhoutan,the Kingdom of Bhutan,el Reino de Bhut�n,le Royaume du Bhoutan,064,BTN,BTN,BTN
+VGB,British Virgin Islands,British Virgin Islands *,AME,3,1,0,GBR,Br Virgin Is,British Virgin Islands,Islas V�rgenes Brit�n.,�les Vierges britanniq.,British Virgin Islands,Islas V�rgenes Brit�nicas,�les Vierges britanniques,092,GBR,GBR,GBR
+SEN,Senegal,Senegal,AFR,1,0,0,SEN,Senegal,Senegal,Senegal,S�n�gal,the Republic of Senegal,la Rep�blica del Senegal,la R�publique du S�n�gal,686,SEN,SEN,SEN
+ETH,Ethiopia,Ethiopia,AFR,1,0,0,ETH,Ethiopia,Ethiopia,Etiop�a,�thiopie,the Federal Democratic Republic of Ethiopia,la Rep�blica Democr�tica Federal de Etiop�a,la R�publique f�d�rale d�mocratique d'�thiopie,231,ETH,ETH,ETH
+SDN,Halaib Triangle,,AFR,99,2,0,SDN,Sudan,Sudan,Sud�n,Soudan,the Republic of the Sudan,la Rep�blica del Sud�n,la R�publique du Soudan,729,SDN,SDN,SDN
+UMI,Palmyra Atoll,Palmyra Atoll (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+PAN,Panama,Panama,AME,1,2,0,PAN,Panama,Panama,Panam�,Panama,the Republic of Panama,la Rep�blica de Panam�,la R�publique du Panama,591,PAN,PAN,PAN
+xJK,Jammu and Kashmir,Jammu and Kashmir **,ASI,99,0,0,xJK,,,,,,,,,xJK,xJK,xJK
+IDN,Indonesia,Indonesia,ASI,1,2,0,IDN,Indonesia,Indonesia,Indonesia,Indon�sie,the Republic of Indonesia,la Rep�blica de Indonesia,la R�publique d'Indon�sie,360,IDN,IDN,IDN
+COL,Colombia,Colombia,AME,1,2,0,COL,Colombia,Colombia,Colombia,Colombie,the Republic of Colombia,la Rep�blica de Colombia,la R�publique de Colombie,170,COL,COL,COL
+MMR,Myanmar,Myanmar,ASI,1,2,0,MMR,Myanmar,Myanmar,Myanmar,Myanmar,the Republic of the Union of Myanmar,la Rep�blica de la Uni�n de Myanmar,R�publique de l'Union du Myanmar,104,MMR,MMR,MMR
+SGS,South Georgia and the South Sandwich Islands,South Georgia and the South Sandwich Is.,AME,4,1,0,GBR,SouthGeorgia,SouthGeorgia/Sandwich Is,Georgia S.-Is.Sandw.Sur,G�orgie Sud-�les Sand.S.,South Georgia and the South Sandwich Islands,Islas Georgias del Sur y Sandwich del Sur,�les G�orgie du Sud et Sandwich du Sud,239,GBR,GBR,GBR
+NZL,New Zealand,New Zealand,OCE,1,1,0,NZL,New Zealand,New Zealand,Nueva Zelandia,Nouvelle-Z�lande,New Zealand,Nueva Zelandia,la Nouvelle-Z�lande,554,NZL,NZL,NZL
+CYP,Cyprus,Cyprus,EUR,1,0,0,CYP,Cyprus,Cyprus,Chipre,Chypre,the Republic of Cyprus,la Rep�blica de Chipre,la R�publique de Chypre,196,CYP,CYP,CYP
+KAZ,Kazakhstan,Kazakhstan,ASI,1,0,0,KAZ,Kazakhstan,Kazakhstan,Kazajst�n,Kazakhstan,the Republic of Kazakhstan,la Rep�blica de Kazajst�n,la R�publique du Kazakhstan,398,KAZ,KAZ,KAZ
+PCN,Pitcairn,Pitcairn *,OCE,3,1,0,GBR,Pitcairn Is,Pitcairn Islands,Islas Pitcairn,�les Pitcairn,Pitcairn Islands,Islas Pitcairn,�les Pitcairn,612,GBR,GBR,GBR
+MUS,Chagos Archipelago,Chagos Archipelago (Mauritius),ASI,4,1,0,MUS,Mauritius,Mauritius,Mauricio,Maurice,the Republic of Mauritius,la Rep�blica de Mauricio,la R�publique de Maurice,480,MUS,MUS,MUS
+CUW,Curacao,Cura�ao (Neth.),EUR,4,1,0,NLD,Cura�ao,Curacao,Cura�ao,Cura�ao,Cura�ao,Cura�ao,Cura�ao,531,NLD,NLD,NLD
+URY,Uruguay,Uruguay,AME,1,2,0,URY,Uruguay,Uruguay,Uruguay,Uruguay,the Eastern Republic of Uruguay,la Rep�blica Oriental del Uruguay,la R�publique orientale de l'Uruguay,858,URY,URY,URY
+IMN,Isle of Man,Isle of Man (UK),EUR,4,1,0,GBR,Isle of Man,Isle of Man,Isla de Man,�le de Man,Isle of Man,Isla de Man,�le de Man,833,GBR,GBR,GBR
+LAO,Lao People's Democratic Republic,Lao People's Democratic Republic,ASI,1,0,0,LAO,Lao P.Dem.R.,Lao People's Dem. Rep.,Rep. Dem. Pop. Lao,R�p. d�m. pop. lao,the Lao People's Democratic Republic,la Rep�blica Democr�tica Popular Lao,la R�publique d�mocratique populaire lao,418,LAO,LAO,LAO
+SAU,Saudi Arabia,Saudi Arabia,ASI,1,2,0,SAU,Saudi Arabia,Saudi Arabia,Arabia Saudita,Arabie saoudite,the Kingdom of Saudi Arabia,el Reino de Arabia Saudita,le Royaume d'Arabie saoudite,682,SAU,SAU,SAU
+LUX,Luxembourg,Luxembourg,EUR,1,0,0,LUX,Luxembourg,Luxembourg,Luxemburgo,Luxembourg,the Grand Duchy of Luxembourg,el Gran Ducado de Luxemburgo,le Grand-Duch� de Luxembourg,442,LUX,LUX,LUX
+DMA,Dominica,Dominica,AME,1,1,0,DMA,Dominica,Dominica,Dominica,Dominique,the Commonwealth of Dominica,el Commonwealth de Dominica,le Commonwealth de la Dominique,212,DMA,DMA,DMA
+UMI,Johnston Atoll,Johnston Atoll (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+GUM,Guam,Guam *,OCE,3,1,0,USA,Guam,Guam,Guam,Guam,Guam,Guam,Guam,316,USA,USA,USA
+GGY,Guernsey,Guernsey (UK),EUR,4,1,0,GBR,Guernsey,Guernsey,Isla de Guernesey,Guernesey,Bailiwick of Guernsey,Isla de Guernesey,Guernesey,831,GBR,GBR,GBR
+MAR,Morocco,Morocco,AFR,1,0,0,MAR,Morocco,Morocco,Marruecos,Maroc,the Kingdom of Morocco,el Reino de Marruecos,le Royaume du Maroc,504,MAR,MAR,MAR
+BHR,Bahrain,Bahrain,ASI,1,1,0,BHR,Bahrain,Bahrain,Bahrein,Bahre�n,the Kingdom of Bahrain,el Reino de Bahrein,le Royaume de Bahre�n,048,BHR,BHR,BHR
+GNB,Guinea-Bissau,Guinea-Bissau,AFR,1,2,0,GNB,GuineaBissau,Guinea-Bissau,Guinea-Bissau,Guin�e-Bissau,the Republic of Guinea-Bissau,la Rep�blica de Guinea-Bissau,la R�publique de Guin�e-Bissau,624,GNB,GNB,GNB
+CYM,Cayman Islands,Cayman Islands *,AME,3,1,0,GBR,Cayman Is,Cayman Islands,Islas Caim�n,�les Ca�manes,Cayman Islands,Islas Caim�n,les �les Ca�manes,136,GBR,GBR,GBR
+QAT,Qatar,Qatar,ASI,1,2,0,QAT,Qatar,Qatar,Qatar,Qatar,the State of Qatar,el Estado de Qatar,l'�tat du Qatar,634,QAT,QAT,QAT
+GIN,Guinea,Guinea,AFR,1,2,0,GIN,Guinea,Guinea,Guinea,Guin�e,the Republic of Guinea,la Rep�blica de Guinea,la R�publique de Guin�e,324,GIN,GIN,GIN
+RUS,Russian Federation,Russian Federation,EUR,1,2,0,RUS,Russian Fed,Russian Federation,Federaci�n de Rusia,F�d�ration de Russie,the Russian Federation,la Federaci�n de Rusia,la F�d�ration de Russie,643,RUS,RUS,RUS
+JPN,Japan,Japan,ASI,1,1,0,JPN,Japan,Japan,Jap�n,Japon,Japan,el Jap�n,le Japon,392,JPN,JPN,JPN
+BGD,Bangladesh,Bangladesh,ASI,1,2,0,BGD,Bangladesh,Bangladesh,Bangladesh,Bangladesh,the People's Republic of Bangladesh,la Rep�blica Popular de Bangladesh,la R�publique populaire du Bangladesh,050,BGD,BGD,BGD
+STP,Sao Tome and Principe,Sao Tome and Principe,AFR,1,1,0,STP,Sao Tome Prn,Sao Tome and Principe,Santo Tom� y Pr�ncipe,Sao Tom�-et-Principe,the Democratic Republic of Sao Tome and Principe,la Rep�blica Democr�tica de Santo Tom� y Pr�ncipe,la R�publique d�mocratique de Sao Tom�-et-Principe,678,STP,STP,STP
+LSO,Lesotho,Lesotho,AFR,1,0,0,LSO,Lesotho,Lesotho,Lesotho,Lesotho,the Kingdom of Lesotho,el Reino de Lesotho,le Royaume du Lesotho,426,LSO,LSO,LSO
+BRA,Brazil,Brazil,AME,1,2,0,BRA,Brazil,Brazil,Brasil,Br�sil,the Federative Republic of Brazil,la Rep�blica Federativa del Brasil,la R�publique f�d�rative du Br�sil,076,BRA,BRA,BRA
+BOL,Bolivia (Plurinational State of),Bolivia (Plurinational State of),AME,1,0,0,BOL,Bolivia,Bolivia (Plurinat.State),Bolivia (Estado Plurin.),Bolivie (�tat plurinat.),the Plurinational State of Bolivia,el Estado Plurinacional de Bolivia,l'�tat plurinational de Bolivie,068,BOL,BOL,BOL
+MOZ,Mozambique,Mozambique,AFR,1,2,0,MOZ,Mozambique,Mozambique,Mozambique,Mozambique,the Republic of Mozambique,la Rep�blica de Mozambique,la R�publique du Mozambique,508,MOZ,MOZ,MOZ
+BES,Bonaire,Bonaire (Neth.),AME,4,1,0,NLD,Bonaire/Eust,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,Bonaire/S.Eustatius/Saba,"Bonaire, Sint Eustatius and Saba","Bonaire, Sint Eustatius y Saba","Bonaire, Sint Eustatius et Saba",535,NLD,NLD,NLD
+PRT,Madeira Island,Madeira Islands (Port.),EUR,4,1,0,PRT,Portugal,Portugal,Portugal,Portugal,the Portuguese Republic,la Rep�blica Portuguesa,la R�publique portugaise,620,PRT,PRT,PRT
+NPL,Nepal,Nepal,ASI,1,0,0,NPL,Nepal,Nepal,Nepal,N�pal,Federal Democratic Republic of Nepal,Rep�blica Federal Democr�tica de Nepal,R�publique d�mocratique f�d�rale du Nepal,524,NPL,NPL,NPL
+UMI,Midway Islands,Midway Islands (USA),OCE,4,0,0,USA,US Minor Is,US Minor Outlying Is.,Is Menores Perif�ricasEU,�les Mineures Eloign�sEU,the United States Minor Islands,Islas Menores Perif�ricas de los Estados Unidos,�les mineures �loign�es des �tats-Unis,581,USA,USA,USA
+MHL,Marshall Islands,Marshall Islands,OCE,1,1,0,MHL,Marshall Is,Marshall Islands,Islas Marshall,�les Marshall,the Republic of the Marshall Islands,la Rep�blica de las Islas Marshall,la R�publique des �les Marshall,584,MHL,MHL,MHL
+ERI,Eritrea,Eritrea,AFR,1,2,0,ERI,Eritrea,Eritrea,Eritrea,�rythr�e,the State of Eritrea,el Estado de Eritrea,l'�tat d'�rythr�e,232,ERI,ERI,ERI
+HUN,Hungary,Hungary,EUR,1,0,0,HUN,Hungary,Hungary,Hungr�a,Hongrie,Hungary,Hungr�a,la Hongrie,348,HUN,HUN,HUN
+DOM,Dominican Republic,Dominican Republic,AME,1,2,0,DOM,Dominican Rp,Dominican Republic,Rep�blica Dominicana,R�publique dominicaine,the Dominican Republic,la Rep�blica Dominicana,la R�publique dominicaine,214,DOM,DOM,DOM
+KHM,Cambodia,Cambodia,ASI,1,2,0,KHM,Cambodia,Cambodia,Camboya,Cambodge,the Kingdom of Cambodia,el Reino de Camboya,le Royaume du Cambodge,116,KHM,KHM,KHM
+SXM,Sint Maarten,Sint Maarten (Neth.),EUR,4,0,0,NLD,Sint Maarten,Sint Maarten,Sint Maarten,Sint Maarten,Sint Maarten (Dutch Part),Sint Maarten (Parte de los Pa�ses Bajos),Sint Maarten (Partie n�erlandaise),534,NLD,NLD,NLD
+LBY,Libya,Libya,AFR,1,0,0,LBY,Libya,Libya,Libia,Libye,State of Libya,Estado de Libia,l'�tat de Libye,434,LBY,LBY,LBY
+TTO,Trinidad and Tobago,Trinidad and Tobago,AME,1,1,0,TTO,Trinidad Tob,Trinidad and Tobago,Trinidad y Tabago,Trinit�-et-Tobago,the Republic of Trinidad and Tobago,la Rep�blica de Trinidad y Tabago,la R�publique de Trinit�-et-Tobago,780,TTO,TTO,TTO
+MEX,Mexico,Mexico,AME,1,2,0,MEX,Mexico,Mexico,M�xico,Mexique,the United Mexican States,los Estados Unidos Mexicanos,les �tats-Unis du Mexique,484,MEX,MEX,MEX
+LCA,Saint Lucia,Saint Lucia,AME,1,0,0,LCA,St Lucia,Saint Lucia,Santa Luc�a,Sainte-Lucie,Saint Lucia,Santa Luc�a,Sainte-Lucie,662,LCA,LCA,LCA
+ARE,United Arab Emirates,United Arab Emirates,ASI,1,2,0,ARE,Untd Arab Em,United Arab Emirates,Emiratos �rabes Unidos,�mirats arabes unis,the United Arab Emirates,los Emiratos �rabes Unidos,les �mirats arabes unis,784,ARE,ARE,ARE
+BVT,Bouvet Island,Bouvet Island,AFR,4,0,0,NOR,Bouvet Is,Bouvet Island,Isla Bouvet,�le Bouvet,Bouvet Island,Isla Bouvet,�le Bouvet,074,NOR,NOR,NOR
+KGZ,Kyrgyzstan,Kyrgyzstan,ASI,1,0,0,KGZ,Kyrgyzstan,Kyrgyzstan,Kirguist�n,Kirghizistan,the Kyrgyz Republic,la Rep�blica Kirguisa,la R�publique kirghize,417,KGZ,KGZ,KGZ
+CCK,Cocos (Keeling) Islands,Cocos (Keeling) Is. (Aust.),OCE,4,1,0,AUS,Cocos Is,Cocos (Keeling) Islands,Islas Cocos (Keeling),�les des Cocos (Keeling),Cocos (Keeling) Islands,Islas Cocos (Keeling),�les des Cocos (Keeling),166,AUS,AUS,AUS
+RWA,Rwanda,Rwanda,AFR,1,0,0,RWA,Rwanda,Rwanda,Rwanda,Rwanda,the Republic of Rwanda,la Rep�blica de Rwanda,la R�publique du Rwanda,646,RWA,RWA,RWA
+DJI,Djibouti,Djibouti,AFR,1,2,0,DJI,Djibouti,Djibouti,Djibouti,Djibouti,the Republic of Djibouti,la Rep�blica de Djibouti,la R�publique de Djibouti,262,DJI,DJI,DJI
+TUR,Turkey,Turkey,ASI,1,2,0,TUR,Turkey,Turkey,Turqu�a,Turquie,the Republic of Turkey,la Rep�blica de Turqu�a,la R�publique turque,792,TUR,TUR,TUR
+BEL,Belgium,Belgium,EUR,1,0,0,BEL,Belgium,Belgium,B�lgica,Belgique,the Kingdom of Belgium,el Reino de B�lgica,le Royaume de Belgique,056,BEL,BEL,BEL
+HND,Honduras,Honduras,AME,1,2,0,HND,Honduras,Honduras,Honduras,Honduras,the Republic of Honduras,la Rep�blica de Honduras,la R�publique du Honduras,340,HND,HND,HND
+MNP,Northern Mariana Is. (USA),Northern Mariana Is. (USA),OCE,4,1,0,USA,N Marianas,Northern Mariana Is.,Islas Marianas septent.,�les Mariannes du Nord,Northern Mariana Islands,Islas Marianas septentrionales,Commonwealth des Mariannes du Nord,580,USA,USA,USA
+AUT,Austria,Austria,EUR,1,0,0,AUT,Austria,Austria,Austria,Autriche,the Republic of Austria,la Rep�blica de Austria,la R�publique d'Autriche,040,AUT,AUT,AUT
+NCL,New Caledonia,New Caledonia *,OCE,3,1,0,FRA,NewCaledonia,New Caledonia,Nueva Caledonia,Nouvelle-Cal�donie,New Caledonia,Nueva Caledonia,Nouvelle-Cal�donie,540,FRA,FRA,FRA
+PNG,Papua New Guinea,Papua New Guinea,OCE,1,2,0,PNG,Papua N Guin,Papua New Guinea,Papua Nueva Guinea,Papouasie-Nlle-Guin�e,Independent State of Papua New Guinea,Estado Independiente de Papua Nueva Guinea,�tat ind�pendant de Papouasie-Nouvelle-Guin�e,598,PNG,PNG,PNG
+FRO,Faroe Islands,Faroe Islands (Denmark),EUR,4,1,0,DNK,Faroe Is,Faroe Islands,Islas Feroe,�les F�ro�,Faroe Islands,las Islas Feroe,les �les F�ro�,234,DNK,DNK,DNK
+PRK,Democratic People's Republic of Korea,Democratic People's Republic of Korea,ASI,1,2,0,PRK,Korea D P Rp,"Korea, Dem. People's Rep",Rep. Pop. Dem. de Corea,R�p. pop. d�m. de Cor�e,the Democratic People's Republic of Korea,la Rep�blica Popular Democr�tica de Corea,la R�publique populaire d�mocratique de Cor�e,408,PRK,PRK,PRK
+SUR,Suriname,Suriname,AME,1,0,0,SUR,Suriname,Suriname,Suriname,Suriname,the Republic of Suriname,la Rep�blica de Suriname,la R�publique du Suriname,740,SUR,SUR,SUR
+ISR,Israel,Israel,ASI,1,0,0,ISR,Israel,Israel,Israel,Isra�l,the State of Israel,el Estado de Israel,l'�tat d'Isra�l,376,ISR,ISR,ISR
+ESH,Western Sahara,Western Sahara *,AFR,3,0,0,ESH,Westn Sahara,Western Sahara,Sahara Occidental,Sahara occidental,Western Sahara,S�hara occidental,Sahara occidental,732,ESH,ESH,ESH
+SYR,Syrian Arab Republic,Syrian Arab Republic,ASI,1,0,0,SYR,Syria,Syrian Arab Republic,Rep�blica �rabe Siria,R�p. arabe syrienne,the Syrian Arab Republic,la Rep�blica �rabe Siria,la R�publique arabe syrienne,760,SYR,SYR,SYR
+UZB,Uzbekistan,Uzbekistan,ASI,1,0,0,UZB,Uzbekistan,Uzbekistan,Uzbekist�n,Ouzb�kistan,the Republic of Uzbekistan,la Rep�blica de Uzbekist�n,la R�publique d'Ouzb�kistan,860,UZB,UZB,UZB
+PER,Peru,Peru,AME,1,2,0,PER,Peru,Peru,Per�,P�rou,the Republic of Peru,la Rep�blica del Per�,la R�publique du P�rou,604,PER,PER,PER
+KEN,Kenya,Kenya,AFR,1,0,0,KEN,Kenya,Kenya,Kenya,Kenya,the Republic of Kenya,la Rep�blica de Kenya,la R�publique du Kenya,404,KEN,KEN,KEN
+NAM,Namibia,Namibia,AFR,1,0,0,NAM,Namibia,Namibia,Namibia,Namibie,the Republic of Namibia,la Rep�blica de Namibia,la R�publique de Namibie,516,NAM,NAM,NAM
+GAB,Gabon,Gabon,AFR,1,2,0,GAB,Gabon,Gabon,Gab�n,Gabon,the Gabonese Republic,la Rep�blica Gabonesa,la R�publique gabonaise,266,GAB,GAB,GAB
+LVA,Latvia,Latvia,EUR,1,0,0,LVA,Latvia,Latvia,Letonia,Lettonie,the Republic of Latvia,la Rep�blica de Letonia,la R�publique de Lettonie,428,LVA,LVA,LVA
+MKD,North Macedonia,North Macedonia,EUR,1,0,0,MKD,NorthMacedon,North Macedonia,Macedonia del Norte,Mac�doine du Nord,the Republic of North Macedonia,la Rep�blica de Macedonia del Norte,la R�publique de Mac�doine du Nord,807,MKD,MKD,MKD
+AFG,Afghanistan,Afghanistan,ASI,1,0,0,AFG,Afghanistan,Afghanistan,Afganist�n,Afghanistan,The Islamic Republic of Afghanistan,la Rep�blica Isl�mica del Afganist�n,la R�publique islamique d'Afghanistan,004,AFG,AFG,AFG
+TCA,Turks and Caicos Islands,Turks and Caicos Islands *,AME,3,1,0,GBR,Turks Caicos,Turks and Caicos Is.,Islas Turcas y Caicos,�les Turques et Ca�ques,Turks and Caicos Islands,Islas Turcas y Caicos,�les Turques et Ca�ques,796,GBR,GBR,GBR
+AIA,Anguilla,Anguilla *,AME,3,1,0,GBR,Anguilla,Anguilla,Anguila,Anguilla,Anguilla,Anguila,Anguilla,660,GBR,GBR,GBR
