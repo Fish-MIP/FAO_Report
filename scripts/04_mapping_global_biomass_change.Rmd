@@ -1189,6 +1189,18 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = eez_proj, fill = "white",
                         colour = "white", show.legend = F, linewidth = 0.25),
                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F),
+                #Adding coastlines and international boundaries
+                geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
+                        color = "black", show.legend = F, 
+                        aes(linetype = as.factor(TYPE))),
+                scale_linetype_manual(values = c("1" = "twodash", 
+                                                 "2" = "dotdash", 
+                                                 "3" = "dashed", 
+                                                 "4" = "dotted")),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound[world_bound$TYPE == 8,], 
+                        linetype = "longdash", lwd = 0.25, color = "#838285",
+                        show.legend = F),
                 theme_bw(),
                 theme(axis.title = element_blank(), 
                       panel.border = element_rect(colour = NA),
@@ -1229,19 +1241,13 @@ legend <- get_legend(p00_585)
 #Remove legend from last plot
 p00_585 <- p00_585+theme(legend.position = "none")
 
-#Create title for 
-title <- ggdraw()+
-  draw_label("Mean % change in fish biomass from 2005-2014")+
-  theme(plot.margin = margin(0, 0, 0, 0, unit = "cm"))
-
 #Plotting everything together
-fao_reg_plots <- plot_grid(title, plot_grid(p50_126, p50_585, ncol = 2, 
-                                            nrow = 1, labels = c("a", "b"), 
-                                            label_x = 0.1),
+fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+                                     labels = c("a", "b"), label_x = 0.1),
                            plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                      labels = c("c", "d"), label_x = 0.1),
-                           legend, ncol = 1, nrow = 4, 
-                           rel_heights = c(0.15, 1, 1, 0.4))
+                           legend, ncol = 1, nrow = 3, 
+                           rel_heights = c(1, 1, 0.4))
 
 #Check final map
 fao_reg_plots
@@ -1254,19 +1260,17 @@ ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"),
 ```
   
 ## Figure 9 FAO report - FAO sustainable fisheries
-Finally, we will create a choropleth map for the proportion of sustainable fisheries within FAO regions.  
+Finally, we will create a choropleth map for the proportion of sustainable fisheries within FAO regions for 2019.  
   
 ```{r}
 #Loading FAO fisheries data
-fao_fisheries <- read_csv("../data/FAO_fisheries_data.csv", 
+fao_fisheries <- read_csv(list.files(out_folder, 
+                                     pattern = "FAO_fisheries_data.csv",
+                                     full.names = T, recursive = T), 
                           #Keeping only relevant columns
-                          col_select = c("GEO_AREA_NAME", "TIME_PERIOD", "OBS_VALUE")) |> 
-  #We will use data for FAO regions only and for 2019 only
-  filter(TIME_PERIOD == 2019 & str_detect(GEO_AREA_NAME, "FAO")) |> 
+                          col_select = c("GEO_AREA_NAME", "OBS_VALUE")) |>
   #We will simplify the names of the regions to merge with our FAO data
-  mutate(GEO_AREA_NAME = str_remove(GEO_AREA_NAME, "FAO Major Fishing Area: ")) |> 
-  #We will remove the year column because we do not need it
-  select(!TIME_PERIOD) 
+  mutate(GEO_AREA_NAME = str_remove(GEO_AREA_NAME, "FAO Major Fishing Area: "))
 
 fao_fisheries <- fao_proj |> 
   left_join(fao_fisheries, by = join_by("NAME_EN" == "GEO_AREA_NAME"))
