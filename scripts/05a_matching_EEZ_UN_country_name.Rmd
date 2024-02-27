@@ -1,0 +1,195 @@
+---
+title: "Matching EEZs to UN country names"
+author: "Camilla Novaglio"
+date: "2024-02-26"
+output: pdf_document
+---
+
+## Matching EEZs to UN country names
+
+```{r}
+#Base folder for project
+base_folder <- "/rd/gem/private/users/camillan"
+
+#Defining location of notebook outputs
+out_folder <- file.path(base_folder, "FAO_Report")
+if(!dir.exists(out_folder)){
+  dir.create(out_folder)
+}
+
+#FAO_EEZ key - Contains continent information
+fao_eez <- read_csv(list.files(out_folder, 
+                               pattern = "FAO-MajorAreas_EEZs_keys.csv", 
+                               full.names = T, recursive = T))
+
+fao_eez<-read.csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO_Major_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+
+### start work in progress CN  ----
+
+fao_ct<-read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") %>% 
+  unique()
+
+head(fao_ct)
+
+# important columns
+# ISO3CD = ISO code for countries and territories - not ROMNAM-specific!
+# ROMNAM = name for countries and territories 
+# MAPLAB = name for countries and territories but slightly different from ROMNAM
+# CONTCD = continent
+# Name_En = name for countries and territories but less specific than ROMNAM
+# ISO_3 = ISO code for countries 
+
+# manually adjusted names due to not accepted characters in Name_En and ROMNAM
+# Cote dIvoire
+# 0land Islands
+# Reunion
+# Curacao
+
+# only for ROMNAME
+# Halaib Triangle
+# Bir Tawil
+# Schweiz#Suisse#Svizzera#Svizra -> Switzerland
+# Saint Barthelemy
+# Halaib Triangle
+# BelgiÔøΩ#Belgique#Belgien -> belgium
+
+# create a country name column 
+key1<-fao_ct %>% 
+  select(c("ISO_3")) %>% 
+  unique()
+
+head(key1)
+filter(key1, ISO_3 == "AUS" )
+
+key2<-fao_ct %>% 
+  select(c("ISO3CD", "Name_En")) %>% 
+  rename(ISO_3=ISO3CD,Country = Name_En) %>% 
+  unique()
+
+head(key2)
+filter(key2, ISO_3 == "AUS" )
+
+key3<-key1 %>% 
+  left_join(key2)
+
+head(key3)
+filter(key3, ISO_3 == "AUS" )
+
+# are there any repetition? 
+duplicated(key3$ISO_3)
+duplicated(key2$ISO_3)
+
+# add country name to full dataset 
+fao_ct_reduced<-fao_ct %>% 
+  full_join(key3) %>% 
+  select(-c(
+    "CONTCD", 
+    "STSCOD", 
+    "TYP025", 
+    "DEL025", 
+    "ISOADM", 
+    "Char12_Ide", 
+    "Name_Es", 
+    "Name_Fr", 
+    "ISO3_CNT1", 
+    "ISO3_CNT2", 
+    "O_Name_Es",
+    "O_Name_Fr",
+    )) %>% 
+  unique()
+
+head(fao_ct_reduced)
+nrow(fao_ct)
+nrow(fao_ct_reduced) 
+
+## add info from Stefania just to check names (which should be the ons to use) and information. 
+# same info but actually cleaner though no country code 
+fao_st<-read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") %>% 
+  unique()
+
+head(fao_st)
+head(fao_ct_reduced)
+
+# similar so use for merging - more in st
+sort(unique(fao_ct_reduced$ISO3CD))
+sort(unique(fao_st$ISO3_Code))
+
+# Use for merging - call this _stefania and will be useful when merging EEZs
+sort(unique(fao_ct_reduced$Name_En))
+sort(unique(fao_st$Name_En))
+
+setdiff(sort(unique(fao_ct_reduced$Name_En)),sort(unique(fao_st$Name_En)))
+setdiff(sort(unique(fao_st$Name_En)),sort(unique(fao_ct_reduced$Name_En)))
+
+# use for merging too? call Stefania
+sort(unique(fao_ct_reduced$O_Name_En))
+sort(unique(fao_st$Official_Name_En))
+
+key1<-fao_st %>% 
+  select(c(ISO3_Code, Name_En, Official_Name_En)) %>% 
+  unique() %>% 
+  rename(ISO3CD = ISO3_Code, Name_En_stefania = Name_En, Official_Name_En_Stefania = Official_Name_En)
+
+final_key<-fao_ct_reduced %>% 
+  full_join(key1)
+
+# ## Consider file from Reg 
+# reg_code<-read.csv("/home/dbpm/FAO_Report/data/CountryLettterCodes_cleaned_CN.csv")
+# 
+# # head(reg_code)
+# # ISO_A2 = name for countries and territories ~ ROMNAM
+# # UN_num = ISO code for countries and territories ~ ISO3CD
+#  
+# ## differences countries and territories FAO/Reg:
+# setdiff(sort(unique(fao_ct$ISO3CD)), sort(unique(reg_code$UN_num))) # in FAO but not in Reg 
+# # [1] "ALA" "xAB" "xAC" "xAP" "xJK" "xPI" "xRI" "xSI" "xSK" "xSR"
+# setdiff(sort(unique(reg_code$UN_num)), sort(unique(fao_ct$ISO3CD))) # opposite
+# # [1] "IOT"
+# 
+# # differences countries FAO/Reg:
+# setdiff(sort(unique(fao_ct$ISO_3)), sort(unique(reg_code$UN_num))) 
+# # "xAB" "xAC" "xJK" "xPI" "xSI" "xSR"
+# setdiff(sort(unique(reg_code$UN_num)), sort(unique(fao_ct$ISO_3)))# in reg but not in FAO though these are countries and territories names inReg's ...
+# # [1] "ABW" "AIA" "ASM" "ATF" "BES" "BLM" "BMU" "BVT" "CCK" "COK" "CUW" "CXR" "CYM"
+# # [14] "FLK" "FRO" "GGY" "GIB" "GLP" "GRL" "GUF" "GUM" "HKG" "HMD" "IMN" "IOT" "JEY"
+# # [27] "MAC" "MAF" "MNP" "MSR" "MTQ" "MYT" "NCL" "NFK" "NIU" "PCN" "PRI" "PYF" "REU"
+# # [40] "SGS" "SHN" "SJM" "SPM" "SXM" "TCA" "TKL" "TWN" "UMI" "VGB" "VIR" "WLF"
+# # e.g. aruba, anguilla 
+#
+## Reg has the same type of info as the FAO data. no key for EEZ, so not useful. 
+
+#### merge with EEZ info 
+trial<-fao_eez[19:nrow(fao_eez),] %>% 
+  select(-c("F_CODE", "OCEAN", "MRGID", "SOVEREIGN2", "SOVEREIGN3","region_code", "sub_region",
+"sub_region_code")) #%>% # remove FAO area and useless info
+  # mutate(nm_mrgd = str_replace(nm_mrgd, " Exclusive Economic Zone", ""))
+  
+head(trial)
+head(final_key)
+
+# eez to FAO countries conversion
+# SOVEREIGN1 == ISO_3 
+# nm_mrgd == Name_En # somethimes missing so maybe need to use ROMNAM (disputed/unclaimed terrotories)? and to keep the other countries and territories name columns  
+# region == CONTCD # keep CONTCD 
+# M49 in FAO data links to the countries and territories Stefania sent 
+
+# try merging but I doubt it will go well... 
+trial<-trial %>% 
+  rename(Country = SOVEREIGN1, Name_EEZ = nm_mrgd) %>% 
+  unique()
+
+# # not really working becasue ISO_3 is not a code but a name, in any case, this would be hard to make work. so print the actual file with EEZ 
+# all_info<-final_key %>% 
+#   full_join(trial)
+
+# print all files for checking and combining 
+
+write.csv(final_key, "/home/dbpm/FAO_Report/data/FAO_countries_key.csv") 
+# write.csv(all_info, "/home/dbpm/FAO_Report/data/FAO_countries_and_EEZ_key.csv") 
+write.csv(trial, "/home/dbpm/FAO_Report/data/EEZ_key.csv")
+  
+## end work in progress ----
+
+## NEXT STEPS load the new key dataset and replace "fao_eez" with the new key dataset. 
+```
+
