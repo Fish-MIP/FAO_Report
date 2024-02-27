@@ -511,12 +511,14 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                         fill = NA, colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
                 geom_sf(inherit.aes = F, 
-                        data = world[world$CONTCD != "ASI",]),
+                        data = world[world$CONTCD != "ASI",], color = "#dbdade",
+                        fill = "#dbdade"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound_wgs84, lwd = 0.25, 
                         color = "black", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("1" = "twodash", 
+                scale_linetype_manual(values = c("0" = "solid",
+                                                 "1" = "twodash", 
                                                  "2" = "dotdash", 
                                                  "3" = "dashed", 
                                                  "4" = "dotted")),
@@ -1283,12 +1285,20 @@ Finally, we can map this information.
   
 ```{r}
  ggplot()+
-  geom_sf(data = fao_eez_shp_proj, fill = "white")+
+  geom_sf(data = eez_proj, fill = "white", colour = "white")+
   #Plotting FAO classified by ocean basin
   geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
   scale_fill_distiller(palette = "YlGnBu", direction = 1)+
   #Plotting base map
-  geom_sf(data = world_proj)+
+  geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
+  #Adding coastlines and international boundaries
+  geom_sf(data = world_bound, lwd = 0.25, color = "black", show.legend = F, 
+          aes(linetype = as.factor(TYPE)))+
+  scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
+                                   "2" = "dotdash", "3" = "dashed", 
+                                   "4" = "dotted"))+
+  geom_sf(data = world_bound[world_bound$TYPE == 8,], linetype = "longdash", 
+          lwd = 0.25, color = "#838285", show.legend = F)+
   #Removing grey background
   theme_bw()+
   #Formatting legend title
@@ -1296,8 +1306,7 @@ Finally, we can map this information.
                              title.hjust = 0.5, barwidth = 15))+
   #Formatting legend
   theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
-        legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(0, 0, 0, 0),
-        legend.title = element_text(size = 13), legend.text = element_text(size = 13))
+        legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(0, 0, 0, 0))
 ```
   
 ```{r}
