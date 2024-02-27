@@ -5,6 +5,14 @@ date: "2024-02-26"
 output: pdf_document
 ---
 
+## Loading libraries
+  
+```{r, message=FALSE, warning=FALSE}
+#Data wrangling
+library(tidyverse)
+library(data.table)
+```
+
 ## Matching EEZs to UN country names
 
 ```{r}
