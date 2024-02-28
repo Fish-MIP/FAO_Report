@@ -226,7 +226,7 @@ base_gg <- list(geom_line(linewidth = 0.5),
 
   
 ## Figure 1 - Trends globally and for top 7 countries with highest catches
-Note that data used here correspond to EEZs linked to each country main landmass where areas are not disputed. Overseas territories and disputed areas are not included here.  
+Note that data used here correspond to EEZs linked to each country main landmass where areas are not disputed. Overseas territories and disputed areas are not included here. This means that high seas (i.e., areas beyond a country's jurisdiction) were not included in this calculation.  
 
 ### Calculating global trends
   
@@ -241,6 +241,8 @@ for(m in members){
     left_join(area_grid, by = join_by(x, y)) |> 
     #Removing areas not recognised in FAO official name list
     drop_na(fao_official) |> 
+    #Removing FAO Major Areas (2 digit numbers) instead of 4-5 digits for EEZs
+    filter(ID_mrgd > 999) |> 
     #Calculate mean per ensemble member
     group_by(year, mem, esm, scenario) |> 
     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
@@ -255,7 +257,7 @@ for(m in members){
 }
 ```
   
-Now we can calculate the global trends.  
+Now we can calculate the percentage change in global exploitable fish biomass.  
   
 ```{r eval = F}
 #Listing all relevant files to calculate biomass projections
@@ -285,11 +287,19 @@ global_data
 ```
   
 ### Calculating trends for top 7 countries
+The top 7 countries by fishing catches are China (including Taiwan), India, Indonesia, Peru, Russia, United States and Viet Nam. Note that all marine areas identified to be under the jurisdiction of these countries were included in the calculation of trends.  
   
 ```{r}
 #Defining top 7 countries by catch
-top_7 <- c("Republic of China", "India", "Indonesia", "Peru", "Russian", 
-           "United States", "Viet")
+top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", "United States",
+           "Viet")
+
+#Identifying areas to keep from the FAO_EEZ keys
+keys_top7 <- fao_eez_keys |> 
+  #Keep only top 7 fishing countries
+  filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
+  #Drop columns that are not relevant
+  select(continent:fao_official)
 
 #Looping through each FishMIP model
 for(m in members){
@@ -300,13 +310,17 @@ for(m in members){
     #Apply mask
     left_join(area_grid, by = join_by(x, y)) |> 
     #Select top 7 producers
-    filter(str_detect(Official_Name_En_Stefania_NEW, 
-                      paste0(top_7, collapse = "|"))) |>
-    mutate(Official_Name_En_Stefania_NEW = case_when(str_detect(Official_Name_En_Stefania_NEW, 
-                                                      "United States") ~ "the United States of America",
-                                                     T ~ Official_Name_En_Stefania_NEW)) |> 
+    filter(fao_official %in% keys_top7$fao_official) |> 
+    #Add names in top 7 keys
+    left_join(keys_top7, by = "fao_official") |> 
+    #Keep same name for all EEZ that for part of China and the US
+    mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~ 
+                                     "the United States of America",
+                                   Country_FAO == "China" ~ 
+                                     "the People's Republic of China",
+                                   T ~ fao_official)) |> 
     #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario, Official_Name_En_Stefania_NEW) |> 
+    group_by(year, mem, esm, scenario, fao_official) |> 
     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
   
   #Create name to save file  
@@ -319,7 +333,7 @@ for(m in members){
 }
 ```
   
-Now we can calculate the trends for top 7 countries.  
+Now we can calculate the percentage change in exploitable fish biomass from the reference period (2005-2014) for the top 7 countries by fisheries catches.  
   
 ```{r}
 #Listing all relevant files to calculate biomass projections
@@ -333,17 +347,17 @@ top7_ref_bio <- top7_data |>
   #Select reference period
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per country
-  group_by(mem, esm, SOVEREIGN1) |> 
+  group_by(mem, esm, fao_official) |> 
   summarise(ref_bio = mean(mean_bio, na.rm = T))
 
 top7_base_data <- top7_data |> 
   #Add reference period to yearly biomass data
-  left_join(top7_ref_bio, by = c("mem", "esm", "SOVEREIGN1")) |> 
+  left_join(top7_ref_bio, by = c("mem", "esm", "fao_official")) |> 
   #Calculate percentage change per model/year(scenario)/region
   mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
   #Calculate mean and standard deviation for percentage change 
   #per year(scenario)/region
-  group_by(year, scenario, SOVEREIGN1) |> 
+  group_by(year, scenario, fao_official) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T)) |> 
   ungroup()
@@ -355,21 +369,20 @@ top7_base_data <- top7_data |>
 #Merging global and top 7 countries data
 global_data |> 
   #Add an extra column to match top 7 countries
-  mutate(SOVEREIGN1 = "Global") |> 
-  relocate(SOVEREIGN1, .after = "scenario") |> 
+  mutate(fao_official = "Global", .after = "scenario") |> 
   #Joining to top7 data
   bind_rows(top7_base_data) |> 
   #Create an order category for SOVEREIGN1
-  mutate(SOVEREIGN1 = factor(SOVEREIGN1, 
-                             levels = c("Global", 
-                                        unique(top7_base_data$SOVEREIGN1)), 
+  mutate(fao_official = factor(fao_official, 
+                               levels = c("Global", 
+                                          unique(top7_base_data$fao_official)), 
                              ordered = T)) |> 
   #Plotting
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
   base_gg+
   #Plotting by country
-  facet_wrap(~SOVEREIGN1, scales = "free_y", nrow = 8)
+  facet_wrap(~fao_official, scales = "free_y", nrow = 8)
 ```
   
 ```{r, eval = F}
@@ -379,21 +392,19 @@ ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"),
 ```
   
 ## Figure 2 - Asia
-In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Jointly managed areas were kept and are clearly labelled.  
+In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  #Extract EEZs in Asia, but with NO overlapping claims
-  filter(region == "Asia" & str_detect(nm_mrgd, "Overlapping|Joint", negate = T)) |>
-  #Shorten Exclusive Economic Zone to EEZ
-  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  #Extract EEZs in Asia
+  filter(continent == "Asia") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(fao_official = label_wrap_gen(20)))
 ```
   
 ```{r, eval = F}
@@ -403,22 +414,19 @@ ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"),
 ```
   
 ## Figure 3 - Africa
-In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). French and British overseas territories were also removed from this figure. Jointly managed areas were kept and are clearly labelled.  
+In this figure, we will exclude marine areas under the jurisdiction of countries in Africa as classified by the FAO.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  #African EEZs, excluding areas with overlapping claims
-  filter(region == "Africa" & str_detect(nm_mrgd, "Overlapping|Joint", negate = T) &
-           #Excluding French and Bristish territories
-           !SOVEREIGN1 %in% c("France", "United Kingdom")) |> 
-  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  #Extract EEZs in Africa
+  filter(continent == "Africa") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5, 
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5, 
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(20)))
+             labeller = labeller(fao_official = label_wrap_gen(20)))
 ```
   
 ```{r, eval = F}
@@ -428,20 +436,19 @@ ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"),
 ```
   
 ## Figure 4 - Europe
-In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Clipperton, a French overseas territory, has been excluded because the island is geographically located in the Americas. Jointly managed areas were kept and are clearly labelled.  
+In this figure, we will exclude marine areas under the jurisdiction of countries in Europe as classified by the FAO.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Europe" & str_detect(nm_mrgd, "Overlapping|Clipperton|Joint", 
-                                         negate = T)) |> 
-  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  #Extract EEZs in Europe
+  filter(continent == "Europe") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(fao_official = label_wrap_gen(25)))
 ```
   
 ```{r, eval = F}
@@ -451,23 +458,19 @@ ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"),
 ```
   
 ## Figure 5 - Americas
-In this figure, we will exclude any EEZs were overlapping claims have been reported as per the [EEZ shapefile version 11](https://doi.org/10.14284/386). Overseas territories from Denmark, France, the Netherlands and the United Kingdom. Jointly managed areas were kept and are clearly labelled.  
+In this figure, we will exclude marine areas under the jurisdiction of countries in the Americas as classified by the FAO.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(str_detect(region, "America") & str_detect(nm_mrgd, 
-                                                    "Overlapping|Joint", 
-                                                    negate = T)
-         & str_detect(SOVEREIGN1, "Denmark|France|Netherlands|Kingdom", 
-                      negate = T)) |>
-  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  #Extract EEZs in the Americas
+  filter(continent == "Americas") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(fao_official = label_wrap_gen(25)))
 ```
   
 ```{r, eval = F}
@@ -477,21 +480,19 @@ ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"),
 ```
   
 ## Figure 6 - Oceania
-In this figure, we will exclude overseas territories for France, United States and United Kingdom. Jointly managed areas were kept and are clearly labelled.  
+In this figure, we will exclude marine areas under the jurisdiction of countries in Oceania as classified by the FAO.  
   
 ```{r}
 #Filtering data
 bio_data |> 
-  filter(region == "Oceania" & 
-           str_detect(SOVEREIGN1, "France|United", negate = T) & 
-           str_detect(nm_mrgd, "Protected", negate = T)) |> 
-  mutate(nm_mrgd = str_replace(nm_mrgd, "Exclusive.*one", "EEZ")) |> 
+  #Extract EEZs in Oceania
+  filter(continent == "Oceania") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by country
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(20)))
+             labeller = labeller(fao_official = label_wrap_gen(25)))
 ```
   
 ```{r, eval = F}
@@ -511,9 +512,9 @@ bio_data |>
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   base_gg+
   #Plotting by FAO sector
-  facet_wrap(~nm_mrgd, scales = "free_y", ncol = 5,
+  facet_wrap(~fao_official, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(nm_mrgd = label_wrap_gen(30)))
+             labeller = labeller(official = label_wrap_gen(30)))
 ```
   
 ```{r, eval = F}
