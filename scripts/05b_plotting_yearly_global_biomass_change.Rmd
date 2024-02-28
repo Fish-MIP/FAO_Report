@@ -40,13 +40,19 @@ if(!dir.exists(out_folder)){
 }
 
 #EEZ keys
-eez_keys <- read_csv(list.files(out_folder, 
+eez_keys <- read.csv(list.files(out_folder, 
                            pattern = "EEZ_keys_updated.csv", 
-                           full.names = T, recursive = T)) |> 
+                           full.names = T, recursive = T), 
+                     encoding = "UTF-8") |> 
   #Keeping relevant columns
-  select(ID_mrgd, Name_EEZ, region, Official_Name_En_Stefania_NEW) |> 
-  #Removing jointly managed areas and overlapping claims
+  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
+         Official_Name_En_Stefania_NEW) |> 
+  #Renaming columns
+  rename("continent" = "region", 
+         "fao_official" = "Official_Name_En_Stefania_NEW") |> 
+  #Removing jointly managed areas and overlapping claims from original EEZ file
   filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
+  #Removing unaccepted EEZ names
   select(!Name_EEZ)
 
 #FAO keys
@@ -55,14 +61,32 @@ fao <- read_csv(list.files(out_folder,
                            full.names = T, recursive = T)) |> 
   #Keep FAO areas only
   drop_na(OCEAN) |> 
+  #Removing duplicates
   distinct() |> 
   #Keep relevant columns only
-  select(nm_mrgd, ID_mrgd, OCEAN)
+  select(ID_mrgd, OCEAN, NAME_EN)
+
+#Merging FAO and EEZ keys
+fao_eez_keys <- fao |>
+  bind_rows(eez_keys) |> 
+  #Keep all official names in a single column for FAO and EEZ areas
+  mutate(fao_official = case_when(is.na(fao_official) ~ NAME_EN, 
+                                  T ~ fao_official)) |> 
+  #Remove duplicate column
+  select(!NAME_EN)
+  
+#Removing individual keys
+rm(eez_keys, fao)
 
 #FAO_EEZ mask - Contains IDs for FAO and EEZ areas
 fao_eez_mask <- read_csv(list.files(out_folder, 
                                     pattern = "FAO_Major_200NM_masked_area_1deg.csv",
-                                    full.names = T, recursive = T)) 
+                                    full.names = T, recursive = T)) |> 
+  #Renaming ID column
+  rename("ID_mrgd" = "mask") |> 
+  #Adding official names to be used in plots
+  left_join(fao_eez_keys[,c("ID_mrgd", "fao_official")], 
+            by = join_by(ID_mrgd))
 
 #Loading area per grid cell
 area_grid <- rast(list.files(out_folder, pattern = "^area_1deg.nc", 
@@ -70,13 +94,10 @@ area_grid <- rast(list.files(out_folder, pattern = "^area_1deg.nc",
   #Transform to data frame
   as.data.frame(xy = T) |> 
   #Join with FAO keys
-  left_join(fao_eez_mask, by = join_by(x, y)) |> 
-  left_join(eez_keys, by = join_by(mask == ID_mrgd)) |> 
-  left_join(fao, by = join_by(mask == ID_mrgd)) |> 
-  rename("ID_mrgd" = "mask")
+  left_join(fao_eez_mask, by = join_by(x, y))
 
-#Remove original mask
-rm(fao_eez_mask, fao, eez_keys)
+#Removing mask without area values
+rm(fao_eez_mask)
 
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
@@ -97,10 +118,12 @@ for(m in members){
   df_model <- str_subset(global_files, m) |> 
     map(~readRDS(.)) |> 
     map_df(~bind_rows(.)) |> 
-    #Apply mask
+    #Add area for each grid cell and area ID (FAO and EEZ)
     left_join(area_grid, by = join_by(x, y)) |> 
+    #Removing areas not recognised in FAO official name list
+    drop_na(fao_official) |> 
     #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario, ID_mrgd) |> 
+    group_by(year, mem, esm, scenario, fao_official) |> 
     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
   
   #Create name to save file  
@@ -119,34 +142,32 @@ Plots created here will show percentage change in biomass over time under two em
 #Listing all relevant files to calculate biomass projections
 bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv",
                        full.names = T) |> 
-  map_df(~fread(.)) |> 
-  #Remove rows outside regions of interest
-  drop_na(ID_mrgd)
+  map_df(~fread(.))
 
 #Calculating reference period
 ref_bio <- bio_data |> 
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per ensemble member
-  group_by(mem, esm, ID_mrgd) |> 
+  group_by(mem, esm, fao_official) |> 
   summarise(ref_bio = mean(mean_bio, na.rm = T))
 
 #Getting list of unique keys
-fao_eez_keys <-  area_grid |>
-  select(ID_mrgd:OCEAN) |> 
+fao_eez <-  fao_eez_keys |> 
+  select(!ID_mrgd) |> 
   distinct()
 
 bio_data <- bio_data |> 
   #Add reference period to yearly biomass data
-  left_join(ref_bio, by = c("mem", "esm", "ID_mrgd")) |> 
+  left_join(ref_bio, by = c("mem", "esm", "fao_official")) |> 
   #Calculate percentage change per model/year(scenario)/region
   mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
   #Calculate mean and standard deviation for percentage change 
   #per year(scenario)/region
-  group_by(year, scenario, ID_mrgd) |> 
+  group_by(year, scenario, fao_official) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T)) |> 
   #Add names in FAO-EEZ keys
-  left_join(fao_eez_keys, by = "ID_mrgd") |> 
+  left_join(fao_eez, by = "fao_official") |> 
   ungroup()
 
 #Check results
@@ -218,6 +239,8 @@ for(m in members){
     map_df(~bind_rows(.)) |> 
     #Apply mask
     left_join(area_grid, by = join_by(x, y)) |> 
+    #Removing areas not recognised in FAO official name list
+    drop_na(fao_official) |> 
     #Calculate mean per ensemble member
     group_by(year, mem, esm, scenario) |> 
     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
