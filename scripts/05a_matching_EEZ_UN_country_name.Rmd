@@ -16,6 +16,7 @@ library(data.table)
 ## Matching EEZs to UN country names
 
 ```{r}
+
 #Base folder for project
 base_folder <- "/rd/gem/private/users/camillan"
 
@@ -32,7 +33,7 @@ fao_eez <- read_csv(list.files(out_folder,
 
 fao_eez<-read.csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO_Major_EEZ/FAO-MajorAreas_EEZs_keys.csv")
 
-### start work in progress CN  ----
+### work in progress CN  ----
 
 fao_ct<-read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") %>% 
   unique()
@@ -110,26 +111,23 @@ head(fao_ct_reduced)
 nrow(fao_ct)
 nrow(fao_ct_reduced) 
 
-## add info from Stefania just to check names (which should be the ons to use) and information. 
-# same info but actually cleaner though no country code 
+## add info from Stefania just to check names (which should be the ones to use) and information. 
 fao_st<-read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") %>% 
   unique()
 
 head(fao_st)
 head(fao_ct_reduced)
 
-# similar so use for merging - more in st
+# use for merging
 sort(unique(fao_ct_reduced$ISO3CD))
 sort(unique(fao_st$ISO3_Code))
-
-# Use for merging - call this _stefania and will be useful when merging EEZs
 sort(unique(fao_ct_reduced$Name_En))
 sort(unique(fao_st$Name_En))
 
 setdiff(sort(unique(fao_ct_reduced$Name_En)),sort(unique(fao_st$Name_En)))
 setdiff(sort(unique(fao_st$Name_En)),sort(unique(fao_ct_reduced$Name_En)))
 
-# use for merging too? call Stefania
+# use for merging too?
 sort(unique(fao_ct_reduced$O_Name_En))
 sort(unique(fao_st$Official_Name_En))
 
@@ -141,7 +139,7 @@ key1<-fao_st %>%
 final_key<-fao_ct_reduced %>% 
   full_join(key1)
 
-# ## Consider file from Reg 
+# ## Consider files from Reg 
 # reg_code<-read.csv("/home/dbpm/FAO_Report/data/CountryLettterCodes_cleaned_CN.csv")
 # 
 # # head(reg_code)
@@ -169,8 +167,7 @@ final_key<-fao_ct_reduced %>%
 #### merge with EEZ info 
 trial<-fao_eez[19:nrow(fao_eez),] %>% 
   select(-c("F_CODE", "OCEAN", "MRGID", "SOVEREIGN2", "SOVEREIGN3","region_code", "sub_region",
-"sub_region_code")) #%>% # remove FAO area and useless info
-  # mutate(nm_mrgd = str_replace(nm_mrgd, " Exclusive Economic Zone", ""))
+"sub_region_code")) 
   
 head(trial)
 head(final_key)
@@ -181,23 +178,18 @@ head(final_key)
 # region == CONTCD # keep CONTCD 
 # M49 in FAO data links to the countries and territories Stefania sent 
 
-# try merging but I doubt it will go well... 
 trial<-trial %>% 
   rename(Country = SOVEREIGN1, Name_EEZ = nm_mrgd) %>% 
   unique()
 
-# # not really working becasue ISO_3 is not a code but a name, in any case, this would be hard to make work. so print the actual file with EEZ 
-# all_info<-final_key %>% 
-#   full_join(trial)
+# # cannot merge as ISO_3 is a name 
 
-# print all files for checking and combining 
+# print all files for manually checking and combining 
 
 write.csv(final_key, "/home/dbpm/FAO_Report/data/FAO_countries_key.csv") 
-# write.csv(all_info, "/home/dbpm/FAO_Report/data/FAO_countries_and_EEZ_key.csv") 
 write.csv(trial, "/home/dbpm/FAO_Report/data/EEZ_key.csv")
   
 ## end work in progress ----
-
-## NEXT STEPS load the new key dataset and replace "fao_eez" with the new key dataset. 
+. 
 ```
 

@@ -3,6 +3,8 @@ title: "Temporal biomass change"
 author: "Denisse Fierro Arcos"
 date: "2024-01-17"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction - Forcing file divergence
@@ -14,6 +16,8 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
+
+rm(list=ls())
 #Data wrangling
 library(tidyverse)
 library(data.table)
@@ -54,6 +58,77 @@ eez_keys <- read.csv(list.files(out_folder,
   filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
   #Removing unaccepted EEZ names
   select(!Name_EEZ)
+
+
+### CN work in progress ----
+
+## problem when merging (left_join) line 168 because of multiple matches
+# need to check for records with same FAO official name and different Country_FAO. lots 
+eez_keys[order(eez_keys$fao_official,eez_keys$continent),]
+# need to understand why 2 Australia and why 2 French Polynesia
+filter(eez_keys, fao_official == "French Polynesia")
+
+#### Need to load, inspect and clean the original file following steps in email (remove ISO3CD = NA, and remove all ovelapping/joint territories in our EEZ dataset) :
+eez_keys <- read.csv(list.files(out_folder, 
+                           pattern = "EEZ_keys_updated.csv", 
+                           full.names = T, recursive = T), 
+                     encoding = "UTF-8")
+
+filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) # WARNING - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
+
+# remove ISO3CD = NA AND Official_Name_En_Stefania_NEW = NA (this includes jointly managed areas and overlapping claims from original EEZ file)
+remove<-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW))
+eez_keys <- eez_keys %>% filter(!Name_EEZ %in% unique(remove$Name_EEZ))
+
+# check 
+filter(eez_keys, is.na(ISO3CD))
+# remove copy-paste mistake in the original table where this is named "the Republic of Colombia"
+eez_keys<-eez_keys %>% filter(!Name_EEZ == "Overlapping claim: Venezuela / Colombia / Dominican Republic")
+filter(eez_keys, is.na(Official_Name_En_Stefania_NEW))
+
+filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"))
+# correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
+
+eez_keys<-eez_keys %>% mutate(
+  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "United States of America" , Country_FAO),
+  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "the United States of America" , Official_Name_En_Stefania_NEW))
+
+# check 
+filter(eez_keys, Official_Name_En_Stefania_NEW == "the United States of America")
+filter(eez_keys, Country_FAO == "the United States of America")
+
+## do the same for Indian (Andaman and Nicobar Islands) Exclusive Economic Zone as this is part of one of the top 7 nations so need to be included into India even if not very influent
+eez_keys<-eez_keys %>% mutate(
+  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "India" , Country_FAO),
+  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "the Republic of India" , Official_Name_En_Stefania_NEW))
+
+# check if you still have duplicates: 
+head(eez_keys)
+trial<-eez_keys %>% 
+  select(Name_EEZ,region, Official_Name_En_Stefania_NEW) %>% 
+  arrange(Official_Name_En_Stefania_NEW,region)
+
+## still some ovelapping claim in the data: these are records classified as territories by FAO and as ovelapping claim in the EEZ dataset. Becasue we don't know whether the boundaries of these territories include waters under other jurisdiction than the one specific by FAO, we remove them.    
+eez_keys<-eez_keys %>% filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T))
+
+## Clipperton problem: named french polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
+# WARNING - this means we need to check continent classification but this can be done later as there are no other visible missmatches 
+# change to Oceania 
+eez_keys<-eez_keys %>% 
+  mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", "Oceania", region))
+
+# clean and change column names as per above: 
+eez_keys<-eez_keys %>% 
+  #Keeping relevant columns
+  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
+         Official_Name_En_Stefania_NEW) |> 
+  #Renaming columns
+  rename("continent" = "region", 
+         "fao_official" = "Official_Name_En_Stefania_NEW") %>% 
+  #Removing column with unaccepted EEZ names
+  select(!Name_EEZ) 
+
+### end work in progress ----
 
 #FAO keys
 fao <- read_csv(list.files(out_folder, 
@@ -106,6 +181,7 @@ global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds",
 #Getting a list of models
 members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
   unique()
+
 ```
   
 ## Calculating percentage change in fish biomass estimates from global FishMIP models
@@ -133,6 +209,7 @@ for(m in members){
   df_model |>
     fwrite(f_out)
 }
+
 ```
   
 ## Calculating mean for reference period
@@ -143,6 +220,8 @@ Plots created here will show percentage change in biomass over time under two em
 bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv",
                        full.names = T) |> 
   map_df(~fread(.))
+
+# filter(bio_data, fao_official == "the Federative Republic of Brazil")
 
 #Calculating reference period
 ref_bio <- bio_data |> 
@@ -165,7 +244,7 @@ bio_data <- bio_data |>
   #per year(scenario)/region
   group_by(year, scenario, fao_official) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
-            sd_change = sd(perc_change, na.rm = T)) |> 
+            sd_change = sd(perc_change, na.rm = T)) %>% 
   #Add names in FAO-EEZ keys
   left_join(fao_eez, by = "fao_official") |> 
   ungroup()
@@ -301,8 +380,12 @@ keys_top7 <- fao_eez_keys |>
   #Drop columns that are not relevant
   select(continent:fao_official)
 
+keys_top7<-keys_top7 %>% 
+  distinct()
+
 #Looping through each FishMIP model
 for(m in members){
+  
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
     map(~readRDS(.)) |> 
@@ -312,7 +395,7 @@ for(m in members){
     #Select top 7 producers
     filter(fao_official %in% keys_top7$fao_official) |> 
     #Add names in top 7 keys
-    left_join(keys_top7, by = "fao_official") |> 
+    left_join(keys_top7, by = "fao_official") |>
     #Keep same name for all EEZ that for part of China and the US
     mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~ 
                                      "the United States of America",
@@ -363,6 +446,43 @@ top7_base_data <- top7_data |>
   ungroup()
 ```
   
+### print table of changes 
+
+```{r}
+
+table_global<-global_data %>% 
+  filter(year %in% c(2050, 2100)) %>% 
+  select(-sd_change) %>% 
+  arrange(scenario, year) %>% 
+  relocate(scenario, year, mean_change)
+
+table_top7<-top7_base_data %>% 
+  filter(year %in% c(2050, 2100)) %>% 
+  select(-sd_change) %>% 
+  arrange(fao_official, scenario, year) %>% 
+  relocate(fao_official, scenario, year, mean_change)
+
+table_countries<-bio_data %>% 
+  filter(year %in% c(2050, 2100)) %>% 
+  select(-c(Country_FAO, sd_change)) %>% 
+  arrange(continent, fao_official, scenario, year) %>% 
+  relocate(continent, OCEAN, fao_official, scenario, year, mean_change)
+
+# print - change location of files as no access to terminal right now 
+fwrite(table_global, paste0(out_folder,"/table_global.csv"))
+fwrite(table_top7, paste0(out_folder,"/table_top7.csv"))
+fwrite(table_countries, paste0(out_folder,"/table_countries.csv"))
+
+out_folder
+# Warning - repetition of records in table_countries for e.g. the Federative Republic of Brazil + Chile, Colombia, Equador, USA. No problems when platting.  
+filter(table_countries, fao_official == "the Federative Republic of Brazil")
+filter(bio_data, fao_official == "the Federative Republic of Brazil") # because of Country_FAO column. need to check -> in original table 2 records for Brazil: one is Trinidade. Other places where country not specified.  
+filter(fao_eez_keys, fao_official == "the Federative Republic of Brazil") # calculations are OK as consider fao_official as key, the record gets repeated in line 230 when bio_data get re-merged with fao_eez to consider continent.
+# this coul be problematic at country level (7 top producers) - checked on table and no Country_FAO = NA is part of the 7 top producers besides Hawaii and Alaska (fixed above). though need to adjust table for future analysis. 
+
+
+```
+  
 ### Plotting trends globally and for top 7 countries
   
 ```{r}
@@ -387,7 +507,7 @@ global_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"),
+ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"), 
        device = "pdf", width = 6, height = 12)
 ```
   
@@ -409,7 +529,7 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"),
+ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"), 
        device = "pdf", width = 10, height = 14.35)
 ```
   
@@ -431,7 +551,7 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"),
+ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"), 
        device = "pdf", width = 10, height = 14.35)
 ```
   
@@ -475,7 +595,7 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"),
+ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"), 
        device = "pdf", width = 12, height = 17.22)
 ```
   
@@ -519,7 +639,7 @@ bio_data |>
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "fao_regions_perc_change.pdf"),
+ggsave(filename = file.path(out_folder, "fao_regions_perc_change.pdf"), 
        device = "pdf", width = 10, height = 6)
 ```
   
