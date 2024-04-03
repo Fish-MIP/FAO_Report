@@ -25,6 +25,7 @@ library(data.table)
 library(terra)
 #Combining plots
 library(cowplot)
+
 ```
 
 ## Setting up notebook
@@ -188,27 +189,27 @@ members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |>
 We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
   
 ```{r, eval = F}
-#Looping through each FishMIP model
-for(m in members){
-  #Load all data available for a single FishMIP model
-  df_model <- str_subset(global_files, m) |> 
-    map(~readRDS(.)) |> 
-    map_df(~bind_rows(.)) |> 
-    #Add area for each grid cell and area ID (FAO and EEZ)
-    left_join(area_grid, by = join_by(x, y)) |> 
-    #Removing areas not recognised in FAO official name list
-    drop_na(fao_official) |> 
-    #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario, fao_official) |> 
-    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-  
-  #Create name to save file  
-  f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
-
-  #Saving results for each model
-  df_model |>
-    fwrite(f_out)
-}
+# #Looping through each FishMIP model
+# for(m in members){
+#   #Load all data available for a single FishMIP model
+#   df_model <- str_subset(global_files, m) |> 
+#     map(~readRDS(.)) |> 
+#     map_df(~bind_rows(.)) |> 
+#     #Add area for each grid cell and area ID (FAO and EEZ)
+#     left_join(area_grid, by = join_by(x, y)) |> 
+#     #Removing areas not recognised in FAO official name list
+#     drop_na(fao_official) |> 
+#     #Calculate mean per ensemble member
+#     group_by(year, mem, esm, scenario, fao_official) |> 
+#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+#   
+#   #Create name to save file  
+#   f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
+# 
+#   #Saving results for each model
+#   df_model |>
+#     fwrite(f_out)
+# }
 
 ```
   
@@ -256,12 +257,12 @@ bio_data
 We can now save the results for future reference.  
   
 ```{r}
-#Create name to save file  
-f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
-
-#Saving results for each model
-bio_data |>
-  write_csv(f_out)
+# #Create name to save file  
+# f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
+# 
+# #Saving results for each model
+# bio_data |>
+#   write_csv(f_out)
 ```
   
 ## Defining basic plot design
@@ -310,30 +311,30 @@ Note that data used here correspond to EEZs linked to each country main landmass
 ### Calculating global trends
   
 ```{r eval = F}
-#Looping through each FishMIP model
-for(m in members){
-  #Load all data available for a single FishMIP model
-  df_model <- str_subset(global_files, m) |> 
-    map(~readRDS(.)) |> 
-    map_df(~bind_rows(.)) |> 
-    #Apply mask
-    left_join(area_grid, by = join_by(x, y)) |> 
-    #Removing areas not recognised in FAO official name list
-    drop_na(fao_official) |> 
-    #Removing FAO Major Areas (2 digit numbers) instead of 4-5 digits for EEZs
-    filter(ID_mrgd > 999) |> 
-    #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario) |> 
-    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-  
-  #Create name to save file  
-  f_out <- file.path(out_folder, 
-                     str_c(m, "_yearly_global_perc_bio_change_data.csv"))
-
-  #Saving results for each model
-  df_model |>
-    fwrite(f_out)
-}
+# #Looping through each FishMIP model
+# for(m in members){
+#   #Load all data available for a single FishMIP model
+#   df_model <- str_subset(global_files, m) |> 
+#     map(~readRDS(.)) |> 
+#     map_df(~bind_rows(.)) |> 
+#     #Apply mask
+#     left_join(area_grid, by = join_by(x, y)) |> 
+#     #Removing areas not recognised in FAO official name list
+#     drop_na(fao_official) |> 
+#     #Removing FAO Major Areas (2 digit numbers) instead of 4-5 digits for EEZs
+#     filter(ID_mrgd > 999) |> 
+#     #Calculate mean per ensemble member
+#     group_by(year, mem, esm, scenario) |> 
+#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+#   
+#   #Create name to save file  
+#   f_out <- file.path(out_folder, 
+#                      str_c(m, "_yearly_global_perc_bio_change_data.csv"))
+# 
+#   #Saving results for each model
+#   df_model |>
+#     fwrite(f_out)
+# }
 ```
   
 Now we can calculate the percentage change in global exploitable fish biomass.  
@@ -383,37 +384,37 @@ keys_top7 <- fao_eez_keys |>
 keys_top7<-keys_top7 %>% 
   distinct()
 
-#Looping through each FishMIP model
-for(m in members){
-  
-  #Load all data available for a single FishMIP model
-  df_model <- str_subset(global_files, m) |> 
-    map(~readRDS(.)) |> 
-    map_df(~bind_rows(.)) |> 
-    #Apply mask
-    left_join(area_grid, by = join_by(x, y)) |> 
-    #Select top 7 producers
-    filter(fao_official %in% keys_top7$fao_official) |> 
-    #Add names in top 7 keys
-    left_join(keys_top7, by = "fao_official") |>
-    #Keep same name for all EEZ that for part of China and the US
-    mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~ 
-                                     "the United States of America",
-                                   Country_FAO == "China" ~ 
-                                     "the People's Republic of China",
-                                   T ~ fao_official)) |> 
-    #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario, fao_official) |> 
-    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-  
-  #Create name to save file  
-  f_out <- file.path(out_folder, 
-                     str_c(m, "_yearly_top7_perc_bio_change_data.csv"))
-
-  #Saving results for each model
-  df_model |>
-    fwrite(f_out)
-}
+# #Looping through each FishMIP model
+# for(m in members){
+#   
+#   #Load all data available for a single FishMIP model
+#   df_model <- str_subset(global_files, m) |> 
+#     map(~readRDS(.)) |> 
+#     map_df(~bind_rows(.)) |> 
+#     #Apply mask
+#     left_join(area_grid, by = join_by(x, y)) |> 
+#     #Select top 7 producers
+#     filter(fao_official %in% keys_top7$fao_official) |> 
+#     #Add names in top 7 keys
+#     left_join(keys_top7, by = "fao_official") |>
+#     #Keep same name for all EEZ that for part of China and the US
+#     mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~ 
+#                                      "the United States of America",
+#                                    Country_FAO == "China" ~ 
+#                                      "the People's Republic of China",
+#                                    T ~ fao_official)) |> 
+#     #Calculate mean per ensemble member
+#     group_by(year, mem, esm, scenario, fao_official) |> 
+#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+#   
+#   #Create name to save file  
+#   f_out <- file.path(out_folder, 
+#                      str_c(m, "_yearly_top7_perc_bio_change_data.csv"))
+# 
+#   #Saving results for each model
+#   df_model |>
+#     fwrite(f_out)
+# }
 ```
   
 Now we can calculate the percentage change in exploitable fish biomass from the reference period (2005-2014) for the top 7 countries by fisheries catches.  
@@ -468,21 +469,78 @@ table_countries<-bio_data %>%
   arrange(continent, fao_official, scenario, year) %>% 
   relocate(continent, OCEAN, fao_official, scenario, year, mean_change)
 
-# print - change location of files as no access to terminal right now 
-fwrite(table_global, paste0(out_folder,"/table_global.csv"))
-fwrite(table_top7, paste0(out_folder,"/table_top7.csv"))
-fwrite(table_countries, paste0(out_folder,"/table_countries.csv"))
-
-out_folder
-# Warning - repetition of records in table_countries for e.g. the Federative Republic of Brazil + Chile, Colombia, Equador, USA. No problems when platting.  
-filter(table_countries, fao_official == "the Federative Republic of Brazil")
-filter(bio_data, fao_official == "the Federative Republic of Brazil") # because of Country_FAO column. need to check -> in original table 2 records for Brazil: one is Trinidade. Other places where country not specified.  
-filter(fao_eez_keys, fao_official == "the Federative Republic of Brazil") # calculations are OK as consider fao_official as key, the record gets repeated in line 230 when bio_data get re-merged with fao_eez to consider continent.
-# this coul be problematic at country level (7 top producers) - checked on table and no Country_FAO = NA is part of the 7 top producers besides Hawaii and Alaska (fixed above). though need to adjust table for future analysis. 
-
+# # print - change location of files as no access to terminal right now 
+# fwrite(table_global, paste0(out_folder,"/table_global.csv"))
+# fwrite(table_top7, paste0(out_folder,"/table_top7.csv"))
+# fwrite(table_countries, paste0(out_folder,"/table_countries.csv"))
+# 
+# out_folder
+# # Warning - repetition of records in table_countries for e.g. the Federative Republic of Brazil + Chile, Colombia, Equador, USA. No problems when platting.  
+# filter(table_countries, fao_official == "the Federative Republic of Brazil")
+# filter(bio_data, fao_official == "the Federative Republic of Brazil") # because of Country_FAO column. need to check -> in original table 2 records for Brazil: one is Trinidade. Other places where country not specified.  
+# filter(fao_eez_keys, fao_official == "the Federative Republic of Brazil") # calculations are OK as consider fao_official as key, the record gets repeated in line 230 when bio_data get re-merged with fao_eez to consider continent.
+# # this coul be problematic at country level (7 top producers) - checked on table and no Country_FAO = NA is part of the 7 top producers besides Hawaii and Alaska (fixed above). though need to adjust table for future analysis. 
+# 
 
 ```
-  
+
+### PLotting trends for FishMIP Ocean Decede Conference 
+
+```{r}
+
+# copy-paste from above
+ODCdata<-global_data |>
+  #Add an extra column to match top 7 countries
+  mutate(fao_official = "Global", .after = "scenario") |>
+  #Joining to top7 data
+  bind_rows(top7_base_data) |>
+  #Create an order category for SOVEREIGN1
+  mutate(fao_official = factor(fao_official,
+                               levels = c("Global",
+                                          unique(top7_base_data$fao_official)),
+                             ordered = T))
+
+ggplot(filter(ODCdata, fao_official == "Global"), aes(x = year, y = mean_change, colour = scenario))+
+  #Applying base plot design
+  base_gg
+
+ggsave(filename = "figures/global_trends_ODC.pdf",
+       device = "pdf", width = 6, height = 3.5)
+
+ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States of America")), aes(x = year, y = mean_change, colour = scenario))+
+  #Applying base plot design
+  base_gg+
+  facet_wrap(~fao_official, scales = "free_y", nrow = 2,
+             labeller = labeller(fao_official = label_wrap_gen(40)))
+
+ggsave(filename = "figures/top_6_global_trends_ODC.pdf",
+       device = "pdf", width = 8, height = 4)
+
+
+### plot error bars FAO ASIA 
+
+bio_dataOCD<-bio_data %>% 
+  filter(!is.na(continent),
+         year == 2050) %>% 
+  select(-OCEAN, -Country_FAO) 
+
+ggplot(filter(bio_dataOCD, continent == "Asia"), aes(x=fao_official, y=mean_change, group=scenario, color=scenario)) + 
+  geom_point()+
+  geom_errorbar(aes(ymin=mean_change-sd_change, ymax=mean_change+sd_change), width=.2,
+                 position=position_dodge(0.05))+
+  theme_classic() +
+  scale_color_manual(values=c("#33bbee", "#ee3377"))+ 
+  labs(x="Country", y = "Change in exploitable fish biomass (%)")+
+  coord_flip()
+
+ggsave(filename = "figures/Asia_global_trends_ODC.pdf",
+       device = "pdf", width = 8, height = 6)
+
+
+## Do not run further than this. 
+
+```
+
 ### Plotting trends globally and for top 7 countries
   
 ```{r}
@@ -503,6 +561,7 @@ global_data |>
   base_gg+
   #Plotting by country
   facet_wrap(~fao_official, scales = "free_y", nrow = 8)
+
 ```
   
 ```{r, eval = F}
