@@ -53,7 +53,7 @@ eez_keys <- read.csv(list.files(out_folder,
   select(ID_mrgd, Name_EEZ, region, Country_FAO, 
          Official_Name_En_Stefania_NEW) |> 
   #Renaming columns
-  rename("continent" = "region", 
+  dplyr::rename("continent" = "region", 
          "fao_official" = "Official_Name_En_Stefania_NEW") |> 
   #Removing jointly managed areas and overlapping claims from original EEZ file
   filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
@@ -124,7 +124,7 @@ eez_keys<-eez_keys %>%
   select(ID_mrgd, Name_EEZ, region, Country_FAO, 
          Official_Name_En_Stefania_NEW) |> 
   #Renaming columns
-  rename("continent" = "region", 
+  dplyr::rename("continent" = "region", 
          "fao_official" = "Official_Name_En_Stefania_NEW") %>% 
   #Removing column with unaccepted EEZ names
   select(!Name_EEZ) 
@@ -159,7 +159,7 @@ fao_eez_mask <- read_csv(list.files(out_folder,
                                     pattern = "FAO_Major_200NM_masked_area_1deg.csv",
                                     full.names = T, recursive = T)) |> 
   #Renaming ID column
-  rename("ID_mrgd" = "mask") |> 
+  dplyr::rename("ID_mrgd" = "mask") |> 
   #Adding official names to be used in plots
   left_join(fao_eez_keys[,c("ID_mrgd", "fao_official")], 
             by = join_by(ID_mrgd))
@@ -229,7 +229,7 @@ ref_bio <- bio_data |>
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per ensemble member
   group_by(mem, esm, fao_official) |> 
-  summarise(ref_bio = mean(mean_bio, na.rm = T))
+  dplyr::summarise(ref_bio = mean(mean_bio, na.rm = T))
 
 #Getting list of unique keys
 fao_eez <-  fao_eez_keys |> 
@@ -244,7 +244,7 @@ bio_data <- bio_data |>
   #Calculate mean and standard deviation for percentage change 
   #per year(scenario)/region
   group_by(year, scenario, fao_official) |> 
-  summarise(mean_change = mean(perc_change, na.rm = T),
+  dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T)) %>% 
   #Add names in FAO-EEZ keys
   left_join(fao_eez, by = "fao_official") |> 
@@ -350,7 +350,7 @@ global_ref_bio <- global_data |>
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per ensemble member
   group_by(mem, esm) |> 
-  summarise(ref_bio = mean(mean_bio, na.rm = T))
+  dplyr::summarise(ref_bio = mean(mean_bio, na.rm = T))
 
 global_data <- global_data |> 
   #Add reference period to yearly biomass data
@@ -359,7 +359,7 @@ global_data <- global_data |>
   mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
   #Calculate annual mean and standard deviation for percentage change 
   group_by(year, scenario) |> 
-  summarise(mean_change = mean(perc_change, na.rm = T),
+  dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
 
 #Check results
@@ -432,7 +432,7 @@ top7_ref_bio <- top7_data |>
   filter(year >= 2005 & year <= 2014) |> 
   #Calculate mean per country
   group_by(mem, esm, fao_official) |> 
-  summarise(ref_bio = mean(mean_bio, na.rm = T))
+  dplyr::summarise(ref_bio = mean(mean_bio, na.rm = T))
 
 top7_base_data <- top7_data |> 
   #Add reference period to yearly biomass data
@@ -442,7 +442,7 @@ top7_base_data <- top7_data |>
   #Calculate mean and standard deviation for percentage change 
   #per year(scenario)/region
   group_by(year, scenario, fao_official) |> 
-  summarise(mean_change = mean(perc_change, na.rm = T),
+  dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T)) |> 
   ungroup()
 ```
@@ -505,7 +505,7 @@ ggplot(filter(ODCdata, fao_official == "Global"), aes(x = year, y = mean_change,
   base_gg
 
 ggsave(filename = "figures/global_trends_ODC.pdf",
-       device = "pdf", width = 6, height = 3.5)
+       device = "pdf", width = 5, height = 3.5)
 
 ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States of America")), aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
@@ -520,22 +520,25 @@ ggsave(filename = "figures/top_6_global_trends_ODC.pdf",
 ### plot error bars FAO ASIA 
 
 bio_dataOCD<-bio_data %>% 
-  filter(!is.na(continent),
-         year == 2050) %>% 
-  select(-OCEAN, -Country_FAO) 
+  filter(!is.na(OCEAN),
+         year == 2100) 
 
-ggplot(filter(bio_dataOCD, continent == "Asia"), aes(x=fao_official, y=mean_change, group=scenario, color=scenario)) + 
-  geom_point()+
+ggplot(bio_dataOCD, aes(x=fao_official, y=mean_change, group=scenario, color=scenario)) + 
+  geom_point()+ # position=position_jitter(h=0.15,w=0.15)
   geom_errorbar(aes(ymin=mean_change-sd_change, ymax=mean_change+sd_change), width=.2,
-                 position=position_dodge(0.05))+
+                 position=position_dodge(0.05),
+                # position=position_jitter(h=0.15,w=0.15)
+                )+
   theme_classic() +
-  scale_color_manual(values=c("#33bbee", "#ee3377"))+ 
-  labs(x="Country", y = "Change in exploitable fish biomass (%)")+
+  scale_color_manual(name = "Scenario", labels = c("SSP1-2.6", "SSP5-8.5"), values=c("#33bbee", "#ee3377"))+ 
+  labs(x="FAO Major Fishing Area", y = "Change in exploitable fish biomass (%)")+
   coord_flip()
 
-ggsave(filename = "figures/Asia_global_trends_ODC.pdf",
-       device = "pdf", width = 8, height = 6)
+ggsave(filename = "figures/FAOarea_global_trends_ODC.pdf",
+       device = "pdf", width = 7, height = 5)
 
+unique(bio_dataOCD$fao_official)
+filter(bio_dataOCD, fao_official == "Atlantic, Antarctic") # something strange here - this is +5% in maps but maps and trends values for aggregated regions should be exactly the same. For maps, were grid cells % values averaged across models instead of using grid cell biomass to calculate one percentage value for the whole region and then model-specific values averadged across models?   
 
 ## Do not run further than this. 
 
