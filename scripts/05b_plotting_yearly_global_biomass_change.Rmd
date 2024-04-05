@@ -500,22 +500,29 @@ ODCdata<-global_data |>
                                           unique(top7_base_data$fao_official)),
                              ordered = T))
 
-ggplot(filter(ODCdata, fao_official == "Global"), aes(x = year, y = mean_change, colour = scenario))+
+globe<-ggplot(filter(ODCdata, fao_official == "Global"), aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
   base_gg
 
-ggsave(filename = "figures/global_trends_ODC.pdf",
-       device = "pdf", width = 5, height = 3.5)
+# ggsave(filename = "figures/global_trends_ODC.pdf",
+#        device = "pdf", width = 5, height = 3.5)
 
-ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States of America")), aes(x = year, y = mean_change, colour = scenario))+
+png("figures/global_trends_ODC.png", width=5, height=3.5, units="in", res=1200)
+globe
+dev.off()
+
+top6<-ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States of America")), aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
   base_gg+
   facet_wrap(~fao_official, scales = "free_y", nrow = 2,
              labeller = labeller(fao_official = label_wrap_gen(40)))
 
-ggsave(filename = "figures/top_6_global_trends_ODC.pdf",
-       device = "pdf", width = 8, height = 4)
+# ggsave(filename = "figures/top_6_global_trends_ODC.pdf",
+#        device = "pdf", width = 8, height = 4)
 
+png("figures/top_6_global_trends_ODC.png", width=8, height=4, units="in",res=1200)
+top6
+dev.off()
 
 ### plot error bars FAO ASIA 
 
@@ -523,19 +530,36 @@ bio_dataOCD<-bio_data %>%
   filter(!is.na(OCEAN),
          year == 2100) 
 
-ggplot(bio_dataOCD, aes(x=fao_official, y=mean_change, group=scenario, color=scenario)) + 
-  geom_point()+ # position=position_jitter(h=0.15,w=0.15)
-  geom_errorbar(aes(ymin=mean_change-sd_change, ymax=mean_change+sd_change), width=.2,
-                 position=position_dodge(0.05),
-                # position=position_jitter(h=0.15,w=0.15)
-                )+
-  theme_classic() +
-  scale_color_manual(name = "Scenario", labels = c("SSP1-2.6", "SSP5-8.5"), values=c("#33bbee", "#ee3377"))+ 
-  labs(x="FAO Major Fishing Area", y = "Change in exploitable fish biomass (%)")+
-  coord_flip()
+sorting<-bio_dataOCD %>% 
+  filter(scenario == "ssp585") %>% 
+  arrange(-mean_change)
 
-ggsave(filename = "figures/FAOarea_global_trends_ODC.pdf",
-       device = "pdf", width = 7, height = 5)
+trial<-unique(sorting$fao_official)
+trial<-factor(trial, levels=unique(trial))
+
+bio_dataOCD<-bio_dataOCD %>% 
+  mutate(fao_official = factor(fao_official, levels = trial))
+
+uncert<-ggplot(filter(bio_dataOCD, fao_official != "Arctic Sea"), aes(x=fao_official, y=mean_change, group=scenario, color=scenario)) + 
+  geom_point()+ 
+  geom_errorbar(aes(ymin=mean_change-sd_change, ymax=mean_change+sd_change), width=.2,
+                position=position_dodge(0.05))+
+  theme_classic() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey", linewidth = 1)+
+  scale_color_manual(name = "Scenario", labels = c("SSP1-2.6", "SSP5-8.5"), values=c("#33bbee", "#ee3377"))+ 
+  labs(x="FAO Major Fishing Area", y = "Change in exploitable fish biomass (%)") +
+  coord_flip()+
+  theme(axis.text=element_text(size=14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.title=element_text(size=14)) # face = "bold"
+
+# ggsave(filename = "figures/FAOarea_global_trends_ODC.pdf",
+#        device = "pdf", width = 7, height = 5)
+
+png("figures/FAOarea_global_trends_ODC.png", width=7, height=5, units="in",res=1200)
+uncert
+dev.off()
 
 unique(bio_dataOCD$fao_official)
 filter(bio_dataOCD, fao_official == "Atlantic, Antarctic") # something strange here - this is +5% in maps but maps and trends values for aggregated regions should be exactly the same. For maps, were grid cells % values averaged across models instead of using grid cell biomass to calculate one percentage value for the whole region and then model-specific values averadged across models?   
