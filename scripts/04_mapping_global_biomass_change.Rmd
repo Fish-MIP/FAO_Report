@@ -55,7 +55,8 @@ fao_eez <- read_csv(list.files(out_folder, pattern = "_keys.csv",
                                full.names = T, recursive = T))
 
 #FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv(list.files(out_folder, pattern = "_1deg.csv", 
+fao_eez_mask <- read_csv(list.files(out_folder, 
+                                    pattern = "^masked_area_1deg.csv", 
                                     full.names = T, recursive = T)) |> 
   rename(x = Lon, y = Lat, ID_mrgd = mask)
 
@@ -1151,35 +1152,86 @@ ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"),
 Finally, we will create maps for the FAO regions. This will a choropleth map showing the weighted average change in fish biomass.  
   
 ```{r}
+#Getting a list of files containing biomass data
+global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
+                           full.names = T, recursive = T)
+
+#Getting a list of models
+members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
+  unique()
+
 #Loading area per grid cell
 area_grid <- rast(list.files(out_folder, pattern = "^area_1deg.nc", 
                              recursive = T, full.names = T)) |> 
   #Transform to data frame
-  as.data.frame(xy = T)
+  as.data.frame(xy = T) |> 
+  left_join(fao_eez_mask, by = join_by(x, y))
 
-#Add area to percentage change data to calculate weighted % change per sector
-choro_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", 
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |> 
+    map(~readRDS(.)) |> 
+    map_df(~bind_rows(.)) |> 
+    #Extract data only for years to be used in maps
+    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    #Create new group column to calculate means
+    mutate(group = case_when(year <= 2014 ~ "reference",
+                             year >= 2041 & year <= 2050 ~ "mean50",
+                             year >= 2091 & year <= 2100 ~ "mean00"),
+           #The new group column also need to have the scenario as part of the label
+           group = case_when(group != "reference" ~ str_c(group, scenario, sep = "_"),
+                             T ~ group)) |> 
+    #Apply mask
+    left_join(area_grid, by = join_by(x, y)) |> 
+    #Calculate mean per ensemble member per year
+    group_by(year, mem, esm, ID_mrgd, group) |> 
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T)) |> 
+    #Calculate mean per ensemble member per period
+    group_by(mem, esm, ID_mrgd, group) |> 
+    summarise(mean_bio = mean(mean_bio, na.rm = T)) |> 
+    #Reorganise table to facilitate calculations
+    pivot_wider(names_from = group, values_from = mean_bio) |> 
+    ungroup() |> 
+    #Calculate % change in fish biomass for the two emissions scenarios
+    mutate(rel_change_mean50_ssp126 = ((mean50_ssp126-reference)/reference)*100,
+           rel_change_mean50_ssp585 = ((mean50_ssp585-reference)/reference)*100,
+           rel_change_mean00_ssp126 = ((mean00_ssp126-reference)/reference)*100,
+           rel_change_mean00_ssp585 = ((mean00_ssp585-reference)/reference)*100)
+  
+  #Create name to save file  
+  f_out <- file.path(out_folder, str_c(m, "_perc_bio_change_choro_map.csv"))
+  
+  #Saving results for each model
+  df_model |> 
+    fwrite(f_out)
+}
+```
+
+#### HERE
+
+
+
+```{r}
+#Listing all relevant files to calculate biomass projections
+maps_data <- list.files(out_folder, pattern = "_perc_bio_change_choro_map.csv", 
                         full.names = T) |> 
   map_df(~fread(.)) |> 
-  left_join(area_grid, by = join_by(x, y)) |> 
-  #Calculate weights by area
+  drop_na(ID_mrgd) |> 
+  #Calculations performed by year and EEZ
   group_by(ID_mrgd) |> 
-  mutate(sum_area = sum(area_m, na.rm = T),
-         weight = area_m/sum_area,
-         across(rel_change_mean50_ssp126:rel_change_mean00_ssp585,
-                ~.x*weight)) |> 
-  #Group by sector
-  group_by(ID_mrgd) |> 
-  #Apply calculations to weighted biomass change only
+  #Apply calculations to biases only
   summarise(across(rel_change_mean50_ssp126:rel_change_mean00_ssp585, 
-                   #Sum weighted values
-                   ~ sum(.x, na.rm = T))) |> 
+                   #Listing statistics to be calculated
+                   list(mean = mean), 
+                   #Setting column names
+                   .names = "{.col}_{.fn}")) |> 
   ungroup()
 
 #Add to FAO EEZ mask
-choro_data_proj <- fao_eez_mask |> 
-  left_join(choro_data, by = "ID_mrgd") |> 
-  select(!ID_mrgd) |> 
+choro_data_proj <- area_grid |> 
+  left_join(maps_data, by = "ID_mrgd") |> 
+  select(!c(ID_mrgd, area_m)) |> 
   #Transform to multi-layer raster
   rast(type = "xyz", crs = "epsg:4326") |> 
   #Reproject to Robinson
@@ -1220,28 +1272,28 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 
 #SSP1-2.6 2041-2050
 p50_126 <- ggplot()+
-  geom_spatraster(data = choro_data_proj$rel_change_mean50_ssp126)+
+  geom_spatraster(data = choro_data_proj$rel_change_mean50_ssp126_mean)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
 #SSP5-8.5 2041-2050
 p50_585 <- ggplot()+
-  geom_spatraster(data = choro_data_proj$rel_change_mean50_ssp585)+
+  geom_spatraster(data = choro_data_proj$rel_change_mean50_ssp585_mean)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
 #SSP1-2.6 2091-2100
 p00_126 <- ggplot()+
-  geom_spatraster(data = choro_data_proj$rel_change_mean00_ssp126)+
+  geom_spatraster(data = choro_data_proj$rel_change_mean00_ssp126_mean)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
 
 #SSP5-8.5 2091-2100
 p00_585 <- ggplot()+
-  geom_spatraster(data = choro_data_proj$rel_change_mean00_ssp585)+
+  geom_spatraster(data = choro_data_proj$rel_change_mean00_ssp585_mean)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
-  guides(fill = guide_colorbar(title = "weighted mean for change in fish biomass",
+  guides(fill = guide_colorbar(title = "change in exploitable fish biomass (%)",
                                title.position = "top", title.hjust = 0.5, 
                                barwidth = 15))+
   theme(legend.position = "bottom")
