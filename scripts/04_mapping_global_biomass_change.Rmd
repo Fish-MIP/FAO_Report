@@ -1207,11 +1207,9 @@ for(m in members){
     fwrite(f_out)
 }
 ```
-
-#### HERE
-
-
-
+  
+We will compile the results of the model outputs processing above in a single file. We will also rearrange the data in preparation for plotting. Finally, we will apply a Robinson projection for mapping.  
+  
 ```{r}
 #Listing all relevant files to calculate biomass projections
 maps_data <- list.files(out_folder, pattern = "_perc_bio_change_choro_map.csv", 
