@@ -190,6 +190,112 @@ write.csv(final_key, "/home/dbpm/FAO_Report/data/FAO_countries_key.csv")
 write.csv(trial, "/home/dbpm/FAO_Report/data/EEZ_key.csv")
   
 ## end work in progress ----
-. 
+
 ```
+
+
+
+```{r}
+#Base folder for project
+base_folder <- "/rd/gem/private/users/camillan"
+
+#Defining location of notebook outputs
+out_folder <- file.path(base_folder, "FAO_Report")
+if(!dir.exists(out_folder)){
+  dir.create(out_folder)
+}
+
+#EEZ keys
+eez_keys <- read.csv(list.files(out_folder, 
+                           pattern = "EEZ_keys_updated.csv", 
+                           full.names = T, recursive = T), 
+                     encoding = "UTF-8") |> 
+  #Keeping relevant columns
+  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
+         Official_Name_En_Stefania_NEW) |> 
+  #Renaming columns
+  dplyr::rename("continent" = "region", 
+         "fao_official" = "Official_Name_En_Stefania_NEW") |> 
+  #Removing jointly managed areas and overlapping claims from original EEZ file
+  filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
+  #Removing unaccepted EEZ names
+  select(!Name_EEZ)
+
+
+### CN work in progress ----
+
+## problem when merging (left_join) line 168 because of multiple matches
+# need to check for records with same FAO official name and different Country_FAO. lots 
+eez_keys[order(eez_keys$fao_official,eez_keys$continent),]
+# need to understand why 2 Australia and why 2 French Polynesia
+filter(eez_keys, fao_official == "French Polynesia")
+
+#### Need to load, inspect and clean the original file following steps in email (remove ISO3CD = NA, and remove all ovelapping/joint territories in our EEZ dataset) :
+eez_keys <- read.csv(list.files(out_folder, 
+                           pattern = "EEZ_keys_updated.csv", 
+                           full.names = T, recursive = T), 
+                     encoding = "UTF-8")
+
+filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) # WARNING - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
+
+# remove ISO3CD = NA AND Official_Name_En_Stefania_NEW = NA (this includes jointly managed areas and overlapping claims from original EEZ file)
+remove<-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW))
+eez_keys <- eez_keys %>% filter(!Name_EEZ %in% unique(remove$Name_EEZ))
+
+# check 
+filter(eez_keys, is.na(ISO3CD))
+# remove copy-paste mistake in the original table where this is named "the Republic of Colombia"
+eez_keys<-eez_keys %>% filter(!Name_EEZ == "Overlapping claim: Venezuela / Colombia / Dominican Republic")
+filter(eez_keys, is.na(Official_Name_En_Stefania_NEW))
+
+filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"))
+# correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
+
+eez_keys<-eez_keys %>% mutate(
+  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "United States of America" , Country_FAO),
+  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "the United States of America" , Official_Name_En_Stefania_NEW))
+
+# check 
+filter(eez_keys, Official_Name_En_Stefania_NEW == "the United States of America")
+filter(eez_keys, Country_FAO == "the United States of America")
+
+## do the same for Indian (Andaman and Nicobar Islands) Exclusive Economic Zone as this is part of one of the top 7 nations so need to be included into India even if not very influent
+eez_keys<-eez_keys %>% mutate(
+  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "India" , Country_FAO),
+  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "the Republic of India" , Official_Name_En_Stefania_NEW))
+
+# check if you still have duplicates: 
+head(eez_keys)
+trial<-eez_keys %>% 
+  select(Name_EEZ,region, Official_Name_En_Stefania_NEW) %>% 
+  arrange(Official_Name_En_Stefania_NEW,region)
+
+## still some ovelapping claim in the data: these are records classified as territories by FAO and as ovelapping claim in the EEZ dataset. Becasue we don't know whether the boundaries of these territories include waters under other jurisdiction than the one specific by FAO, we remove them.    
+eez_keys<-eez_keys %>% filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T))
+
+## Clipperton problem: named french polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
+# WARNING - this means we need to check continent classification but this can be done later as there are no other visible missmatches 
+# change to Oceania 
+eez_keys<-eez_keys %>% 
+  mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", "Oceania", region))
+
+# clean and change column names as per above: 
+eez_keys<-eez_keys %>% 
+  #Keeping relevant columns
+  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
+         Official_Name_En_Stefania_NEW) |> 
+  #Renaming columns
+  dplyr::rename("continent" = "region", 
+         "fao_official" = "Official_Name_En_Stefania_NEW") %>% 
+  #Removing column with unaccepted EEZ names
+  select(!Name_EEZ) 
+
+### end work in progress ----
+```
+
+```{r}
+eez_keys |> 
+  write_csv("../data/eez_keys_camilla.csv")
+```
+
 
