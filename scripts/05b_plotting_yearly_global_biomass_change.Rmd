@@ -3,11 +3,9 @@ title: "Temporal biomass change"
 author: "Denisse Fierro Arcos"
 date: "2024-01-17"
 output: pdf_document
-editor_options: 
-  chunk_output_type: console
 ---
 
-# Introduction - Forcing file divergence
+# Introduction
 
 In this notebook, we will calculate the mean percentage change in fish biomass between 2041 and 2050 under two climate emission scenarios: `SSP1-2.6` (low emissions) and `SSP5-8.5` (very high emissions). The last decade from the historical period (2005-2014) was used as the reference period.  
   
@@ -16,8 +14,6 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
-
-rm(list=ls())
 #Data wrangling
 library(tidyverse)
 library(data.table)
@@ -25,7 +21,6 @@ library(data.table)
 library(terra)
 #Combining plots
 library(cowplot)
-
 ```
 
 ## Setting up notebook
@@ -43,93 +38,33 @@ out_folder <- file.path(base_folder, "FAO_Report")
 if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
+```
+  
+## Getting area of grid cells for IPSL and GFDL
+  
+```{r}
+#Location of area grid files
+area_grid <- "/rd/gem/private/shared_resources/grid_cell_area_ESMs/isimip3b/"
 
+#Getting GFDL grid area
+area_gfdl <- rast(list.files(area_grid, "gfdl", full.names = T))
+#Change land values from 0 to NA
+area_gfdl[area_gfdl == 0] <- NA
+#Transform to data frame
+area_gfdl_df <- area_gfdl |> 
+  as.data.frame(xy = T)
+
+#Getting IPSL grid area
+area_ipsl <- rast(list.files(area_grid, "ipsl", full.names = T))
+#Transform to data frame
+area_ipsl_df <- area_ipsl |> 
+  as.data.frame(xy = T)
+```
+
+
+```{r}
 #EEZ keys
-eez_keys <- read.csv(list.files(out_folder, 
-                           pattern = "EEZ_keys_updated.csv", 
-                           full.names = T, recursive = T), 
-                     encoding = "UTF-8") |> 
-  #Keeping relevant columns
-  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
-         Official_Name_En_Stefania_NEW) |> 
-  #Renaming columns
-  dplyr::rename("continent" = "region", 
-         "fao_official" = "Official_Name_En_Stefania_NEW") |> 
-  #Removing jointly managed areas and overlapping claims from original EEZ file
-  filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
-  #Removing unaccepted EEZ names
-  select(!Name_EEZ)
-
-
-### CN work in progress ----
-
-## problem when merging (left_join) line 168 because of multiple matches
-# need to check for records with same FAO official name and different Country_FAO. lots 
-eez_keys[order(eez_keys$fao_official,eez_keys$continent),]
-# need to understand why 2 Australia and why 2 French Polynesia
-filter(eez_keys, fao_official == "French Polynesia")
-
-#### Need to load, inspect and clean the original file following steps in email (remove ISO3CD = NA, and remove all ovelapping/joint territories in our EEZ dataset) :
-eez_keys <- read.csv(list.files(out_folder, 
-                           pattern = "EEZ_keys_updated.csv", 
-                           full.names = T, recursive = T), 
-                     encoding = "UTF-8")
-
-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) # WARNING - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
-
-# remove ISO3CD = NA AND Official_Name_En_Stefania_NEW = NA (this includes jointly managed areas and overlapping claims from original EEZ file)
-remove<-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW))
-eez_keys <- eez_keys %>% filter(!Name_EEZ %in% unique(remove$Name_EEZ))
-
-# check 
-filter(eez_keys, is.na(ISO3CD))
-# remove copy-paste mistake in the original table where this is named "the Republic of Colombia"
-eez_keys<-eez_keys %>% filter(!Name_EEZ == "Overlapping claim: Venezuela / Colombia / Dominican Republic")
-filter(eez_keys, is.na(Official_Name_En_Stefania_NEW))
-
-filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"))
-# correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
-
-eez_keys<-eez_keys %>% mutate(
-  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "United States of America" , Country_FAO),
-  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "the United States of America" , Official_Name_En_Stefania_NEW))
-
-# check 
-filter(eez_keys, Official_Name_En_Stefania_NEW == "the United States of America")
-filter(eez_keys, Country_FAO == "the United States of America")
-
-## do the same for Indian (Andaman and Nicobar Islands) Exclusive Economic Zone as this is part of one of the top 7 nations so need to be included into India even if not very influent
-eez_keys<-eez_keys %>% mutate(
-  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "India" , Country_FAO),
-  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "the Republic of India" , Official_Name_En_Stefania_NEW))
-
-# check if you still have duplicates: 
-head(eez_keys)
-trial<-eez_keys %>% 
-  select(Name_EEZ,region, Official_Name_En_Stefania_NEW) %>% 
-  arrange(Official_Name_En_Stefania_NEW,region)
-
-## still some ovelapping claim in the data: these are records classified as territories by FAO and as ovelapping claim in the EEZ dataset. Becasue we don't know whether the boundaries of these territories include waters under other jurisdiction than the one specific by FAO, we remove them.    
-eez_keys<-eez_keys %>% filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T))
-
-## Clipperton problem: named french polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
-# WARNING - this means we need to check continent classification but this can be done later as there are no other visible missmatches 
-# change to Oceania 
-eez_keys<-eez_keys %>% 
-  mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", "Oceania", region))
-
-# clean and change column names as per above: 
-eez_keys<-eez_keys %>% 
-  #Keeping relevant columns
-  select(ID_mrgd, Name_EEZ, region, Country_FAO, 
-         Official_Name_En_Stefania_NEW) |> 
-  #Renaming columns
-  dplyr::rename("continent" = "region", 
-         "fao_official" = "Official_Name_En_Stefania_NEW") %>% 
-  #Removing column with unaccepted EEZ names
-  select(!Name_EEZ) 
-
-### end work in progress ----
+eez_keys <- read_csv("data/eez_keys_camilla.csv")
 
 #FAO keys
 fao <- read_csv(list.files(out_folder, 
@@ -155,25 +90,24 @@ fao_eez_keys <- fao |>
 rm(eez_keys, fao)
 
 #FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv(list.files(out_folder, 
-                                    pattern = "FAO_Major_200NM_masked_area_1deg.csv",
-                                    full.names = T, recursive = T)) |> 
+fao_eez_mask <- list.files(out_folder, 
+                           pattern = "FAO_Major_200NM_masked_area_1deg.csv",
+                           full.names = T, recursive = T) |> 
+  read_csv() |> 
   #Renaming ID column
   dplyr::rename("ID_mrgd" = "mask") |> 
   #Adding official names to be used in plots
   left_join(fao_eez_keys[,c("ID_mrgd", "fao_official")], 
             by = join_by(ID_mrgd))
 
-#Loading area per grid cell
-area_grid <- rast(list.files(out_folder, pattern = "^area_1deg.nc", 
-                             recursive = T, full.names = T)) |> 
-  #Transform to data frame
-  as.data.frame(xy = T) |> 
-  #Join with FAO keys
-  left_join(fao_eez_mask, by = join_by(x, y))
 
-#Removing mask without area values
-rm(fao_eez_mask)
+#Merging masks and area files into a single variable
+fao_eez_mask <- fao_eez_mask |> 
+  left_join(area_gfdl_df, by = join_by("x", "y")) |> 
+  rename(gfdl = areacello) |> 
+  left_join(area_ipsl_df, by = join_by("x", "y")) |> 
+  rename(ipsl = cell_area)
+
 
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
@@ -189,28 +123,40 @@ members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |>
 We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
   
 ```{r, eval = F}
-# #Looping through each FishMIP model
-# for(m in members){
-#   #Load all data available for a single FishMIP model
-#   df_model <- str_subset(global_files, m) |> 
-#     map(~readRDS(.)) |> 
-#     map_df(~bind_rows(.)) |> 
-#     #Add area for each grid cell and area ID (FAO and EEZ)
-#     left_join(area_grid, by = join_by(x, y)) |> 
-#     #Removing areas not recognised in FAO official name list
-#     drop_na(fao_official) |> 
-#     #Calculate mean per ensemble member
-#     group_by(year, mem, esm, scenario, fao_official) |> 
-#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-#   
-#   #Create name to save file  
-#   f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
-# 
-#   #Saving results for each model
-#   df_model |>
-#     fwrite(f_out)
-# }
+#Looping through each FishMIP model
+for(m in members){
+  #Select correct area of grid cell
+  if(str_detect(m, "ipsl")){
+    area_grid <- fao_eez_mask |> 
+      select(!gfdl) |> 
+      #rename column
+      rename(area_m = ipsl)
+  }else if(str_detect(m, "gfdl")){
+    area_grid <- fao_eez_mask |> 
+      select(!ipsl)|> 
+      #rename column
+      rename(area_m = gfdl)
+  }
+  
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |>
+    map(~readRDS(.)) |>
+    map_df(~bind_rows(.)) |>
+    #Add area for each grid cell and area ID (FAO and EEZ)
+    left_join(area_grid, by = join_by(x, y)) |>
+    #Removing areas not recognised in FAO official name list
+    drop_na(fao_official) |>
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario, fao_official) |>
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
 
+  #Create name to save file
+  f_out <- file.path(out_folder, str_c(m, "_yearly_perc_bio_change_data.csv"))
+
+  #Saving results for each model
+  df_model |>
+    fwrite(f_out)
+}
 ```
   
 ## Calculating mean for reference period
@@ -218,11 +164,10 @@ Plots created here will show percentage change in biomass over time under two em
   
 ```{r eval = F}
 #Listing all relevant files to calculate biomass projections
-bio_data <- list.files(out_folder, pattern = "_yearly_perc_bio_change_data.csv",
+bio_data <- list.files(out_folder, 
+                       pattern = "_yearly_perc_bio_change_data.csv",
                        full.names = T) |> 
   map_df(~fread(.))
-
-# filter(bio_data, fao_official == "the Federative Republic of Brazil")
 
 #Calculating reference period
 ref_bio <- bio_data |> 
@@ -245,7 +190,7 @@ bio_data <- bio_data |>
   #per year(scenario)/region
   group_by(year, scenario, fao_official) |> 
   dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
-            sd_change = sd(perc_change, na.rm = T)) %>% 
+            sd_change = sd(perc_change, na.rm = T)) |> 
   #Add names in FAO-EEZ keys
   left_join(fao_eez, by = "fao_official") |> 
   ungroup()
@@ -257,12 +202,12 @@ bio_data
 We can now save the results for future reference.  
   
 ```{r}
-# #Create name to save file  
-# f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
-# 
-# #Saving results for each model
-# bio_data |>
-#   write_csv(f_out)
+#Create name to save file
+f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
 ```
   
 ## Defining basic plot design
@@ -311,38 +256,39 @@ Note that data used here correspond to EEZs linked to each country main landmass
 ### Calculating global trends
   
 ```{r eval = F}
-# #Looping through each FishMIP model
-# for(m in members){
-#   #Load all data available for a single FishMIP model
-#   df_model <- str_subset(global_files, m) |> 
-#     map(~readRDS(.)) |> 
-#     map_df(~bind_rows(.)) |> 
-#     #Apply mask
-#     left_join(area_grid, by = join_by(x, y)) |> 
-#     #Removing areas not recognised in FAO official name list
-#     drop_na(fao_official) |> 
-#     #Removing FAO Major Areas (2 digit numbers) instead of 4-5 digits for EEZs
-#     filter(ID_mrgd > 999) |> 
-#     #Calculate mean per ensemble member
-#     group_by(year, mem, esm, scenario) |> 
-#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-#   
-#   #Create name to save file  
-#   f_out <- file.path(out_folder, 
-#                      str_c(m, "_yearly_global_perc_bio_change_data.csv"))
-# 
-#   #Saving results for each model
-#   df_model |>
-#     fwrite(f_out)
-# }
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |>
+    map(~readRDS(.)) |>
+    map_df(~bind_rows(.)) |>
+    #Apply mask
+    left_join(area_grid, by = join_by(x, y)) |>
+    #Removing areas not recognised in FAO official name list
+    drop_na(fao_official) |>
+    #Removing FAO Major Areas (2 digit numbers) instead of 4-5 digits for EEZs
+    filter(ID_mrgd > 999) |>
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario) |>
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+
+  #Create name to save file
+  f_out <- file.path(out_folder,
+                     str_c(m, "_yearly_global_perc_bio_change_data.csv"))
+
+  #Saving results for each model
+  df_model |>
+    fwrite(f_out)
+}
 ```
   
 Now we can calculate the percentage change in global exploitable fish biomass.  
   
 ```{r eval = F}
 #Listing all relevant files to calculate biomass projections
-global_data <- list.files(out_folder, pattern = "_yearly_global_perc_bio_change_data.csv",
-                       full.names = T) |> 
+global_data <- list.files(out_folder, 
+                          pattern = "_yearly_global_perc_bio_change_data.csv",
+                          full.names = T) |> 
   map_df(~fread(.))
 
 #Calculating global reference period
@@ -377,44 +323,41 @@ top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", "United States",
 #Identifying areas to keep from the FAO_EEZ keys
 keys_top7 <- fao_eez_keys |> 
   #Keep only top 7 fishing countries
-  filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
+  dplyr::filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
   #Drop columns that are not relevant
-  select(continent:fao_official)
-
-keys_top7<-keys_top7 %>% 
+  select(continent:fao_official) |> 
   distinct()
 
-# #Looping through each FishMIP model
-# for(m in members){
-#   
-#   #Load all data available for a single FishMIP model
-#   df_model <- str_subset(global_files, m) |> 
-#     map(~readRDS(.)) |> 
-#     map_df(~bind_rows(.)) |> 
-#     #Apply mask
-#     left_join(area_grid, by = join_by(x, y)) |> 
-#     #Select top 7 producers
-#     filter(fao_official %in% keys_top7$fao_official) |> 
-#     #Add names in top 7 keys
-#     left_join(keys_top7, by = "fao_official") |>
-#     #Keep same name for all EEZ that for part of China and the US
-#     mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~ 
-#                                      "the United States of America",
-#                                    Country_FAO == "China" ~ 
-#                                      "the People's Republic of China",
-#                                    T ~ fao_official)) |> 
-#     #Calculate mean per ensemble member
-#     group_by(year, mem, esm, scenario, fao_official) |> 
-#     summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
-#   
-#   #Create name to save file  
-#   f_out <- file.path(out_folder, 
-#                      str_c(m, "_yearly_top7_perc_bio_change_data.csv"))
-# 
-#   #Saving results for each model
-#   df_model |>
-#     fwrite(f_out)
-# }
+#Looping through each FishMIP model
+for(m in members){
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |>
+    map(~readRDS(.)) |>
+    map_df(~bind_rows(.)) |>
+    #Apply mask
+    left_join(area_grid, by = join_by(x, y)) |>
+    #Select top 7 producers
+    filter(fao_official %in% keys_top7$fao_official) |>
+    #Add names in top 7 keys
+    left_join(keys_top7, by = "fao_official") |>
+    #Keep same name for all EEZ that for part of China and the US
+    mutate(fao_official = case_when(str_detect(Country_FAO, "United") ~
+                                     "the United States of America",
+                                   Country_FAO == "China" ~
+                                     "the People's Republic of China",
+                                   T ~ fao_official)) |>
+    #Calculate mean per ensemble member
+    group_by(year, mem, esm, scenario, fao_official) |>
+    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T))
+
+  #Create name to save file
+  f_out <- file.path(out_folder,
+                     str_c(m, "_yearly_top7_perc_bio_change_data.csv"))
+
+  #Saving results for each model
+  df_model |>
+    fwrite(f_out)
+}
 ```
   
 Now we can calculate the percentage change in exploitable fish biomass from the reference period (2005-2014) for the top 7 countries by fisheries catches.  
@@ -447,7 +390,7 @@ top7_base_data <- top7_data |>
   ungroup()
 ```
   
-### print table of changes 
+## Print table of changes 
 
 ```{r}
 
@@ -484,7 +427,7 @@ table_countries<-bio_data %>%
 
 ```
 
-### PLotting trends for FishMIP Ocean Decede Conference 
+## Plotting trends for FishMIP Ocean Decede Conference 
 
 ```{r}
 
