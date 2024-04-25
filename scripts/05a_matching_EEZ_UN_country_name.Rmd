@@ -3,6 +3,8 @@ title: "Matching EEZs to UN country names"
 author: "Camilla Novaglio"
 date: "2024-02-26"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Loading libraries
@@ -32,6 +34,7 @@ fao_eez <- read_csv(list.files(out_folder,
                                full.names = T, recursive = T))
 
 fao_eez<-read.csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO_Major_EEZ/FAO-MajorAreas_EEZs_keys.csv")
+colnames(fao_eez)
 
 ### work in progress CN  ----
 
@@ -279,6 +282,21 @@ eez_keys<-eez_keys %>% filter(str_detect(Name_EEZ, "Overlapping|Joint", negate =
 eez_keys<-eez_keys %>% 
   mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", "Oceania", region))
 
+# different ID_mrgd but under the same FAO_official. Here need both as in 05b you ned to extract data by ID_mrgd and group by fao_official. 
+trial<-split(eez_keys, eez_keys$Official_Name_En_Stefania_NEW)
+which(lapply(trial, function(x) nrow(x))>1)
+trial[5]
+
+filter(eez_keys, Official_Name_En_Stefania_NEW == "Australia")
+filter(eez_keys, Official_Name_En_Stefania_NEW == "Ascension, Saint Helena and Tristan da Cunha")
+
+# or ... could check comments ... 
+unique(eez_keys$Comment)
+filter(eez_keys, Comment == "different ID_merge but same Official_Name_En_Stefania_NEW")
+trial[5]
+filter(eez_keys, Comment == "should be under USA following FAO classificacion" )
+trial[190]
+
 # clean and change column names as per above: 
 eez_keys<-eez_keys %>% 
   #Keeping relevant columns
@@ -290,12 +308,14 @@ eez_keys<-eez_keys %>%
   #Removing column with unaccepted EEZ names
   select(!Name_EEZ) 
 
+
 ### end work in progress ----
 ```
 
 ```{r}
+
 eez_keys |> 
-  write_csv("../data/eez_keys_camilla.csv")
+  write_csv("data/eez_keys_camilla.csv")
 ```
 
 
