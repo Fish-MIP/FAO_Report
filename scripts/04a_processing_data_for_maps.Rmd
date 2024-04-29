@@ -162,8 +162,6 @@ maps_data |>
 ## Calculating annual fisheries catch
 We will calculate the yearly mean capture fisheries production per country (2012-2021). Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity).  
   
-First, we will clean the 
-  
 ```{r, eval = F}
 #Load fisheries data
 fisheries_catch <- list.files(out_folder,
