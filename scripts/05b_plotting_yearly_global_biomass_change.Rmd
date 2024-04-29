@@ -272,45 +272,44 @@ bio_data_by_model <- bio_data |>
 #Check results
 bio_data_by_model
 
-# calculate percentage change between 2 periods
-# correct version to me - though exact same values as per above
-last_decade_bio <- bio_data |>
-  filter(year >= 2041 & year <= 2050) |>
-  #Calculate mean per ensemble member
-  group_by(mem, esm, scenario, fao_official) |>
-  dplyr::summarise(last_decade_bio = mean(mean_bio, na.rm = T))
-
-change_between_decades<-last_decade_bio %>%
-  full_join(ref_bio) %>%
-  arrange(fao_official) %>%
-  mutate(perc_change = ((last_decade_bio-ref_bio)/ref_bio)*100)
-
-# check differences
-bio_data_by_model %>% filter(year %in%(2041:2050)) %>% group_by(mem, esm, scenario, fao_official) %>% summarise(mean = mean(perc_change)) %>% arrange(fao_official)
-change_between_decades
-
-# check the 2 approaches 
-trial<-data.frame(decade = c(1,1,1,2,2,2), bio = c(10,19,16,1,9,6))
-
-# approach 1 
-# A mean biomass across decade 1 
-# B % change between mean biomass across decade 1 and biomass of each year in decade 2
-# C mean of % change 
-
-# approach 2 
-# A mean biomass across decade 1 and decade 1
-trial2<-trial %>% group_by(decade) %>% summarise(mean_bio = mean(bio))
-# B percentage change between decades
-
-
-
-
-
-
-
-
-
-
+# # calculate percentage change between 2 periods
+# # correct version to me - though exact same values as per above
+# last_decade_bio <- bio_data |>
+#   filter(year >= 2041 & year <= 2050) |>
+#   #Calculate mean per ensemble member
+#   group_by(mem, esm, scenario, fao_official) |>
+#   dplyr::summarise(last_decade_bio = mean(mean_bio, na.rm = T))
+# 
+# change_between_decades<-last_decade_bio %>%
+#   full_join(ref_bio) %>%
+#   arrange(fao_official) %>%
+#   mutate(perc_change = ((last_decade_bio-ref_bio)/ref_bio)*100)
+# 
+# # check differences
+# bio_data_by_model %>% filter(year %in%(2041:2050)) %>% group_by(mem, esm, scenario, fao_official) %>% summarise(mean = mean(perc_change)) %>% arrange(fao_official)
+# change_between_decades
+# 
+# # check the 2 approaches 
+# # mean biomass across ref decade for each model, assuming one country
+# ref<-data.frame(model = c("mod1", "mod2"), ref_bio = c(10,12))
+# # biomass per year per model
+# year<-data.frame(model= c("mod1", "mod1", "mod2", "mod2"), year = c(1,2,1,2), bio = c(5,10, 11,13))
+# 
+# # approach 1 
+# # A % change between mean biomass across ref decade per model and biomass per future years per model
+# all<-ref %>% 
+#   full_join(year) %>% 
+#   mutate(per_change = ((bio-ref_bio)/ref_bio)*100) %>% 
+#   group_by(model) %>% 
+#   summarise(mean_change = mean(per_change)) # B mean percentage change across years 
+# 
+# # approach 2 
+# # A mean biomass across ref decade and mean biomass across future years  
+# all<-ref %>% 
+#   full_join(year) %>% 
+#   group_by(model, ref_bio) %>% 
+#   summarise(bio = mean(bio)) %>% 
+#   mutate(mean_change = ((bio-ref_bio)/ref_bio)*100) # B % change across decades 
 
 bio_data <- bio_data |> 
   #Add reference period to yearly biomass data
@@ -797,17 +796,7 @@ top6<-ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States o
 
 ```{r}
 
-## use decade and mean and sd across decade and models - could also plot histograms instead of data point. Is this OK or variability in time confounds across-model uncertainty as for spatial variability in maps??? Should I calculate sd only after having averaged across years of the same decade for each model??? 
-
-bio_dataOCD<-all_scale_data_by_model %>% 
-  filter(!is.na(OCEAN)) %>% 
-  group_by(fao_official, scenario, decade) %>% # this is like the stat dataset above
-  summarise(mean = mean(perc_change), # across both decade and model
-            sd = sd(perc_change),
-            median = median(perc_change)) %>%  
-  ungroup() 
-
-# use mean and sd across for the last decade and across models calcualted above 
+# use mean and sd calculated above 
 
 # sort values
 sorting<-table %>% 
