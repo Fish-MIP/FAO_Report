@@ -162,55 +162,61 @@ maps_data |>
 ## Calculating annual fisheries catch
 We will calculate the yearly mean capture fisheries production per country (2012-2021). Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity).  
   
-```{r}
+First, we will clean the 
+  
+```{r, eval = F}
 #Load fisheries data
-fisheries_catch <- list.files(out_folder, 
-                              pattern = "global_production_quantity.csv", 
-                              full.name = T) |> 
-  read_csv() |> 
-  #Keeping only columns that are relevant to us (country name and years)
-  #The flag column identifies which values are estimates (E) and which values
-  #are "more than zero but less than half the unit used" (N)
-  select(!c(contains("Flag")|`Unit Name`)) |> 
+fisheries_catch <- list.files(out_folder,
+                              pattern = "raw_FishStatJ.xlsx",
+                              full.name = T) |>
+  read_excel() |> 
   #Simplify column names
   clean_names() |> 
-  #Reclassifying Zanzibar as Tanzania
-  mutate(country_name_en = case_when(str_detect(country_name_en, "Tanzania") ~
+  #Keep only rows in tonnes
+  filter(str_detect(unit_name, "Tonne"))
+
+#Getting list of years from column names
+years <- str_subset(names(fisheries_catch), "^x.*")
+#Getting list of flags from column names
+years_flag <- str_subset(names(fisheries_catch), "^s.*")
+
+#Create new variable to store clean data
+fisheries_catch_clean <- fisheries_catch |> 
+  select(country_name)
+
+#Loop through each year
+for(i in seq_along(years)){
+  #Select columns for year and flags for that year
+  clean <- fisheries_catch |> 
+    #Both columns have the same index
+    select(c(years[i], years_flag[i]))
+  #Chang column names so it is easy to identify them
+  names(clean) <- c("year", "flag")
+  #Change year row to NA if there is an "E" or "..." in the flag column
+  clean <- clean |> 
+    mutate(year = case_when(flag == "E" | flag == "..." ~ NA,
+                            T ~ year))
+  #Change column names back to original
+  colnames(clean) <- c(years[i], years_flag[i])
+  #Bind clean columns to new variable
+  fisheries_catch_clean <- fisheries_catch_clean |> 
+    bind_cols(clean)
+}
+
+#Reorganise data prior to plotting
+fisheries_catch_clean <- fisheries_catch_clean |> 
+  #Remove flag columns and year 2022
+  select(!c(starts_with("s_")|x2022)) |> 
+  #Reorganise data
+  pivot_longer(!country_name, names_to = "year", names_prefix = "x", 
+               values_to = "annual_catch_tonnes") |> 
+  #Renaming countries that include regions within countries
+  mutate(country_name = case_when(str_detect(country_name, "Tanzania") ~
                                     "United Republic of Tanzania",
-                                  #Matching country names to FAO country list
-                                  str_detect(country_name_en, "Congo,") ~
-                                    "Democratic Republic of the Congo",
-                                  str_detect(country_name_en, "Falkland") ~
-                                    "Falkland Islands (Malvinas)",
-                                  str_detect(country_name_en, "French Southern") ~
-                                    "French Southern Territories",
-                                  str_detect(country_name_en, "Venezuela") ~
-                                    "Venezuela (Bolivarian Republic of)",
-                                  str_detect(country_name_en, "Korea, Dem") ~
-                                    "Democratic People's Republic of Korea",
-                                  str_detect(country_name_en, "Korea, Republic") ~
-                                    "Republic of Korea",
-                                  str_detect(country_name_en, "Iran") ~
-                                    "Iran (Islamic Republic of)",
-                                  str_detect(country_name_en, "United Kingdom") ~
-                                    "United Kingdom of Great Britain and Northern Ireland",
-                                  T ~ country_name_en)) |>
+                                    T ~ country_name)) |> 
   #Add rows with the same country name
-  group_by(country_name_en) |> 
-  summarise(across(x2012:x2021, list(sum = sum), .names = "{.col}")) |> 
-  #Reorganise table to calculate means
-  pivot_longer(!country_name_en, values_to = "annual_catch", names_to = "year") |> 
-  #Calculate mean annual catch per country
-  group_by(country_name_en) |> 
-  #Dividing by 1,000,000 to show data in maps as millions of tonnes
-  summarise(mean_annual_catch = mean(annual_catch, na.rm = T)*1e-6) |> 
-  #Create new column with classification
-  mutate(class_fish = cut(mean_annual_catch, 
-                          #Including a small negative number to include 
-                          #countries with 0 values in first group
-                          breaks = c(-1e-6, .25, 1, 2, 4, 6, 20),
-                          labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", 
-                                     ">6")))
+  group_by(country_name, year) |> 
+  summarise(annual_catch_tonnes = sum(annual_catch_tonnes, na.rm = T))
 
 #Fisheries data does not contain identifiers for countries, we will match
 #the above summary to the country ISO codes from the FAO
@@ -221,20 +227,45 @@ fao_countries <- list.files(out_folder, pattern = "FAO_countries_list",
   clean_names() |> 
   #Select columns of interest
   select(list_name, iso3)
-  
+
+#Checking FishStatsJ countries against FAO approved list
+fishstat_countries <- fisheries_catch_clean |> 
+  distinct(country_name) |> 
+  pull(country_name)
+fao_count <- fao_countries |> 
+  distinct(list_name) |> 
+  pull(list_name)
+#Countries to be removed
+remove_countries <- fishstat_countries[!fishstat_countries %in% fao_count]
+
+fisheries_catch_clean <- fisheries_catch_clean |> 
+  #Removing countries that are not recognised by FAO
+  ungroup() |> 
+  filter(!country_name %in% remove_countries) |> 
+  group_by(country_name) |> 
+  #Dividing by 1,000,000 to show data in maps as millions of tonnes
+  summarise(mean_annual_catch = mean(annual_catch_tonnes, na.rm = T)*1e-6) |> 
+  #Create new column with classification
+  mutate(class_fish = cut(mean_annual_catch, 
+                          #Including a small negative number to include 
+                          #countries with 0 values in first group
+                          breaks = c(-1e-6, .25, 1, 2, 4, 6, 20),
+                          labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", 
+                                     ">6")))
+
 #Add ISO codes to fisheries data
-fisheries_catch <- fisheries_catch |> 
-  left_join(fao_countries, by = c("country_name_en" = "list_name")) |> 
+fisheries_catch_clean <- fisheries_catch_clean |> 
+  left_join(fao_countries, by = c("country_name" = "list_name")) |> 
   #Remove country name
-  select(!country_name_en) |> 
+  select(!country_name) |> 
   #Renaming ISO code column to match world map name
   rename(ISO3CD = iso3)
 
-#Save results
-fisheries_catch |> 
+#Saving clean fisheries catch data
+fisheries_catch_clean |> 
   write_csv("../data/world_mean_annual_catch.csv")
 ```
-    
+  
 ## Calculating percentage difference in human populations 
   
 ```{r}
