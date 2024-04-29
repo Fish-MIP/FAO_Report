@@ -56,14 +56,6 @@ fao_eez_mask <- read_csv(list.files(out_folder,
                                     pattern = "^masked_area_1deg.csv", 
                                     full.names = T, recursive = T)) |> 
   rename(x = Lon, y = Lat, ID_mrgd = mask)
-
-# #Getting a list of files containing biomass data
-# global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
-#                            full.names = T, recursive = T)
-# 
-# #Getting a list of models
-# members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
-#   unique()
 ```
   
 ## Loading relevant shapefiles
@@ -155,7 +147,10 @@ Capture fisheries production data comes from the [FAO's Fisheries and Aquacultur
   
 ```{r}
 #Load fisheries data
-fisheries_catch <- read_csv("../data/world_mean_annual_catch.csv")
+fisheries_catch <- read_csv("../data/world_mean_annual_catch.csv") |> 
+  mutate(class_fish = factor(class_fish, 
+                             levels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", 
+                                     ">6"), ordered = T))
 
 #Now we can add this information to the world map
 world_proj <- world_proj |> 
