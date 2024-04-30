@@ -1,0 +1,247 @@
+---
+title: "Plotting temporal biomass change"
+author: "Denisse Fierro Arcos"
+date: "2024-04-30"
+output: pdf_document
+---
+
+## Loading libraries
+  
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+## Setting up notebook
+
+```{r}
+#Base folder for project
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/"
+
+#Ensemble percentage change in biomass by countries
+count_bio <- list.files(base_folder, "ensemble_perc_bio_change_country.csv",
+                        recursive = T, full.names = T) |> 
+  read_csv()
+
+#Ensemble percentage change in biomass by FAO regions
+fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
+                        recursive = T, full.names = T) |> 
+  read_csv()
+
+#Ensemble percentage change in biomass globally
+global_bio <- list.files(base_folder, "ensemble_perc_bio_change_global.csv",
+                         recursive = T, full.names = T) |> 
+  read_csv()
+```
+    
+## Defining basic plot design
+  
+```{r}
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Adding no change line at 0 for reference 
+                geom_hline(yintercept = 0, color = "#709fcc", linewidth = 0.65, 
+                           linetype = 2),
+                #Adding line dividing historical period and future projections
+                geom_vline(xintercept = 2015, color = "#709fcc", 
+                           linewidth = 0.65),
+                #Adding SD as shading 
+                geom_ribbon(aes(ymin = mean_change-sd_change,
+                                ymax = mean_change+sd_change, fill = scenario),
+                            alpha = 0.3, color = NA),
+                #Manually setting colours to be used in plots
+                scale_color_manual(values = c("historical" = "black",
+                                              "ssp126" = "#33bbee", 
+                                              "ssp585" = "#ee3377"), 
+                                   name = "Scenarios",
+                                   labels = c("Historical", "SSP1-2.6", 
+                                              "SSP5-8.5")),
+                scale_fill_manual(values = c("historical" = "black", 
+                                             "ssp126" = "#33bbee", 
+                                             "ssp585" = "#ee3377"), 
+                                  name = "Scenarios",
+                                  labels = c("Historical", "SSP1-2.6", 
+                                             "SSP5-8.5")),
+                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                theme_bw(),
+                labs(y = "Change in exploitable\nfish biomass (%)"),
+                theme(legend.position = "top", legend.justification = "center", 
+                      legend.text = element_text(size = 10),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_blank(),
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)))
+```
+
+## Trends globally and for top 7 countries with highest catches
+  
+```{r}
+#Defining top 7 countries by catch
+top_7 <- c("Republic of China", "India", "Indonesia", "Peru", "Russian", 
+           "United States of America", "Viet")
+
+#Extracting data from countries calculations
+top_7_data <- count_bio |> 
+  filter(str_detect(fa_ffcl, paste0(top_7, collapse = "|"))) |> 
+  #Remove continent information
+  select(!contnnt)
+```
+  
+## Plotting trends globally and for top 7 countries
+  
+```{r}
+#Merging global and top 7 countries data
+global_bio |> 
+  #Add an extra column to match top 7 countries
+  mutate(fa_ffcl = "Global", .after = "scenario") |> 
+  #Joining to top7 data
+  bind_rows(top_7_data) |> 
+  #Create an order category for SOVEREIGN1
+  mutate(fa_ffcl = factor(fa_ffcl, levels = c("Global", 
+                                              unique(top_7_data$fa_ffcl)), 
+                             ordered = T)) |> 
+  #Plotting
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  #Applying base plot design
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", nrow = 8)
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
+       device = "pdf", width = 6, height = 12)
+```
+  
+## Figure 2 - Asia
+In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
+  
+```{r}
+#Filtering data
+count_bio |> 
+  #Extract EEZs in Asia
+  filter(contnnt == "Asia") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(fa_ffcl = label_wrap_gen(20)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "asia_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 14.35)
+```
+  
+## Figure 3 - Africa
+In this figure, we will exclude marine areas under the jurisdiction of countries in Africa as classified by the FAO.  
+  
+```{r}
+#Filtering data
+count_bio |> 
+  #Extract EEZs in Africa
+  filter(contnnt == "Africa") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", ncol = 5, 
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(fa_ffcl = label_wrap_gen(20)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "africa_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 14.35)
+```
+  
+## Figure 4 - Europe
+In this figure, we will exclude marine areas under the jurisdiction of countries in Europe as classified by the FAO.  
+  
+```{r}
+#Filtering data
+count_bio |> 
+  #Extract EEZs in Europe
+  filter(contnnt == "Europe") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(fa_ffcl = label_wrap_gen(25)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "europe_perc_change.pdf"),
+       device = "pdf", width = 12, height = 16)
+```
+  
+## Figure 5 - Americas
+In this figure, we will exclude marine areas under the jurisdiction of countries in the Americas as classified by the FAO.  
+  
+```{r}
+#Filtering data
+count_bio |> 
+  #Extract EEZs in the Americas
+  filter(contnnt == "Americas") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(fa_ffcl = label_wrap_gen(25)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "americas_perc_change.pdf"), 
+       device = "pdf", width = 12, height = 17.22)
+```
+  
+## Figure 6 - Oceania
+In this figure, we will exclude marine areas under the jurisdiction of countries in Oceania as classified by the FAO.  
+  
+```{r}
+#Filtering data
+count_bio |> 
+  #Extract EEZs in Oceania
+  filter(contnnt == "Oceania") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~fa_ffcl, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(fa_ffcl = label_wrap_gen(25)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "oceania_perc_change.pdf"),
+       device = "pdf", width = 10, height = 9)
+```
+  
+## Figure 7 - FAO regions
+  
+```{r}
+#Filtering data
+fao_bio |> 
+  #Plotting data
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by FAO sector
+  facet_wrap(~NAME_EN, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(NAME_EN = label_wrap_gen(30)))
+```
+  
+```{r, eval = F}
+#Saving plot
+ggsave(filename = file.path(base_folder, "fao_regions_perc_change.pdf"), 
+       device = "pdf", width = 10, height = 6)
+```
+  
+
+  
