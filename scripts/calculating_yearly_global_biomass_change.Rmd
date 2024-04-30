@@ -76,9 +76,9 @@ for(m in members){
   df_model <- str_subset(global_files, m) |>
     map(~readRDS(.)) |>
     map_df(~bind_rows(.)) |>
-    #Add area for each grid cell and area ID (FAO and EEZ)
+    #Add area for each grid cell and country
     left_join(area_grid, by = join_by(x, y)) |>
-    #Calculate weighted mean for biomass per ensemble member per EEZ/FAO
+    #Calculate weighted mean for biomass per ensemble member per country
     group_by(year, mem, esm, scenario, contnnt, fa_ffcl) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     #Remove rows outside country boundaries
@@ -152,9 +152,9 @@ for(m in members){
   df_model <- str_subset(global_files, m) |>
     map(~readRDS(.)) |>
     map_df(~bind_rows(.)) |>
-    #Add area for each grid cell and area ID (FAO and EEZ)
+    #Add area for each grid cell and within FAO regions
     left_join(area_grid, by = join_by(x, y)) |>
-    #Calculate weighted mean for biomass per ensemble member per EEZ/FAO
+    #Calculate weighted mean for biomass per ensemble member per FAO
     group_by(year, mem, esm, scenario, NAME_EN) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     #Remove rows outside country boundaries
@@ -202,5 +202,83 @@ f_out <- file.path(out_folder, "ensemble_perc_bio_change_fao_region.csv")
 bio_data |>
   write_csv(f_out)
 ```
+  
+## Calculating percentage change in fish biomass mean globally from global FishMIP models
+  
+```{r, eval = F}
+#Looping through each FishMIP model
+for(m in members){
+  #Select correct area of grid cell
+  if(str_detect(m, "ipsl")){
+    area_grid <- area_ipsl_df
+    print(paste0("processing '", m, "' file, using ipsl mask"))
+  }else if(str_detect(m, "gfdl")){
+    area_grid <- area_gfdl_df
+    print(paste0("processing '", m, "' file, using gfdl mask"))
+  }
+  
+  #Keep only information for grid cells within country boundaries
+  area_grid <- area_grid |> 
+    drop_na(fa_ffcl) |>
+    #Remove columns that are not relevant
+    select(x:cell_area)
+  
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |>
+    map(~readRDS(.)) |>
+    map_df(~bind_rows(.)) |>
+    #Add area for each grid cell and area ID
+    left_join(area_grid, by = join_by(x, y)) |>
+    #Removing grid cells outside countries
+    drop_na(cell_area) |> 
+    #Calculate weighted mean for biomass per ensemble member globally
+    group_by(year, mem, esm, scenario) |> 
+    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T))
+  
+  #Calculating reference period
+  ref_bio <- df_model |> 
+    filter(year >= 2005 & year <= 2014) |> 
+    ungroup() |> 
+    #Calculate mean per ensemble member
+    summarise(ref_bio = mean(mean_bio, na.rm = T))
+  
+  #Add reference period to weighted mean data frame
+  df_model <- df_model |> 
+    mutate(ref_bio = ref_bio$ref_bio) |> 
+    #Calculate percentage change
+    mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
+  
+  #Create name to save file
+  f_out <- file.path(out_folder, 
+                     str_c(m, "_yearly_perc_bio_change_global.csv"))
+
+  #Saving results for each model
+  df_model |>
+    fwrite(f_out)
+}
+```
+  
+## Calculating mean ensemble percentage change in biomass for entire globe
+  
+```{r eval = F}
+bio_data <- list.files(out_folder, 
+                       pattern = "_yearly_perc_bio_change_global.csv",
+                       full.names = T, recursive = T) |> 
+  map(~fread(.)) |> 
+  bind_rows() |> 
+  group_by(year, scenario) |> 
+  summarise(mean_change = mean(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T))
+
+#Create name to save file
+f_out <- file.path(out_folder, "ensemble_perc_bio_change_global.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+```
+
+
+
   
   
