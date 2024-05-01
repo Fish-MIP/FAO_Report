@@ -15,35 +15,11 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
   
 ```{r, message=FALSE, warning=FALSE}
 library(readxl)
-#Data wrangling
 library(tidyverse)
 library(data.table)
 library(janitor)
-#Dealing with raster data
-library(terra)
 ```
 
-## Getting area of grid cells for IPSL and GFDL
-  
-```{r}
-#Location of area grid files
-area_grid <- "/rd/gem/private/shared_resources/grid_cell_area_ESMs/isimip3b/"
-
-#Getting GFDL grid area
-area_gfdl <- rast(list.files(area_grid, "gfdl", full.names = T))
-#Change land values from 0 to NA
-area_gfdl[area_gfdl == 0] <- NA
-#Transform to data frame
-area_gfdl_df <- area_gfdl |> 
-  as.data.frame(xy = T)
-
-#Getting IPSL grid area
-area_ipsl <- rast(list.files(area_grid, "ipsl", full.names = T))
-#Transform to data frame
-area_ipsl_df <- area_ipsl |> 
-  as.data.frame(xy = T)
-```
-  
 ## Getting FAO-EEZ information
   
 ```{r}
@@ -56,24 +32,15 @@ if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
 
-#FAO_EEZ keys - Contains continent information
-fao_eez <- read_csv(list.files(out_folder, pattern = "_keys.csv", 
-                               full.names = T, recursive = T))
+#Getting GFDL grid area
+area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 
-#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv(list.files(out_folder, 
-                                    pattern = "^masked_area_1deg.csv", 
-                                    full.names = T, recursive = T)) |> 
-  rename(x = Lon, y = Lat, ID_mrgd = mask)
-
-#Merging masks and area files into a single variable
-fao_eez_mask <- fao_eez |> 
-  select(ID_mrgd, nm_mrgd, NAME_EN, CONTINENT) |> 
-  right_join(fao_eez_mask, by = join_by("ID_mrgd")) |> 
-  left_join(area_gfdl_df, by = join_by("x", "y")) |> 
-  rename(gfdl = areacello) |> 
-  left_join(area_ipsl_df, by = join_by("x", "y")) |> 
-  rename(ipsl = cell_area)
+#Getting IPSL grid area
+area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 ```
   
 ## Getting a list of FishMIP biomass outputs
@@ -99,7 +66,9 @@ for(m in members){
     map(~readRDS(.)) |> 
     map_df(~bind_rows(.)) |> 
     #Extract data only for years to be used in maps
-    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    filter(year >= 2005 & year <= 2014 | 
+             year >= 2041 & year <= 2050 | 
+             year >= 2091 & year <= 2100) |> 
     #Create new group column to calculate means
     mutate(group = case_when(year <= 2014 ~ "reference",
                              year >= 2041 & year <= 2050 ~ "mean50",
@@ -108,10 +77,8 @@ for(m in members){
            group = case_when(group != "reference" ~ str_c(group, scenario, 
                                                           sep = "_"),
                              T ~ group)) |> 
-    #Apply mask
-    left_join(fao_eez_mask, by = join_by(x, y)) |> 
     #Calculate mean per ensemble member
-    group_by(x, y, mem, esm, ID_mrgd, group) |> 
+    group_by(x, y, mem, esm, group) |> 
     summarise(mean_bio = mean(biomass, na.rm = T)) |> 
     #Reorganise table to facilitate calculations
     pivot_wider(names_from = group, values_from = mean_bio) |> 
@@ -139,20 +106,19 @@ We will now load the percentage change in biomass for all global models and calc
 maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", 
                         full.names = T) |> 
   map_df(~fread(.)) |> 
-  #Calculations performed by year and EEZ
-  group_by(x, y, ID_mrgd) |> 
+  bind_rows() |> 
+  #Calculations performed by grid cell
+  group_by(x, y) |> 
   #Apply calculations to biases only
   summarise(across(reference:rel_change_mean00_ssp585, 
                    #Listing statistics to be calculated
                    list(mean = mean), 
                    #Setting column names
                    .names = "{.col}_{.fn}")) |> 
-  ungroup() |> 
-  #Add information about continents
-  inner_join(fao_eez_mask, by = join_by(x, y, ID_mrgd)) |> 
-  #If a grid cell is not assigned to an EEZ, then change to NA
-  mutate(across(starts_with("rel_change"), ~ case_when(is.na(ID_mrgd) ~ NA,
-                                                      T ~ .x)))
+  #Apply mask - We will use GFDL because it includes a few extra rows in the
+  #southern hemisphere. Otherwise is the same as IPSL
+  left_join(area_gfdl_df, by = join_by(x, y)) |> 
+  ungroup()
 
 #Save ensemble data
 maps_data |> 
@@ -275,13 +241,15 @@ pop_sum <- function(file){
                  values_to = "population") |> 
     mutate(year = as.numeric(year)) |> 
     #Keep only relevant years
-    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    filter(year >= 2005 & year <= 2014 | 
+             year >= 2041 & year <= 2050 | 
+             year >= 2091 & year <= 2100) |> 
     #Create new group column to calculate means
     mutate(scenario = str_extract(file, "population_(.*)_nat", group = 1),
            group = case_when(year <= 2014 ~ "reference",
                              year >= 2041 & year <= 2050 ~ "mean50",
                              year >= 2091 & year <= 2100 ~ "mean00"),
-           #The new group column also need to have the scenario as part of the label
+           #The new group column also need to have the scenario in the label
            group = case_when(group != "reference" ~ str_c(group, scenario, 
                                                           sep = "_"),
                              T ~ group)) |> 
@@ -320,23 +288,26 @@ The ESMs used to force the FishMIP models vary slightly, so different area of gr
 for(m in members){
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
-    area_grid <- fao_eez_mask |> 
-      select(!gfdl) |> 
-      #rename column
-      rename(area_m = ipsl)
+    area_grid <- area_ipsl_df
+    print(paste0("processing '", m, "' file, using ipsl mask"))
   }else if(str_detect(m, "gfdl")){
-    area_grid <- fao_eez_mask |> 
-      select(!ipsl)|> 
-      #rename column
-      rename(area_m = gfdl)
+    area_grid <- area_gfdl_df
+    print(paste0("processing '", m, "' file, using gfdl mask"))
   }
+  
+  #Keeping information within FAO regions only
+  area_grid <- area_grid |> 
+    drop_na(NAME_EN) |> 
+    #Keeping relevant columns 
+    select(x:ID_mrgd)
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |> 
     map(~readRDS(.)) |> 
     map_df(~bind_rows(.)) |> 
     #Extract data only for years to be used in maps
-    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 | year >= 2091 & year <= 2100) |> 
+    filter(year >= 2005 & year <= 2014 | year >= 2041 & year <= 2050 
+           | year >= 2091 & year <= 2100) |> 
     #Create new group column to calculate means
     mutate(group = case_when(year <= 2014 ~ "reference",
                              year >= 2041 & year <= 2050 ~ "mean50",
@@ -346,10 +317,12 @@ for(m in members){
                                                           sep = "_"),
                              T ~ group)) |> 
     #Apply mask
-    left_join(area_grid, by = join_by(x, y)) |> 
+    left_join(area_grid, by = join_by(x, y)) |>
+    #Remove areas outside FAO regions
+    drop_na(ID_mrgd) |> 
     #Calculate mean per ensemble member per year
     group_by(year, mem, esm, ID_mrgd, group) |> 
-    summarise(mean_bio = weighted.mean(biomass, area_m, na.rm = T)) |> 
+    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     #Calculate mean per ensemble member per period
     group_by(mem, esm, ID_mrgd, group) |> 
     summarise(mean_bio = mean(mean_bio, na.rm = T)) |> 
@@ -379,8 +352,8 @@ fao_map_data <- list.files(out_folder,
                            pattern = "_perc_bio_change_choro_map.csv", 
                            full.names = T) |> 
   map_df(~fread(.)) |> 
-  drop_na(ID_mrgd) |> 
-  #Calculations performed by year and EEZ
+  bind_rows() |> 
+  #Calculations performed by year and FAO region
   group_by(ID_mrgd) |> 
   #Apply calculations to biases only
   summarise(across(rel_change_mean50_ssp126:rel_change_mean00_ssp585, 
@@ -424,14 +397,18 @@ maps_data_sd <- list.files(out_folder,
                            pattern = "_perc_bio_change_data_map.csv", 
                            full.names = T) |> 
   map_df(~fread(.)) |> 
+  bind_rows() |> 
   #Calculations performed by year and EEZ
-  group_by(x, y, ID_mrgd) |> 
+  group_by(x, y) |> 
   #Apply calculations to biases only
   summarise(across(rel_change_mean50_ssp126:rel_change_mean00_ssp585, 
                    #Listing statistics to be calculated
                    list(sd = sd), 
                    #Setting column names
                    .names = "{.col}_{.fn}")) |> 
+  #Apply mask - We will use GFDL because it includes a few extra rows in the
+  #southern hemisphere. Otherwise is the same as IPSL
+  left_join(area_gfdl_df, by = join_by(x, y)) |> 
   ungroup()
 
 #Save results
