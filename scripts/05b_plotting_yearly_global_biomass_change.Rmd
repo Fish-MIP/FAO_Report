@@ -40,26 +40,18 @@ if(!dir.exists(out_folder)){
 }
 ```
   
-## Getting area of grid cells for IPSL and GFDL
+## Files with all information per grid cell
   
 ```{r}
-#Location of area grid files
-area_grid <- "/rd/gem/private/shared_resources/grid_cell_area_ESMs/isimip3b/"
-
 #Getting GFDL grid area
-area_gfdl <- rast(list.files(area_grid, "gfdl", full.names = T))
-#Change land values from 0 to NA
-area_gfdl[area_gfdl == 0] <- NA
-#Transform to data frame
-area_gfdl_df <- area_gfdl |> 
-  as.data.frame(xy = T)
+area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 
 #Getting IPSL grid area
-area_ipsl <- rast(list.files(area_grid, "ipsl", full.names = T))
-# plot(area_ipsl) # lake values in file but have been deleted from models so OK 
-#Transform to data frame
-area_ipsl_df <- area_ipsl |> 
-  as.data.frame(xy = T)
+area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 ```
 
 
@@ -68,47 +60,6 @@ area_ipsl_df <- area_ipsl |>
 eez_keys <- read_csv("data/eez_keys_camilla.csv")
 
 filter(eez_keys, fao_official == "Australia") # 2 different id_merge (one for AU and the other for Macquarie island). Extraction of data by country through lat and lon will be done using id_mrq (eez specific) but grouping to calculate mean biomass will be done using fao_official (fao_country specific) so that both Au and mq island will fall under Au as per fao_official
-
-#FAO keys
-fao <- read_csv(list.files(out_folder, 
-                           pattern = "FAO_MajorAreas_200NM_cont_keys.csv", 
-                           full.names = T, recursive = T)) |> 
-  #Keep FAO areas only
-  drop_na(OCEAN) |> 
-  #Removing duplicates
-  distinct() |> 
-  #Keep relevant columns only
-  select(ID_mrgd, OCEAN, NAME_EN)
-
-#Merging FAO and EEZ keys
-fao_eez_keys <- fao |>
-  bind_rows(eez_keys) |> 
-  #Keep all official names in a single column for FAO and EEZ areas
-  mutate(fao_official = case_when(is.na(fao_official) ~ NAME_EN, 
-                                  T ~ fao_official)) |> 
-  #Remove duplicate column
-  select(!NAME_EN)
-  
-#Removing individual keys
-rm(eez_keys, fao)
-
-#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- list.files(out_folder, 
-                           pattern = "FAO_Major_200NM_masked_area_1deg.csv",
-                           full.names = T, recursive = T) |> 
-  read_csv() |> 
-  #Renaming ID column
-  dplyr::rename("ID_mrgd" = "mask") |> 
-  #Adding official names to be used in plots
-  left_join(fao_eez_keys[,c("ID_mrgd", "fao_official")], 
-            by = join_by(ID_mrgd))
-
-#Merging masks and area files into a single variable
-fao_eez_mask <- fao_eez_mask |> 
-  left_join(area_gfdl_df, by = join_by("x", "y")) |> 
-  rename(gfdl = areacello) |> 
-  left_join(area_ipsl_df, by = join_by("x", "y")) |> 
-  rename(ipsl = cell_area)
 
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
@@ -129,15 +80,11 @@ for(m in members){
   
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
-    area_grid <- fao_eez_mask |> 
-      select(!gfdl) |> 
-      #rename column
-      rename(area_m = ipsl)
+    area_grid <- area_ipsl_df
+    print(paste0("processing '", m, "' file, using ipsl mask"))
   }else if(str_detect(m, "gfdl")){
-    area_grid <- fao_eez_mask |> 
-      select(!ipsl)|> 
-      #rename column
-      rename(area_m = gfdl)
+    area_grid <- area_gfdl_df
+    print(paste0("processing '", m, "' file, using gfdl mask"))
   }
   
   #Load all data available for a single FishMIP model
