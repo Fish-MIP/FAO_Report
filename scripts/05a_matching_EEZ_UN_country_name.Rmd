@@ -28,12 +28,9 @@ if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
 
-#FAO_EEZ key - Contains continent information
-fao_eez <- read_csv(list.files(base_folder, 
-                               pattern = "FAO-MajorAreas_EEZs_keys.csv", 
-                               full.names = T, recursive = T))
+#FAO_EEZ key - Contains continent information - UPDATED FILE! - Denisse
+fao_eez <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv"))
 
-fao_eez<-read.csv("/rd/gem/private/users/ldfierro/Merged_FAO_EEZ/FAO_Major_EEZ/FAO-MajorAreas_EEZs_keys.csv")
 colnames(fao_eez)
 
 # ## WARNING cannot locate the file anymore. it works if I do this 
