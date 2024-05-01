@@ -16,7 +16,7 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ```{r, message=FALSE, warning=FALSE}
 #Data wrangling
 library(tidyverse)
-#Plotting
+#Using more than one scale in plots
 library(ggnewscale)
 #Dealing with raster data
 library(terra)
@@ -27,6 +27,7 @@ library(sf)
 library(rnaturalearth)
 #Color palettes
 library(cmocean)
+library(scales)
 #Combining plots
 library(cowplot)
 ```
@@ -47,15 +48,15 @@ if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
 
-#FAO_EEZ keys - Contains continent information
-fao_eez <- read_csv(list.files(out_folder, pattern = "_keys.csv", 
-                               full.names = T, recursive = T))
+#Getting GFDL grid area
+area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 
-#FAO_EEZ mask - Contains IDs for FAO and EEZ areas
-fao_eez_mask <- read_csv(list.files(out_folder, 
-                                    pattern = "^masked_area_1deg.csv", 
-                                    full.names = T, recursive = T)) |> 
-  rename(x = Lon, y = Lat, ID_mrgd = mask)
+#Getting IPSL grid area
+area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
+                           recursive = T, full.names = T) |> 
+  read_csv()
 ```
   
 ## Loading relevant shapefiles
@@ -63,7 +64,17 @@ We will apply a Robinson projection to all shapefiles before plotting them.
   
 ```{r}
 #Robinson projection
-rob_proj <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +type=crs"
+rob_proj <- "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs
++type=crs"
+
+#Unprojected UN-approved world base map
+world <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
+                                 full.names = T, recursive = T))
+#Boundaries provided by UN
+world_bound_wgs84 <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
+                                  full.names = T, recursive = T)) |> 
+  #Selecting boundary types to be included in the map
+  filter(TYPE < 99) 
 
 #Base map
 world_proj <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
@@ -77,19 +88,32 @@ world_bound <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp",
   filter(TYPE < 99) |> 
   st_transform(rob_proj)
 
-#EEZ boundaries
-fao_eez_proj <- read_sf(list.files(out_folder, 
+#FAO and EEZ boundaries - unprojected
+fao_eez <- read_sf(list.files(out_folder, 
                                pattern = "FAO_MajorAreas_200NM_cont.shp", 
-                               recursive = T, full.names = T)) |> 
-  st_transform(rob_proj)
+                               recursive = T, full.names = T))
 
-#FAO and EEZ shapefile
+#EEZ boundaries - unprojected
+eez <- fao_eez |> 
+  filter(is.na(NAME_EN)) |> 
+  #Removing empty columns
+  select(!OCEAN:NAME_EN)
+
+#FAO - EEZ boundaries - projected
+fao_eez_proj <- fao_eez |> 
+   st_transform(rob_proj)
+
+#EEZ boundaries - projected
 eez_proj <- fao_eez_proj |> 
-  drop_na(MRGID)
+  filter(is.na(NAME_EN)) |> 
+  #Removing empty columns
+  select(!OCEAN:NAME_EN)
 
-#Getting FAO regions only
+#FAO regions 
 fao_proj <- fao_eez_proj |>
-  drop_na(OCEAN)
+  drop_na(OCEAN) |> 
+  #Removing empty columns
+  select(!contnnt:fa_ffcl)
 ```
   
 ## Figure 2 FAO report - Regions used in report
@@ -100,7 +124,7 @@ main <- ggplot()+
   #Plotting FAO classified by ocean basin
   geom_sf(data = fao_proj, aes(fill = OCEAN))+
   #Plotting EEZ classified by continent
-  geom_sf(data = eez_proj, aes(fill = CONTINENT))+
+  geom_sf(data = eez_proj, aes(fill = contnnt))+
   #Using colour blind friendly colours
   scale_fill_manual(values = c("Pacific" = "#222255", "Atlantic" = "#225555", 
                                "Indian" = "#225522", "Arctic" = "#666633", 
@@ -149,15 +173,20 @@ Capture fisheries production data comes from the [FAO's Fisheries and Aquacultur
 #Load fisheries data
 fisheries_catch <- read_csv("../data/world_mean_annual_catch.csv") |> 
   mutate(class_fish = factor(class_fish, 
-                             levels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", 
-                                     ">6"), ordered = T))
+                             levels = c("<0.25", "0.25-1", "1-2", "2-4", 
+                                        "4-6", ">6"), ordered = T))
 
-#Now we can add this information to the world map
+#Now we can add this information to the world maps
+#Projected
 world_proj <- world_proj |> 
+  left_join(fisheries_catch, by = join_by(ISO3CD))
+
+#Unprojected
+world <- world |> 
   left_join(fisheries_catch, by = join_by(ISO3CD))
 ```
   
-We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection. We will also create a custom-made colour palette for the maps.  
+We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection.   
   
 ```{r}
 #Loading ensemble biomass change
@@ -171,19 +200,26 @@ maps_data_proj <- maps_data |>
   rast(type = "xyz", crs = "epsg:4326") |> 
   #Reproject to Robinson
   project(y = rob_proj) 
-
+```
+  
+We will also create a custom-made colour palette for the maps.  
+  
+```{r}
 #Create custom-made color palette
-scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1, 
-  option = "D", values = NULL, space = "Lab", na.value = "white", 
-  guide = "colourbar", aesthetics = "fill") {
-  continuous_scale(aesthetics, scale_name = "custom", 
-    palette = scales:::gradient_n_pal(c(cmocean("matter", start = 0.1, 
-                                                end = 0.8, direction = -1)(123),
-                                        cmocean("delta", start = 0.49, 
-                                                end = 0.5)(20),
-                                        cmocean("deep", start = 0.1, 
-                                                end = 0.8)(123)), values, space), 
-    na.value = na.value, guide = guide, ...)
+scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
+                              option = "D", values = NULL, space = "Lab", 
+                              na.value = "white", guide = "colourbar", 
+                              aesthetics = "fill") {
+  continuous_scale(aesthetics, scale_name = "custom",
+                   palette = gradient_n_pal(c(cmocean("matter", start = 0.1, 
+                                                      end = 0.8, 
+                                                      direction = -1)(123),
+                                              cmocean("delta", start = 0.49, 
+                                                      end = 0.5)(20),
+                                              cmocean("deep", start = 0.1, 
+                                                      end = 0.8)(123)), values,
+                                            space), 
+                   na.value = na.value, guide = guide, ...)
 }
 ```
   
@@ -193,7 +229,7 @@ We will plot each decade/scenario combination separately and then create a multi
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom,
-                                  oob = scales::oob_squish),
+                                  oob = oob_squish),
                 new_scale_fill(),
                 geom_sf(inherit.aes = F, data = world_proj, color = NA, 
                         aes(fill = class_fish), show.legend = F),
@@ -227,7 +263,8 @@ land <- ggplot()+
   geom_sf(data = world_proj, aes(fill = class_fish))+
   scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc", 
                     guides(title = "Yearly landings between 2012-2021 (million tonnes)"),
-                    labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", ">6", "No data"))+
+                    labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", ">6",
+                               "No data"))+
   guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, 
                              barwidth = 15, 
                              label.position = "bottom", nrow = 1, 
@@ -239,8 +276,8 @@ leg_land <- get_legend(land)
 #Plotting fish biomass to get legend
 fish <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
-  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, type = scale_fill_custom, 
-                    oob = scales::oob_squish, 
+  scale_fill_binned(limits = c(-50, 50), n.breaks = 8, oob = oob_squish, 
+                    type = scale_fill_custom, 
                     guides(title = "% change in fish biomass"))+
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, 
                                barwidth = 15))+
@@ -291,56 +328,34 @@ ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"),
 ```
   
 ## Figure 5 FAO report - Asia 
-Loading relevant shapefiles and extracting data for Asia.  
   
 ```{r}
-#Unprojected UN-approved world base map
-world <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
-                                 full.names = T, recursive = T))
-#Boundaries provided by UN
-world_bound_wgs84 <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
-                                  full.names = T, recursive = T)) |> 
-  #Selecting boundary types to be included in the map
-  filter(TYPE < 99) 
-
-#EEZ boundaries
-eez <- read_sf(list.files(out_folder, 
-                          pattern = "FAO_MajorAreas_200NM_cont.shp", 
-                          recursive = T, full.names = T)) |> 
-  drop_na(MRGID)
-
-#Extract data for scenario, transform to raster and reproject
+#Extracting data for Asia
 asia_data <- maps_data |> 
-  filter(CONTINENT == "Asia")
+  filter(contnnt == "Asia")
 ```
-  
-Loading population percentage change.  
-  
-```{r}
-#Population change data
-pop_change <- read_csv("../data/world_population_change.csv")
-
-#Now we can add this information to the world map
-world <- world |> 
-  left_join(pop_change |> select(!country), by = join_by(ISO3CD))
-```
-  
+    
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
 #Define base steps for maps
-base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
-                                  type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = eez[eez$CONTINENT == "Asia",], 
-                        fill = NA, colour = "#5b5b5b",
-                        show.legend = F, linewidth = 0.25),
+base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                                  type = scale_fill_custom,
+                                  oob = oob_squish),
+                new_scale_fill(),
+                geom_sf(inherit.aes = F, data = eez[eez$contnnt == "Asia",], 
+                         fill = NA, colour = "#5b5b5b", show.legend = F,
+                         linewidth = 0.25),
                 geom_sf(inherit.aes = F, 
-                        data = world[world$CONTCD != "ASI",], color = "#dbdade",
-                        fill = "#dbdade"),
+                        data = world[world$CONTCD == "ASI",], 
+                        color = NA, aes(fill = class_fish), show.legend = F),
+                geom_sf(inherit.aes = F, 
+                        data = world[world$CONTCD != "ASI",], 
+                        color = "#dbdade", fill = "#dbdade"),
+                scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
                 #Adding coastlines and international boundaries
-                geom_sf(inherit.aes = F, data = world_bound_wgs84, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -348,13 +363,17 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                                  "3" = "dashed", 
                                                  "4" = "dotted")),
                 geom_sf(inherit.aes = F, 
-                        data = world_bound_wgs84[world_bound_wgs84$TYPE == 8,], 
+                        data = world_bound[world_bound$ISO3_CNT1 == "ATA",],
+                        lwd = 0.25, linetype = "solid", color = "#5b5b5b", 
+                        show.legend = F),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound[world_bound$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
                         show.legend = F),
                 theme_bw(),
                 theme(axis.title = element_blank(), 
                       panel.border = element_rect(colour = NA),
-                      plot.title = element_text(hjust = 0.5), 
+                      plot.title = element_text(hjust = 0.5),
                       legend.position = "none"),
                 lims(x = c(25, 160), y = c(-15, 50)))
 
@@ -362,8 +381,6 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 p50_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp126), 
-          colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -371,8 +388,6 @@ p50_126 <- asia_data |>
 p50_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp585), 
-          colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -380,8 +395,6 @@ p50_585 <- asia_data |>
 p00_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp126), 
-          colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -389,28 +402,17 @@ p00_126 <- asia_data |>
 p00_585 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp585), 
-          colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 25))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+
-  theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 asia_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                   labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                        plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                   labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
+                        #Using legends from Figure 3
+                        plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                        ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
 asia_plots
@@ -433,9 +435,10 @@ west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -60,
 east <- st_crop(world, st_bbox(c(xmin = 160, ymin = -60, 
                                  xmax = 180, ymax = 90)))
 #Merge them together
-amercent <- rbind(west, st_set_crs(st_transform(east, 
-                                                "+proj=longlat +lon_wrap=-120"),
-                                   st_crs(west)))
+amercent <- rbind(west, 
+                  st_set_crs(st_transform(east, 
+                                          "+proj=longlat +lon_wrap=-120"),
+                             st_crs(west)))
 
 #Split world boundaries in two hemispheres 
 west <- st_crop(world_bound_wgs84, st_bbox(c(xmin = -180, ymin = -60, 
@@ -443,28 +446,30 @@ west <- st_crop(world_bound_wgs84, st_bbox(c(xmin = -180, ymin = -60,
 east <- st_crop(world_bound_wgs84, st_bbox(c(xmin = 160, ymin = -60, 
                                  xmax = 180, ymax = 90)))
 #Merge them together
-amercent_bound <- rbind(west, st_set_crs(st_transform(east, 
+amercent_bound <- rbind(west, 
+                        st_set_crs(st_transform(east, 
                                                 "+proj=longlat +lon_wrap=-120"),
                                    st_crs(west)))
 
 #Split EEZ in two hemispheres
 eez_west <- eez |> 
-  filter(CONTINENT == "Americas") |> 
+  filter(contnnt == "Americas") |> 
   st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = 20, ymax = 90)))
 eez_east <- eez |> 
-  filter(CONTINENT == "Americas") |> 
+  filter(contnnt == "Americas") |> 
   st_crop(st_bbox(c(xmin = 160, ymin = -60, xmax = 180, ymax = 90)))
 #Merge together
-eez_amer <- rbind(eez_west, st_set_crs(st_transform(eez_east, 
-                                                    "+proj=longlat +lon_wrap=-120"),
-                                   st_crs(eez_west))) 
+eez_amer <- rbind(eez_west,
+                  st_set_crs(st_transform(eez_east, 
+                                          "+proj=longlat +lon_wrap=-120"),
+                             st_crs(eez_west))) 
 
 #Removing variables that are not needed
 rm(eez_east, eez_west, east, west)
 
 #Extracting data for the Americas
 americas_data <- maps_data |>
-  filter(CONTINENT == "Americas") |> 
+  filter(contnnt == "Americas") |> 
   #Selecting relevant columns
   select(x, y, starts_with("rel_change")) |> 
   #Converting to raster
@@ -481,15 +486,20 @@ We will plot each decade/scenario combination separately and then create a multi
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
+                                  oob = oob_squish),
+                new_scale_fill(),
                 geom_sf(inherit.aes = F, data = eez_amer, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                 geom_sf(inherit.aes = F, 
+                         data = amercent[amercent$CONTCD == "AME",], 
+                         aes(fill = class_fish), colour = NA),
                 geom_sf(inherit.aes = F, 
                         data = amercent[amercent$CONTCD != "AME",],
                         color = "#dbdade", fill = "#dbdade"),
+                scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = amercent_bound, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -511,8 +521,6 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 p50_126 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = amercent, 
-          aes(fill = rel_change_mean50_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -520,8 +528,6 @@ p50_126 <- americas_data |>
 p50_585 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = amercent, 
-          aes(fill = rel_change_mean50_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -529,8 +535,6 @@ p50_585 <- americas_data |>
 p00_126 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = amercent, 
-          aes(fill = rel_change_mean00_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -538,29 +542,17 @@ p00_126 <- americas_data |>
 p00_585 <- americas_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = amercent, 
-          aes(fill = rel_change_mean00_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 25))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+
-  theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 americas_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1, 
                                       labels = c("a", "b"), label_x = 0.1),
                             plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                       labels = c("c", "d"), label_x = 0.1),
-                            legend, ncol = 1, nrow = 3, 
-                            rel_heights = c(1, 1, 0.4))
+                            #Using legends from Figure 3
+                            plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                            ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Removing variables not needed
 rm(amercent, amercent_bound, eez_amer)
@@ -594,13 +586,14 @@ east <- st_crop(world_bound_wgs84, st_bbox(c(xmin = -50, ymin = 20,
 west <- st_crop(world_bound_wgs84, st_bbox(c(xmin = -180, ymin = 20, 
                                  xmax = -150, ymax = 90)))
 #Merge them together
-eurocent_bound <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
+eurocent_bound <- rbind(st_set_crs(st_transform(west, 
+                                                "+proj=longlat +lon_wrap=180"), 
                              st_crs(east)), east) 
 
 #Split EEZ in two hemispheres
-eez_east <- st_crop(eez[eez$CONTINENT == "Europe",], 
+eez_east <- st_crop(eez[eez$contnnt == "Europe",], 
                     st_bbox(c(xmin = -50, ymin = 20, xmax = 180, ymax = 90)))
-eez_west <- st_crop(eez[eez$CONTINENT == "Europe",], 
+eez_west <- st_crop(eez[eez$contnnt == "Europe",], 
                     st_bbox(c(xmin = -180, ymin = 20, xmax = -150, ymax = 90)))
 #Merge together
 eez_euro <- rbind(st_set_crs(st_transform(eez_west, 
@@ -612,7 +605,7 @@ rm(eez_east, eez_west, east, west)
 
 #Extracting data for Europe
 europe_data <- maps_data |>
-  filter(CONTINENT == "Europe") |> 
+  filter(contnnt == "Europe") |> 
   #Selecting relevant columns
   select(x, y, starts_with("rel_change")) |> 
   #Converting to raster
@@ -629,15 +622,20 @@ We will plot each decade/scenario combination separately and then create a multi
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
+                                  oob = oob_squish),
+                new_scale_fill(),
                 geom_sf(inherit.aes = F, data = eez_euro, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                 geom_sf(inherit.aes = F, 
+                         data = eurocent[eurocent$CONTCD == "EUR",], 
+                         aes(fill = class_fish), colour = NA),
                 geom_sf(inherit.aes = F, 
-                        data = eurocent[eurocent$CONTCD != "EUR",], 
+                        data = eurocent[eurocent$CONTCD != "EUR",],
                         color = "#dbdade", fill = "#dbdade"),
+                scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = eurocent_bound, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -659,8 +657,6 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 p50_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = eurocent, 
-          aes(fill = rel_change_mean50_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -668,8 +664,6 @@ p50_126 <- europe_data |>
 p50_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = eurocent, 
-          aes(fill = rel_change_mean50_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -677,8 +671,6 @@ p50_585 <- europe_data |>
 p00_126 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = eurocent, 
-          aes(fill = rel_change_mean00_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -686,28 +678,17 @@ p00_126 <- europe_data |>
 p00_585 <- europe_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = eurocent, 
-          aes(fill = rel_change_mean00_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 25))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+
-  theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 europe_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                     labels = c("a", "b"), label_x = 0.1),
                           plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                     labels = c("c", "d"), label_x = 0.1),
-                          legend, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
+                          #Using legends from Figure 3
+                          plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                          ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Removing variables not needed
 rm(eez_euro, eurocent, eurocent_bound)
@@ -727,7 +708,7 @@ ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"),
 ```{r}
 #Extract data for scenario, transform to raster and reproject
 africa_data <- maps_data |> 
-  filter(CONTINENT == "Africa")
+  filter(contnnt == "Africa")
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
@@ -736,16 +717,21 @@ We will plot each decade/scenario combination separately and then create a multi
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
-                geom_sf(inherit.aes = F, data = eez[eez$CONTINENT == "Africa",], 
-                        fill = NA, colour = "#5b5b5b", show.legend = F, 
-                        linewidth = 0.25),
+                                  oob = oob_squish),
+                new_scale_fill(),
+                geom_sf(inherit.aes = F, data = eez[eez$contnnt == "Africa",], 
+                         fill = NA, colour = "#5b5b5b", show.legend = F,
+                         linewidth = 0.25),
                 geom_sf(inherit.aes = F, 
-                        data = world[world$CONTCD != "AFR",], color = "#dbdade",
-                        fill = "#dbdade"),
+                        data = world[world$CONTCD == "AFR",], 
+                        color = NA, aes(fill = class_fish), show.legend = F),
+                geom_sf(inherit.aes = F, 
+                        data = world[world$CONTCD != "AFR",], 
+                        color = "#dbdade", fill = "#dbdade"),
+                scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound_wgs84, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -767,8 +753,6 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 p50_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp126), 
-          colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -776,8 +760,6 @@ p50_126 <- africa_data |>
 p50_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean50_ssp585), 
-          colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -785,8 +767,6 @@ p50_585 <- africa_data |>
 p00_126 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp126), 
-          colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -794,28 +774,17 @@ p00_126 <- africa_data |>
 p00_585 <- africa_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = world, aes(fill = rel_change_mean00_ssp585), 
-          colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 25))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+
-  theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 africa_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                     labels = c("a", "b"), label_x = 0.1),
                           plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                     labels = c("c", "d"), label_x = 0.1),
-                          legend, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
+                          #Using legends from Figure 3
+                          plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                          ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
 africa_plots
@@ -832,7 +801,7 @@ ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"),
 ```{r}
 #Split world in two hemispheres 
 west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -60, 
-                                 xmax = -120, ymax = 30)))
+                                 xmax = -100, ymax = 30)))
 east <- st_crop(world, st_bbox(c(xmin = 60, ymin = -60, 
                                  xmax = 180, ymax = 30)))
 #Merge them together
@@ -841,19 +810,20 @@ oceancent <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"),
 
 #Split world boundaries in two hemispheres 
 west <- st_crop(world_bound_wgs84, st_bbox(c(xmin = -180, ymin = -60, 
-                                 xmax = -120, ymax = 30)))
+                                             xmax = -100, ymax = 30)))
 east <- st_crop(world_bound_wgs84, st_bbox(c(xmin = 60, ymin = -60, 
-                                 xmax = 180, ymax = 30)))
+                                             xmax = 180, ymax = 30)))
 #Merge them together
-oceancent_bound <- rbind(st_set_crs(st_transform(west, "+proj=longlat +lon_wrap=180"), 
-                              st_crs(east)), east)
+oceancent_bound <- rbind(st_set_crs(st_transform(west, 
+                                                 "+proj=longlat +lon_wrap=180"),
+                                    st_crs(east)), east)
 
 #Split EEZ in two hemispheres
 eez_west <- eez |> 
-  filter(CONTINENT == "Oceania") |> 
-  st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = -120, ymax = 30)))
+  filter(contnnt == "Oceania") |> 
+  st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = -100, ymax = 30)))
 eez_east <- eez |> 
-  filter(CONTINENT == "Oceania") |> 
+  filter(contnnt == "Oceania") |> 
   st_crop(st_bbox(c(xmin = 60, ymin = -60, xmax = 180, ymax = 30)))
 #Merge together
 eez_ocean <- rbind(st_set_crs(st_transform(eez_west, 
@@ -865,13 +835,13 @@ rm(eez_east, eez_west, east, west)
 
 #Extracting data for Oceania
 ocean_data <- maps_data |>
-  filter(CONTINENT == "Oceania") |>
+  filter(contnnt == "Oceania") |>
   #Selecting relevant columns
   select(x, y, starts_with("rel_change")) |> 
   #Converting to raster
   rast(crs = "epsg:4326") |> 
   #Reprojecting so raster is centered in Oceania
-  project(rast(ext(60, 240, -60, 30), res = 1)) |> 
+  project(rast(ext(60, 260, -60, 30), res = 1)) |> 
   #Return to data frame
   as.data.frame(xy = T)
 ```
@@ -882,15 +852,20 @@ We will plot each decade/scenario combination separately and then create a multi
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
+                                  oob = oob_squish),
+                new_scale_fill(),
                 geom_sf(inherit.aes = F, data = eez_ocean, fill = NA, 
                         colour = "#5b5b5b", show.legend = F, linewidth = 0.25),
+                 geom_sf(inherit.aes = F, 
+                         data = oceancent[oceancent$CONTCD == "OCE",], 
+                         aes(fill = class_fish), colour = NA),
                 geom_sf(inherit.aes = F, 
                         data = oceancent[oceancent$CONTCD != "OCE",],
                         color = "#dbdade", fill = "#dbdade"),
+                scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = oceancent_bound, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -907,8 +882,6 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 p50_126 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = oceancent, 
-          aes(fill = rel_change_mean50_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
@@ -916,8 +889,6 @@ p50_126 <- ocean_data |>
 p50_585 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = oceancent, 
-          aes(fill = rel_change_mean50_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
@@ -925,8 +896,6 @@ p50_585 <- ocean_data |>
 p00_126 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp126_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = oceancent, 
-          aes(fill = rel_change_mean00_ssp126), colour = NA)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
   
@@ -934,29 +903,17 @@ p00_126 <- ocean_data |>
 p00_585 <- ocean_data |> 
   ggplot(aes(x, y, fill = rel_change_mean00_ssp585_mean))+
   geom_tile()+
-  geom_sf(inherit.aes = F, data = oceancent, 
-          aes(fill = rel_change_mean00_ssp585), colour = NA)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "% changes in human population\nand in fish biomass",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 25))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+
-  theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 oceania_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1, 
                                      labels = c("a", "b"), label_x = 0.1),
                            plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                      labels = c("c", "d"), label_x = 0.1),
-                           legend, ncol = 1, nrow = 3, 
-                           rel_heights = c(1, 1, 0.4))
+                           #Using legends from Figure 3
+                           plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
+                           ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Removing variables not needed
 rm(oceancent, oceancent_bound, eez_ocean)
@@ -979,9 +936,9 @@ Finally, we will create maps for mean biomass change within the FAO regions.
 maps_data <- read_csv("../data/ensemble_perc_bio_change_fao_map.csv")
 
 #Add to FAO EEZ mask
-choro_data_proj <- fao_eez_mask |> 
+choro_data_proj <- area_gfdl_df |> 
   left_join(maps_data, by = "ID_mrgd") |> 
-  select(!ID_mrgd) |> 
+  select(x, y, starts_with("rel_change")) |> 
   #Transform to multi-layer raster
   rast(type = "xyz", crs = "epsg:4326") |> 
   #Reproject to Robinson
@@ -993,7 +950,7 @@ choro_data_proj <- fao_eez_mask |>
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                   type = scale_fill_custom, 
-                                  oob = scales::oob_squish),
+                                  oob = oob_squish),
                 geom_sf(inherit.aes = F, data = fao_proj, fill = NA, 
                         colour = "#5b5b5b",
                         show.legend = F, linewidth = 0.25),
@@ -1003,7 +960,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                         color = "#dbdade", fill = "#dbdade"),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
@@ -1042,24 +999,14 @@ p00_126 <- ggplot()+
 p00_585 <- ggplot()+
   geom_spatraster(data = choro_data_proj$rel_change_mean00_ssp585_mean)+
   labs(title = "SSP5-8.5: 2091-2100")+
-  base_gg+
-  guides(fill = guide_colorbar(title = "change in exploitable fish biomass (%)",
-                               title.position = "top", title.hjust = 0.5, 
-                               barwidth = 15))+
-  theme(legend.position = "bottom")
-
-#Get legend
-legend <- get_legend(p00_585)
-
-#Remove legend from last plot
-p00_585 <- p00_585+theme(legend.position = "none")
+  base_gg
 
 #Plotting everything together
 fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                                      labels = c("a", "b"), label_x = 0.1),
                            plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
                                      labels = c("c", "d"), label_x = 0.1),
-                           legend, ncol = 1, nrow = 3, 
+                           leg_fish, ncol = 1, nrow = 3, 
                            rel_heights = c(1, 1, 0.4))
 
 #Check final map
@@ -1079,8 +1026,14 @@ Finally, we will create a choropleth map for the proportion of sustainable fishe
 #Loading FAO fisheries data
 fao_fisheries <- read_csv("../data/prop_sustainable_fisheries_fao.csv")
 
-fao_fisheries <- fao_proj |> 
-  left_join(fao_fisheries, by = join_by(NAME_EN))
+fao_fisheries <- area_gfdl_df |> 
+  select(NAME_EN, x, y) |> 
+  left_join(fao_fisheries, by = join_by(NAME_EN)) |> 
+  select(!NAME_EN) |> 
+  #Transform to multi-layer raster
+  rast(type = "xyz", crs = "epsg:4326") |> 
+  #Reproject to Robinson
+  project(y = rob_proj) 
 
 #Checking result
 fao_fisheries
@@ -1089,15 +1042,15 @@ fao_fisheries
 Finally, we can map this information.  
   
 ```{r}
- ggplot()+
-  geom_sf(data = eez_proj, fill = "white", colour = "white")+
+ggplot()+
   #Plotting FAO classified by ocean basin
-  geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
+  geom_spatraster(data = fao_fisheries$OBS_VALUE)+
+  geom_sf(data = eez_proj, fill = "white", colour = "white")+
   scale_fill_distiller(palette = "YlGnBu", direction = 1)+
   #Plotting base map
   geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
   #Adding coastlines and international boundaries
-  geom_sf(data = world_bound, lwd = 0.25, color = "black", show.legend = F, 
+  geom_sf(data = world_bound, lwd = 0.25, color = "#484848", show.legend = F, 
           aes(linetype = as.factor(TYPE)))+
   scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
                                    "2" = "dotdash", "3" = "dashed", 
@@ -1107,17 +1060,19 @@ Finally, we can map this information.
   #Removing grey background
   theme_bw()+
   #Formatting legend title
-  guides(fill = guide_colorbar(title = "% sustainable fisheries", title.position = "top", 
-                             title.hjust = 0.5, barwidth = 15))+
+  guides(fill = guide_colorbar(title = "% sustainable fisheries", 
+                               title.position = "top", title.hjust = 0.5, 
+                               barwidth = 15))+
   #Formatting legend
   theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
-        legend.margin = margin(0, 0, 0, 0), legend.box.margin = margin(0, 0, 0, 0))
+        legend.margin = margin(0, 0, 0, 0),
+        legend.box.margin = margin(0, 0, 0, 0))
 ```
   
 ```{r}
 # Saving fisheries map
-ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), device = "pdf",
-       width = 14, height = 9)
+ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), 
+       device = "pdf", width = 14, height = 9)
 ```
   
 ## Figure 18 FAO report - FAO standard deviation
@@ -1140,7 +1095,7 @@ maps_data_sd_proj <- maps_data_sd |>
 #Define base steps for maps
 base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
                                      na.value = NA, limits = c(0, 50), 
-                                     oob = scales::oob_squish),
+                                     oob = oob_squish),
                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
                         color = "#dbdade", fill = "#dbdade"),
                 geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
@@ -1148,7 +1103,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                         show.legend = F, linewidth = 0.25),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
-                        color = "black", show.legend = F, 
+                        color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
                 scale_linetype_manual(values = c("0" = "solid",
                                                  "1" = "twodash", 
