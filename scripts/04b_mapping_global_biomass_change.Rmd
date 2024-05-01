@@ -1026,14 +1026,8 @@ Finally, we will create a choropleth map for the proportion of sustainable fishe
 #Loading FAO fisheries data
 fao_fisheries <- read_csv("../data/prop_sustainable_fisheries_fao.csv")
 
-fao_fisheries <- area_gfdl_df |> 
-  select(NAME_EN, x, y) |> 
-  left_join(fao_fisheries, by = join_by(NAME_EN)) |> 
-  select(!NAME_EN) |> 
-  #Transform to multi-layer raster
-  rast(type = "xyz", crs = "epsg:4326") |> 
-  #Reproject to Robinson
-  project(y = rob_proj) 
+fao_fisheries <- fao_proj |> 
+  left_join(fao_fisheries, join_by(NAME_EN))
 
 #Checking result
 fao_fisheries
@@ -1044,7 +1038,7 @@ Finally, we can map this information.
 ```{r}
 ggplot()+
   #Plotting FAO classified by ocean basin
-  geom_spatraster(data = fao_fisheries$OBS_VALUE)+
+  geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
   geom_sf(data = eez_proj, fill = "white", colour = "white")+
   scale_fill_distiller(palette = "YlGnBu", direction = 1)+
   #Plotting base map
