@@ -3,6 +3,8 @@ title: "Plotting temporal biomass change"
 author: "Denisse Fierro Arcos"
 date: "2024-04-30"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Loading libraries
@@ -105,6 +107,7 @@ global_bio |>
   base_gg+
   #Plotting by country
   facet_wrap(~fa_ffcl, scales = "free_y", nrow = 8)
+
 ```
   
 ```{r, eval = F}
@@ -112,7 +115,24 @@ global_bio |>
 ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
        device = "pdf", width = 6, height = 12)
 ```
-  
+
+## PLotting trends for single country or the globe 
+
+```{r}
+
+# sort(unique(count_bio$fa_ffcl))
+
+plot_country<-count_bio |> 
+  filter(fa_ffcl == "Australia") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg
+
+png("figures/Au_trends.png", width=5, height=3.5, units="in", res=1200)
+plot_country
+dev.off()
+
+```
+
 ## Figure 2 - Asia
 In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
   
