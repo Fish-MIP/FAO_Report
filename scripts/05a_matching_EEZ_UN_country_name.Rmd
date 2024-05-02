@@ -19,7 +19,6 @@ library(data.table)
 ## Matching EEZs to UN country names
 
 ```{r}
-
 # Base folder for project
 base_folder <- "/rd/gem/private/users/camillan"
 
@@ -30,84 +29,119 @@ if(!dir.exists(out_folder)){
 }
 
 # EEZ data from Denisse ----
-eez <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv"))
+eez <- file.path(out_folder, 
+                 "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv") |> 
+  read_csv()
+```
 
-# Ocean = FAO_fishing areas
-# ID_mrgd = key linked to each EEZ lat and lon
-# nm_mrgd = EEZ name 
-# continent_map = continent - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). It combines continent from the original EEZ file + decision taken by considering the FAO data and by looking at maps (Fig.2). 
-# fa_ffcl = FAO official country names - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). Though the list of EEZ should be the one from the original EEZ mask from Denisse.   
+The columns included in `eez` contain the following information:
+`Ocean` = FAO_fishing areas
+`ID_mrgd` = key linked to each EEZ lat and lon
+`nm_mrgd` = EEZ name 
+`continent_map` = continent - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). It combines continent from the original EEZ file + decision taken by considering the FAO data and by looking at maps (Fig.2). 
+`fa_ffcl` = FAO official country names - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). Though the list of EEZ should be the one from the original EEZ mask from Denisse.   
 
 # FAO data with official names for countries, territories and areas from FAO website ----
-# from https://www.fao.org/nocs/en (all countries, areas and territories)
-# nocsDataExport_20240501-114742_English.csv - local 
-# FULL NAME = FAO official name 
-# SHORT NAME = FAO short name 
-# ENGLISH_LIST NAME = FAO short name option 2 (less formal I think)
-fao<-read_csv(file.path(out_folder, "nocsDataExport_20240501-114742_English.csv")) 
+From https://www.fao.org/nocs/en (all countries, areas and territories)
+`nocsDataExport_20240501-114742_English.csv` - local 
+`FULL NAME` = FAO official name 
+`SHORT NAME` = FAO short name 
+`ENGLISH_LIST NAME` = FAO short name option 2 (less formal I think)
 
-fao<-fao %>% 
-  select(c(`FULL NAME`, `SHORT NAME`, `ENGLISH_LIST NAME`)) %>% 
-  rename(O_name_En_Website =`FULL NAME`, Short_name_En_Website =`SHORT NAME`, Short_name_En_Website2 =`ENGLISH_LIST NAME`) %>% 
-  mutate(O_Name_En = O_name_En_Website) # to join with Emmanuel and Stefania information. 
+```{r}
+fao <- file.path(out_folder, "nocsDataExport_20240501-114742_English.csv") |> 
+  read_csv() |> 
+  #Select relevant columns
+  select(c(`FULL NAME`, `SHORT NAME`, `ENGLISH_LIST NAME`)) |> 
+  #Update column names to something more descriptive
+  rename(O_name_En_Website =`FULL NAME`, 
+         Short_name_En_Website =`SHORT NAME`, 
+         Short_name_En_Website2 =`ENGLISH_LIST NAME`) |> 
+  # to join with Emmanuel and Stefania information
+  mutate(O_Name_En = O_name_En_Website)
+
+#Check result
 head(fao)
+```
 
 # FAO continent and (sovereign - ISO3) country information from Emmanuel's dataset ----
+`CONTCD` = continent
+`ISO_3` = ISO code for countries 
+`O_Name_En` = official name for countries and territories 
 
-# CONTCD = continent
-# ISO_3 = ISO code for countries 
-# O_Name_En = official name for countries and territories 
-
-fao_ema<-read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") %>% 
+```{r}
+fao_ema <- read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") |> 
+  #Keep unique records only
   unique()
+```
 
-# create a ISO_3 to Country name dataset 
-# example: 
-fao_ema %>%
-  select(c(ISO_3, Name_En)) %>% # list of country code
-  unique() %>% 
+## Create a ISO_3 to Country name dataset
+
+```{r}
+ # example: 
+fao_ema |>
+  # list of country code
+  select(c(ISO_3, Name_En)) |> 
+  unique() |> 
+  # need to isolate GBR = United Kingdom
   filter(ISO_3 == "GBR")
-# need to isolate GBR = United Kingdom
+```
 
-# 1 list of country (excluding territories) code
-key1<-fao_ema %>%
-  select(ISO_3) %>% 
+### 1 list of country (excluding territories) code
+
+```{r}
+key1 <- fao_ema |>
+  select(ISO_3) |> 
   unique()
+```
 
-# 2 list of country and territory code and of country and territory names - so that 
-# GBR = United Kingdom
-# Bermuda = BMU (instead of GBR as per ISO_3 above)
-key2<-fao_ema %>%
-  select(c(ISO3CD, Name_En)) %>% 
-  rename(ISO_3 = ISO3CD, Country = Name_En) %>%
+### 2 list of country and territory code and of country and territory names - so that 
+`GBR` = United Kingdom
+`Bermuda` = BMU (instead of GBR as per ISO_3 above)
+
+```{r}
+key2 <- fao_ema |>
+  select(c(ISO3CD, Name_En)) |> 
+  rename(ISO_3 = ISO3CD, Country = Name_En) |>
   unique()
 
 filter(key2, ISO_3 == "GBR")
 filter(key2, Country == "Bermuda")
+```
 
-filter(key2, ISO_3 == "COD") # these do not seem particularly official ... it should be "Congo (the Democratic Republic of the)"
+These do not seem particularly official ... it should be "Congo (the Democratic Republic of the)"
+```{r}
+filter(key2, ISO_3 == "COD") 
 filter(key2, ISO_3 == "COG")
+```
 
-# 3 left join so that you keep only list of country code as per 1 and add country names as per 2
-key3<-key1 %>%
+### 3 left join so that you keep only list of country code as per 1 and add country names as per 2
+
+```{r}
+key3 <- key1 |>
   left_join(key2)
 
 filter(key3, ISO_3 == "GBR")
 filter(key3, Country == "Bermuda")
+```
 
-# consider continent and official English name and add key 3 (country information)
-fao2<-fao_ema %>% 
-  select(CONTCD, O_Name_En, ISO_3) %>%
+Consider continent and official English name and add key 3 (country information)
+```{r}
+fao2<-fao_ema |> 
+  select(CONTCD, O_Name_En, ISO_3) |>
   right_join(key3)
 filter(fao2, ISO_3 == "GBR")
+```
 
-# why duplicates?
-duplicates<-fao2 %>% 
-  group_by(O_Name_En) %>% 
-  filter(n()>1)
+why duplicates?
 
-duplicates<-unique(duplicates$O_Name_En)
-duplicates<-fao_ema %>% 
+```{r}
+duplicates <- fao2 |> 
+  group_by(O_Name_En) |> 
+  filter(n() > 1)
+
+duplicates <- unique(duplicates$O_Name_En)
+duplicates <- fao_ema |> 
   filter(O_Name_En %in% duplicates)
 
 # check one by one 
@@ -116,43 +150,61 @@ duplicates[1]
 duplicates[2]
 duplicates[3]
 duplicates[7]
+```
 
 # ROMNAM & MAPLAB are identifying columns so keen them in final dataset 
-fao_ema<-fao_ema %>% 
-  select(CONTCD, ROMNAM, MAPLAB, O_Name_En, ISO_3, ISO3CD) %>% # keep also ISO3CD for merging with Stefania's data below 
-  right_join(key3) %>% 
-  mutate(O_Name_En_Emmanuel = O_Name_En) # to join with website and Stefania information.
+```{r}
+fao_ema <- fao_ema |> 
+  # keep also ISO3CD for merging with Stefania's data below 
+  select(CONTCD, ROMNAM, MAPLAB, O_Name_En, ISO_3, ISO3CD) |> 
+  right_join(key3) |> 
+  # to join with website and Stefania information.
+  mutate(O_Name_En_Emmanuel = O_Name_En) 
+
 duplicated(fao_ema)
+
 head(fao_ema)
+```
 
 # FAO additional information (just for checking) from Stefania's dataset ----
-fao_st<-read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") %>% 
+```{r}
+fao_st <- read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") |> 
   unique()
 
-fao_st<-fao_st %>% 
-  select(c(ISO3_Code, Official_Name_En)) %>% 
-  unique() %>% 
-  rename(ISO3CD = ISO3_Code, O_Name_En_Stefania = Official_Name_En) %>% 
-  mutate(O_Name_En = O_Name_En_Stefania) # to join with website and Emmanuel information.
+fao_st <- fao_st |> 
+  select(c(ISO3_Code, Official_Name_En)) |> 
+  unique() |> 
+  rename(ISO3CD = ISO3_Code, O_Name_En_Stefania = Official_Name_En) |> 
+  # to join with website and Emmanuel information.
+  mutate(O_Name_En = O_Name_En_Stefania)
 
 head(fao_st)
 sort(unique(fao_ema$ISO3CD))
 sort(unique(fao_st$ISO3CD))
+```
 
 ## Merge all info into a final FAO dataset ----
-
-fao_final<-fao_ema %>% 
+```{r}
+fao_final <- fao_ema |> 
   full_join(fao_st)
 
-fao_final<-fao %>% 
-  full_join(fao_final) %>% 
-  select(-O_Name_En) # not needed anymore as the merging is done. 
+fao_final <- fao |> 
+  full_join(fao_final) |> 
+  # not needed anymore as the merging is done. 
+  select(-O_Name_En) 
 
 head(fao_final)
+
 colnames(fao_final)
-# adjust columns 
-fao_final2<-fao_final %>% 
-  rename(ISO3_country = ISO_3, ISO3_territory = ISO3CD, Country_name = Country, Continent_ID = CONTCD, Romname_Emmanuel = ROMNAM, Maplab_Emmanuel = MAPLAB) %>% 
+```
+
+Adjust columns.
+
+```{r}
+fao_final2 <- fao_final |> 
+  rename(ISO3_country = ISO_3, ISO3_territory = ISO3CD, Country_name = Country, 
+         Continent_ID = CONTCD, Romname_Emmanuel = ROMNAM, 
+         Maplab_Emmanuel = MAPLAB) |> 
   mutate(Continent_name = case_when(Continent_ID == "ASI" ~ "Asia",
                                     Continent_ID == "AFR" ~ "Africa",
                                     Continent_ID == "AME" ~ "America",
@@ -161,139 +213,153 @@ fao_final2<-fao_final %>%
                                     .default = Continent_ID))
 head(fao_final2) 
 colnames(fao_final2)
+```
 
-fao_final3<-fao_final2 %>% 
-  relocate(O_name_En_Website, Short_name_En_Website, Country_name, Continent_name, Continent_ID, ISO3_country, ISO3_territory, O_Name_En_Emmanuel, O_Name_En_Stefania, Romname_Emmanuel, Maplab_Emmanuel, Short_name_En_Website2) %>% 
+```{r}
+fao_final3 <- fao_final2 |> 
+  relocate(O_name_En_Website, Short_name_En_Website, Country_name,
+           Continent_name, Continent_ID, ISO3_country, ISO3_territory,
+           O_Name_En_Emmanuel, O_Name_En_Stefania, Romname_Emmanuel,
+           Maplab_Emmanuel, Short_name_En_Website2) |> 
   arrange(Country_name, O_name_En_Website)
 
 head(fao_final3)
+```
 
-# using the EEZ file, manually match FAO names and continent and sovreign country 
+using the EEZ file, manually match FAO names and continent and sovereign country.
+
+```{r}
 write.csv(eez, "/home/dbpm/FAO_Report/data/EEZ_key.csv") 
 write.csv(fao_final3, "/home/dbpm/FAO_Report/data/FAO_key.csv")
-
 ```
 
 
-
-```{r}
-
-#Base folder for project
-base_folder <- "/rd/gem/private/users/camillan"
-
-#Defining location of notebook outputs
-out_folder <- file.path(base_folder, "FAO_Report")
-if(!dir.exists(out_folder)){
-  dir.create(out_folder)
-}
-
 # FAO_EEZ key - Contains continent information ----
-fao_eez <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv"))
+```{r}
+fao_eez <- file.path(out_folder, 
+                     "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv") |> 
+  read_csv()
+
 colnames(fao_eez)
 unique(fao_eez$nm_mrgd)
-# check that this file is based exclusively on the EEZ data (e.g. that jount regime areas are included)
-filter(fao_eez, nm_mrgd == "Joint regime area Argentina / Uruguay" )
+```
+
+check that this file is based exclusively on the EEZ data (e.g. that joint regime areas are included)
+```{r}
+filter(fao_eez, nm_mrgd == "Joint regime area Argentina / Uruguay")
+```
 
 # Country data shape file from Emmanuel ----
-fao_ct<-read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") %>% 
+```{r}
+fao_ct <- read.csv("/home/dbpm/FAO_Report/data/countries_un_fromEmmanuelShapeFiles_cleaned.csv") |> 
   unique()
+
 head(fao_ct)
+```
 
-# important columns
-# ISO3CD = ISO code for countries and territories - not ROMNAM-specific!
-# ROMNAM = name for countries and territories 
-# MAPLAB = name for countries and territories but slightly different from ROMNAM
-# CONTCD = continent
-# Name_En = name for countries and territories but less specific than ROMNAM
-# ISO_3 = ISO code for countries 
+Important columns
+`ISO3CD` = ISO code for countries and territories - not `ROMNAM`-specific!
+`ROMNAM` = name for countries and territories 
+`MAPLAB` = name for countries and territories but slightly different from `ROMNAM`
+`CONTCD` = continent
+`Name_En` = name for countries and territories but less specific than `ROMNAM`
+`ISO_3` = ISO code for countries 
+  
+Manually adjusted names due to not accepted characters in `Name_En` and `ROMNAM`  
+- `Cote dIvoire`  
+- `0land Islands`   
+- `Reunion`  
+- `Curacao`  
 
-# manually adjusted names due to not accepted characters in Name_En and ROMNAM
-# Cote dIvoire
-# 0land Islands
-# Reunion
-# Curacao
+only for `ROMNAME`
+- `Halaib Triangle`
+- `Bir Tawil`
+- `Schweiz`#`Suisse`#`Svizzera`#`Svizra` -> `Switzerland`
+- `Saint Barthelemy`
+- `BelgiÔøΩ`#`Belgique`#`Belgien` -> `Belgium`
 
-# only for ROMNAME
-# Halaib Triangle
-# Bir Tawil
-# Schweiz#Suisse#Svizzera#Svizra -> Switzerland
-# Saint Barthelemy
-# Halaib Triangle
-# BelgiÔøΩ#Belgique#Belgien -> belgium
-
+```{r}
 # create a country name column
-key1<-fao_ct %>%
-  select(c("ISO_3")) %>%
+key1 <- fao_ct |>
+  select(c("ISO_3")) |>
   unique()
 
-key2<-fao_ct %>%
-  select(c("ISO3CD", "Name_En")) %>%
-  rename(ISO_3=ISO3CD,Country = Name_En) %>%
+key2 <- fao_ct |>
+  select(c("ISO3CD", "Name_En")) |>
+  rename(ISO_3 = ISO3CD, Country = Name_En) |>
   unique()
 
-key3<-key1 %>%
+key3 <- key1 |>
   left_join(key2)
 
 head(key3)
 head(key2)
-filter(key3, ISO_3 == "AUS" )
 
-# are there any repetition?
+filter(key3, ISO_3 == "AUS" )
+```
+
+Is there any repetition?
+```{r}
 duplicated(key3$ISO_3)
 duplicated(key2$ISO_3)
+```
 
-# add country name to full dataset
-fao_ct_reduced<-fao_ct %>%
-  full_join(key3) %>%
-  select(-c(
-    "CONTCD",
-    "STSCOD",
-    "TYP025",
-    "DEL025",
-    "ISOADM",
-    "Char12_Ide",
-    "Name_Es",
-    "Name_Fr",
-    "ISO3_CNT1",
-    "ISO3_CNT2",
-    "O_Name_Es",
-    "O_Name_Fr",
-    )) %>%
+Add country name to full dataset
+```{r}
+fao_ct_reduced <- fao_ct |>
+  full_join(key3) |>
+  select(-c("CONTCD", "STSCOD", "TYP025", "DEL025", "ISOADM", "Char12_Ide",
+            "Name_Es", "Name_Fr", "ISO3_CNT1", "ISO3_CNT2", "O_Name_Es",
+            "O_Name_Fr")) |>
   unique()
 
 head(fao_ct_reduced)
 nrow(fao_ct)
 nrow(fao_ct_reduced)
+```
 
-## add info from Stefania just to check names (which should be the ones to use) and information. 
-fao_st<-read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") %>% 
+Add info from Stefania just to check names (which should be the ones to use) and information. 
+```{r}
+fao_st <- read.csv("/home/dbpm/FAO_Report/data/Country_Item_14022024.csv") |> 
   unique()
 
 head(fao_st)
 
 head(fao_ct_reduced)
+```
 
-# use for merging
+Use for merging
+```{r}
 sort(unique(fao_ct_reduced$ISO3CD))
 sort(unique(fao_st$ISO3_Code))
 sort(unique(fao_ct_reduced$Name_En))
 sort(unique(fao_st$Name_En))
+```
 
-setdiff(sort(unique(fao_ct_reduced$Name_En)),sort(unique(fao_st$Name_En)))
-setdiff(sort(unique(fao_st$Name_En)),sort(unique(fao_ct_reduced$Name_En)))
+```{r}
+setdiff(sort(unique(fao_ct_reduced$Name_En)), sort(unique(fao_st$Name_En)))
 
-# use for merging too?
+setdiff(sort(unique(fao_st$Name_En)), sort(unique(fao_ct_reduced$Name_En)))
+```
+
+Use for merging too?
+```{r}
 sort(unique(fao_ct_reduced$O_Name_En))
 sort(unique(fao_st$Official_Name_En))
+```
 
-key1<-fao_st %>% 
-  select(c(ISO3_Code, Name_En, Official_Name_En)) %>% 
-  unique() %>% 
-  rename(ISO3CD = ISO3_Code, Name_En_stefania = Name_En, Official_Name_En_Stefania = Official_Name_En)
+```{r}
+key1 <- fao_st |> 
+  select(c(ISO3_Code, Name_En, Official_Name_En)) |> 
+  unique() |> 
+  rename(ISO3CD = ISO3_Code, Name_En_stefania = Name_En, 
+         Official_Name_En_Stefania = Official_Name_En)
 
-final_key<-fao_ct_reduced %>% 
+final_key <- fao_ct_reduced |> 
   full_join(key1)
+```
 
+```{r}
 # ## Consider files from Reg 
 # reg_code<-read.csv("/home/dbpm/FAO_Report/data/CountryLettterCodes_cleaned_CN.csv")
 # 
@@ -318,55 +384,59 @@ final_key<-fao_ct_reduced %>%
 # # e.g. aruba, anguilla 
 #
 ## Reg has the same type of info as the FAO data. no key for EEZ, so not useful. 
-
-#### merge with EEZ info 
-trial<-fao_eez[19:nrow(fao_eez),] %>% 
-  select(-c("F_CODE", "OCEAN", "MRGID", "SOVEREIGN2", "SOVEREIGN3","region_code", "sub_region",
-"sub_region_code")) 
-  
-head(trial)
-head(final_key)
-
-# eez to FAO countries conversion
-# SOVEREIGN1 == ISO_3 
-# nm_mrgd == Name_En # somethimes missing so maybe need to use ROMNAM (disputed/unclaimed terrotories)? and to keep the other countries and territories name columns  
-# region == CONTCD # keep CONTCD 
-# M49 in FAO data links to the countries and territories Stefania sent 
-
-trial<-trial %>% 
-  rename(Country = SOVEREIGN1, Name_EEZ = nm_mrgd) %>% 
-  unique()
-
-# # cannot merge as ISO_3 is a name 
-
-# print all files for manually checking and combining 
-head(final_key)
-head(trial)
-write.csv(final_key, "/home/dbpm/FAO_Report/data/FAO_countries_key.csv") 
-write.csv(trial, "/home/dbpm/FAO_Report/data/EEZ_key.csv")
-  
-## end work in progress ----
-
 ```
 
+## Merge with EEZ info 
+```{r}
+trial <- fao_eez[19:nrow(fao_eez),] |> 
+  select(-c("F_CODE", "OCEAN", "MRGID", "SOVEREIGN2", "SOVEREIGN3",
+            "region_code", "sub_region", "sub_region_code")) 
+  
+head(trial)
+head(final_key)
+```
+
+## EEZ to FAO countries conversion
+`SOVEREIGN1` == `ISO_3`   
+somethimes missing so maybe need to use ROMNAM (disputed/unclaimed territories)? and to keep the other countries and territories name columns  
+`nm_mrgd` == `Name_En` 
+keep CONTCD 
+`region` == `CONTCD` 
+`M49` in FAO data links to the countries and territories Stefania sent 
+
+```{r}
+trial <- trial |> 
+  rename(Country = SOVEREIGN1, Name_EEZ = nm_mrgd) |> 
+  unique()
+# cannot merge as ISO_3 is a name 
+```
+
+print all files for manually checking and combining 
+```{r}
+head(final_key)
+
+head(trial)
+
+write.csv(final_key, "/home/dbpm/FAO_Report/data/FAO_countries_key.csv") 
+
+write.csv(trial, "/home/dbpm/FAO_Report/data/EEZ_key.csv")
+```
+
+## end work in progress ----
 
 
 ```{r}
-#Base folder for project
 getwd()
-base_folder <- "/rd/gem/private/users/camillan"
 
-#Defining location of notebook outputs
-out_folder <- file.path(base_folder, "FAO_Report")
-if(!dir.exists(out_folder)){
-  dir.create(out_folder)
-}
+list.files(out_folder, pattern = "EEZ_keys_updated.csv", 
+           full.names = T, recursive = T)
+```
 
-list.files(out_folder, pattern = "EEZ_keys_updated.csv", full.names = T, recursive = T)
-
+**WARNING** - replace this with your local copy of `EEZ_key.csv` printed above and match manually with FAO_countries_key, I don't know where this "updated" version is coming from. I think this was Denisse correcting for something - maybe encoding = "UTF-8"? 
+```{r}
 #EEZ keys
 eez_keys <- read.csv(list.files(out_folder, 
-                           pattern = "EEZ_keys_updated.csv", # WARNING - replace this with your local copy of EEZ_key.csv 9printed above and match manully with FAO_countries_key, I don't know where this "updated" version is coming from.I think this was Denisse correcting for something - maybe encoding = "UTF-8"? 
+                           pattern = "EEZ_keys_updated.csv", 
                            full.names = T, recursive = T), 
                      encoding = "UTF-8") |> 
   #Keeping relevant columns
@@ -379,107 +449,189 @@ eez_keys <- read.csv(list.files(out_folder,
   filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T)) |> 
   #Removing unaccepted EEZ names
   select(!Name_EEZ)
+```
 
+# CN work in progress ----
+problem when merging (`left_join`) line 168 because of multiple matches
+need to check for records with same FAO official name and different `Country_FAO` lots 
 
-### CN work in progress ----
+```{r}
+eez_keys[order(eez_keys$fao_official, eez_keys$continent),]
+```
 
-## problem when merging (left_join) line 168 because of multiple matches
-# need to check for records with same FAO official name and different Country_FAO. lots 
-eez_keys[order(eez_keys$fao_official,eez_keys$continent),]
-# need to understand why 2 Australia and why 2 French Polynesia
+Need to understand why 2 Australia and why 2 French Polynesia
+```{r}
 filter(eez_keys, fao_official == "French Polynesia")
+```
 
-#### Need to load, inspect and clean the original file following steps in email (remove ISO3CD = NA, and remove all ovelapping/joint territories in our EEZ dataset) :
+Need to load, inspect and clean the original file following steps in email (remove `ISO3CD` = NA, and remove all overlapping/joint territories in our EEZ dataset)
+
+```{r}
 eez_keys <- read.csv(list.files(out_folder, 
                            pattern = "EEZ_keys_updated.csv", 
                            full.names = T, recursive = T), 
                      encoding = "UTF-8")
+```
 
-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) # WARNING - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
+**WARNING** - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
 
-# remove ISO3CD = NA AND Official_Name_En_Stefania_NEW = NA (this includes jointly managed areas and overlapping claims from original EEZ file)
-remove<-filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW))
-eez_keys <- eez_keys %>% filter(!Name_EEZ %in% unique(remove$Name_EEZ))
+```{r}
+filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) 
+```
+
+remove `ISO3CD` = NA AND `Official_Name_En_Stefania_NEW` = NA (this includes jointly managed areas and overlapping claims from original EEZ file)
+
+```{r}
+remove <- filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW))
+
+eez_keys <- eez_keys |> filter(!Name_EEZ %in% unique(remove$Name_EEZ))
+
 filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
+```
 
-# check 
+Check 
+```{r}
 filter(eez_keys, is.na(ISO3CD))
-# remove copy-paste mistake in the original table where this is named "the Republic of Colombia". WARNING - this is not happening when using the EEZ_key.csv instead of the "updated" varsion 
-eez_keys<-eez_keys %>% filter(!Name_EEZ == "Overlapping claim: Venezuela / Colombia / Dominican Republic")
+```
+
+remove copy-paste mistake in the original table where this is named "the Republic of Colombia". **WARNING** - this is not happening when using the `EEZ_key.csv` instead of the "updated" version 
+
+```{r}
+eez_keys <- eez_keys |> 
+  filter(!Name_EEZ == "Overlapping claim: Venezuela / Colombia / Dominican Republic")
+
 filter(eez_keys, is.na(Official_Name_En_Stefania_NEW))
+```
 
-filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"))
-# correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
+Correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
+```{r}
+filter(eez_keys, 
+       Official_Name_En_Stefania_NEW %in% 
+         c("the United States of America (Alaska)", 
+            "the United States of America (Hawaii)"))
+```
 
-eez_keys<-eez_keys %>% mutate(
-  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "United States of America" , Country_FAO),
-  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("the United States of America (Alaska)", "the United States of America (Hawaii)"), "the United States of America" , Official_Name_En_Stefania_NEW))
+```{r}
+eez_keys <- eez_keys |> 
+  mutate(Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% 
+                                c("the United States of America (Alaska)", 
+                                  "the United States of America (Hawaii)"), 
+                              "United States of America", Country_FAO),
+         Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% 
+                                                  c("the United States of America (Alaska)", 
+                                                    "the United States of America (Hawaii)"),
+                                                "the United States of America", 
+                                                Official_Name_En_Stefania_NEW))
+```
 
-# check 
-filter(eez_keys, Official_Name_En_Stefania_NEW == "the United States of America")
+Check 
+```{r}
+filter(eez_keys, 
+       Official_Name_En_Stefania_NEW == "the United States of America")
+
 filter(eez_keys, Country_FAO == "the United States of America")
+```
 
-## do the same for Indian (Andaman and Nicobar Islands) Exclusive Economic Zone as this is part of one of the top 7 nations so need to be included into India even if not very influent
-filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
-# WARNING - this did not work as you removed this record just above!!!! 
-eez_keys<-eez_keys %>% mutate(
-  Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "India" , Country_FAO),
-  Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), "the Republic of India" , Official_Name_En_Stefania_NEW))
-filter(eez_keys, Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
+Do the same for Indian (Andaman and Nicobar Islands) Exclusive Economic Zone as this is part of one of the top 7 nations so need to be included into India even if not very influential
 
-# check if you still have duplicates: - no
+```{r}
+filter(eez_keys, 
+       Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
+```
+
+**WARNING** - this did not work as you removed this record just above!!!! 
+```{r}
+eez_keys <- eez_keys |> 
+  mutate(Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% 
+                                c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"), 
+                              "India" , Country_FAO),
+         Official_Name_En_Stefania_NEW = ifelse(Official_Name_En_Stefania_NEW %in% 
+                                                  c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"),
+                                                "the Republic of India", 
+                                                Official_Name_En_Stefania_NEW))
+
+filter(eez_keys, 
+       Official_Name_En_Stefania_NEW %in% 
+         c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
+```
+
+check if you still have duplicates: - no
+```{r}
 head(eez_keys)
-trial<-eez_keys %>% 
-  select(Name_EEZ,region, Official_Name_En_Stefania_NEW) %>% 
+
+trial <- eez_keys |> 
+  select(Name_EEZ,region, Official_Name_En_Stefania_NEW) |> 
   arrange(Official_Name_En_Stefania_NEW,region)
+```
 
-## still some ovelapping claim in the data: these are records classified as territories by FAO and as ovelapping claim in the EEZ dataset. Becasue we don't know whether the boundaries of these EEZ include waters under other jurisdiction than the one specific by FAO, we remove them.    
+Still some overlapping claim in the data: these are records classified as territories by FAO and as ovelrapping claim in the EEZ dataset. Because we don't know whether the boundaries of these EEZ include waters under other jurisdiction than the one specific by FAO, we remove them.    
+
+```{r}
 filter(eez_keys, str_detect(Name_EEZ, "Overlapping|Joint"))
-eez_keys<-eez_keys %>% filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T))
 
-## Clipperton problem: named french polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
-# WARNING - this means we need to check continent classification but this can be done later as there are no other visible missmatches 
-# change to Oceania 
-eez_keys<-eez_keys %>% 
-  mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", "Oceania", region))
+eez_keys <- eez_keys |> 
+  filter(str_detect(Name_EEZ, "Overlapping|Joint", negate = T))
+```
 
-# different ID_mrgd but under the same FAO_official. Here need both as in 05b you need to extract data by ID_mrgd and group by fao_official. Adjusments to consider this are done in 05b. 
-trial<-split(eez_keys, eez_keys$Official_Name_En_Stefania_NEW)
-which(lapply(trial, function(x) nrow(x))>1)
+Clipperton problem: named French Polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
+**WARNING** - this means we need to check continent classification but this can be done later as there are no other visible mismatches change to Oceania 
+```{r}
+eez_keys <- eez_keys |> 
+  mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", 
+                         "Oceania", region))
+```
+
+Different `ID_mrgd` but under the same FAO_official. Here need both as in 05b you need to extract data by `ID_mrgd` and group by fao_official. Adjustments to consider this are done in 05b. 
+
+```{r}
+trial <- split(eez_keys, eez_keys$Official_Name_En_Stefania_NEW)
+
+which(lapply(trial, function(x) nrow(x)) > 1)
+
 trial[5]
+```
 
+```{r}
 filter(eez_keys, Official_Name_En_Stefania_NEW == "Australia")
-filter(eez_keys, Official_Name_En_Stefania_NEW == "Ascension, Saint Helena and Tristan da Cunha")
 
-# or ... could check comments ... 
+filter(eez_keys, 
+       Official_Name_En_Stefania_NEW == "Ascension, Saint Helena and Tristan da Cunha")
+```
+
+or ... could check comments ... 
+```{r}
 unique(eez_keys$Comment)
-filter(eez_keys, Comment == "different ID_merge but same Official_Name_En_Stefania_NEW")
-trial[5]
-filter(eez_keys, Comment == "should be under USA following FAO classificacion" )
-trial[190]
+filter(eez_keys, 
+       Comment == "different ID_merge but same Official_Name_En_Stefania_NEW")
 
-# clean and change column names as per above: 
-eez_keys<-eez_keys %>% 
+trial[5]
+
+filter(eez_keys, 
+       Comment == "should be under USA following FAO classificacion")
+
+trial[190]
+```
+
+Clean and change column names as per above: 
+```{r}
+eez_keys <- eez_keys |> 
   #Keeping relevant columns
   select(ID_mrgd, Name_EEZ, region, Country_FAO, 
          Official_Name_En_Stefania_NEW) |> 
   #Renaming columns
   dplyr::rename("continent" = "region", 
-         "fao_official" = "Official_Name_En_Stefania_NEW") %>% 
+         "fao_official" = "Official_Name_En_Stefania_NEW") |> 
   #Removing column with unaccepted EEZ names
   select(!Name_EEZ) 
 
-
-### end work in progress ----
+head(eez_keys)
 ```
 
+# end work in progress ----
+
 ```{r}
-
-head(eez_keys)
-
 eez_keys |> 
   write_csv("data/eez_keys_camilla.csv")
-
 ```
 
 
