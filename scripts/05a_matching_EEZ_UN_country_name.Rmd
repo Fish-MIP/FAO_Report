@@ -183,7 +183,7 @@ sort(unique(fao_ema$ISO3CD))
 sort(unique(fao_st$ISO3CD))
 ```
 
-## Merge all info into a final FAO dataset ----
+# Merge all info into a final FAO dataset ----
 ```{r}
 fao_final <- fao_ema |> 
   full_join(fao_st)
@@ -198,7 +198,7 @@ head(fao_final)
 colnames(fao_final)
 ```
 
-Adjust columns.
+# Adjust columns
 
 ```{r}
 fao_final2 <- fao_final |> 
@@ -226,13 +226,75 @@ fao_final3 <- fao_final2 |>
 head(fao_final3)
 ```
 
-using the EEZ file, manually match FAO names and continent and sovereign country.
+# using the EEZ file, manually match FAO names and continent and sovereign country.
 
 ```{r}
 write.csv(eez, "/home/dbpm/FAO_Report/data/EEZ_key.csv") 
 write.csv(fao_final3, "/home/dbpm/FAO_Report/data/FAO_key.csv")
 ```
 
+# load new file, clean and change column names as per eez_keys_camilla.csv
+
+```{r}
+
+new_key<- read_csv("data/EEZ_FAO_key.csv")
+head(new_key)
+nrow(new_key)
+new_key<-new_key %>% 
+  # remove join and overlapping 
+  filter(str_detect(fa_ffcl, "Overlapping|Joint", negate = T)) %>% 
+  # remove EEZs not included in FAO data and with no information on the country they belong to. (5.h in https://docs.google.com/document/d/1_n0jjCTl9FtdaiNzykjWK_Tcm7MikCYG7tcVXQcttcY/edit)
+  filter(!fa_ffcl %in% c("Amsterdam Island & St. Paul Islands", "Crozet Islands", "Europa Island", "Oecussi Ambeno", "Protected Zone established under the Torres Strait Treaty")) %>% 
+  # remove FAO major fishing areas 
+  filter(is.na(OCEAN))
+
+head(new_key)
+nrow(new_key)
+filter(new_key, fa_ffcl == "Amsterdam Island & St. Paul Islands")
+filter(new_key, fa_ffcl == "Overlapping claim Falkland / Malvinas Islands: UK / Argentina")
+
+old_key<-read_csv("data/eez_keys_camilla.csv") # for reference 
+head(old_key)
+
+# consider only columns needed and rename as per old key 
+head(new_key)
+colnames(new_key)
+new_key<-new_key %>% 
+  select(c(ID_mrgd, continent, fa_ffcl, Country_name)) %>% 
+  rename(fao_official = fa_ffcl, Country_FAO = Country_name)
+
+head(new_key)
+head(old_key)
+
+# NOTE - country only needed for the 7 top ones - so check they are OK
+
+# print new final file 
+write_csv(new_key, "data/eez_keys_camilla_new.csv")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# END 
 
 # FAO_EEZ key - Contains continent information ----
 ```{r}
@@ -459,7 +521,7 @@ need to check for records with same FAO official name and different `Country_FAO
 eez_keys[order(eez_keys$fao_official, eez_keys$continent),]
 ```
 
-Need to understand why 2 Australia and why 2 French Polynesia
+Need to understand why 2 Australia and why 2 French Polynesia **SOLVED** 
 ```{r}
 filter(eez_keys, fao_official == "French Polynesia")
 ```
@@ -473,7 +535,7 @@ eez_keys <- read.csv(list.files(out_folder,
                      encoding = "UTF-8")
 ```
 
-**WARNING** - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. 
+**WARNING** - some like South African (Prince Edward Islands) Exclusive Economic Zone could/should(?) be included into e.g. South Africa as done for e.g. Chilean (Easter Island) Exclusive Economic Zone. But all of these are very small territories and can be done later. **SOLVED** 
 
 ```{r}
 filter(eez_keys, is.na(ISO3CD) & is.na(Official_Name_En_Stefania_NEW)) 
@@ -494,7 +556,7 @@ Check
 filter(eez_keys, is.na(ISO3CD))
 ```
 
-remove copy-paste mistake in the original table where this is named "the Republic of Colombia". **WARNING** - this is not happening when using the `EEZ_key.csv` instead of the "updated" version 
+remove copy-paste mistake in the original table where this is named "the Republic of Colombia". **WARNING** - this is not happening when using the `EEZ_key.csv` instead of the "updated" version. **should be solved** 
 
 ```{r}
 eez_keys <- eez_keys |> 
@@ -503,7 +565,8 @@ eez_keys <- eez_keys |>
 filter(eez_keys, is.na(Official_Name_En_Stefania_NEW))
 ```
 
-Correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification. 
+Correct for a decision taken on Hawaii and Alaska - these are considered US in FAO but as separate EEZ in our EEZ file. I wanted to keep this separation but changed my mind as we should fully follow FAO classification.**solved in new file**
+
 ```{r}
 filter(eez_keys, 
        Official_Name_En_Stefania_NEW %in% 
@@ -539,7 +602,7 @@ filter(eez_keys,
        Official_Name_En_Stefania_NEW %in% c("Indian (Andaman and Nicobar Islands) Exclusive Economic Zone"))
 ```
 
-**WARNING** - this did not work as you removed this record just above!!!! 
+**WARNING** - this did not work as you removed this record just above!!!! **solved in new dataset**
 ```{r}
 eez_keys <- eez_keys |> 
   mutate(Country_FAO = ifelse(Official_Name_En_Stefania_NEW %in% 
@@ -574,21 +637,21 @@ eez_keys <- eez_keys |>
 ```
 
 Clipperton problem: named French Polynesia in both dataset, given as Oceania in FAO dataset and as Europe in EEZ dataset. 
-**WARNING** - this means we need to check continent classification but this can be done later as there are no other visible mismatches change to Oceania 
+**WARNING** - this means we need to check continent classification but this can be done later as there are no other visible mismatches change to Oceania **solved in new dataset**
 ```{r}
 eez_keys <- eez_keys |> 
   mutate(region = ifelse(Name_EEZ == "Clipperton Exclusive Economic Zone", 
                          "Oceania", region))
 ```
 
-Different `ID_mrgd` but under the same FAO_official. Here need both as in 05b you need to extract data by `ID_mrgd` and group by fao_official. Adjustments to consider this are done in 05b. 
+Different `ID_mrgd` but under the same FAO_official. Here need both as in 05b you need to extract data by `ID_mrgd` and group by fao_official. Adjustments to consider this are done in 05b. **all solved**
 
 ```{r}
 trial <- split(eez_keys, eez_keys$Official_Name_En_Stefania_NEW)
 
 which(lapply(trial, function(x) nrow(x)) > 1)
 
-trial[5]
+trial[192]
 ```
 
 ```{r}
