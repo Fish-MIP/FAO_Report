@@ -33,6 +33,12 @@ fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
 global_bio <- list.files(base_folder, "ensemble_perc_bio_change_global.csv",
                          recursive = T, full.names = T) |> 
   read_csv()
+
+#Loading data for top 7 countries
+top_7_data <- list.files(base_folder,
+                         "ensemble_perc_bio_change_top7countries.csv",
+                         recursive = T, full.names = T) |> 
+  read_csv()
 ```
     
 ## Defining basic plot design
@@ -77,36 +83,22 @@ base_gg <- list(geom_line(linewidth = 0.5),
 ## Trends globally and for top 7 countries with highest catches
   
 ```{r}
-#Defining top 7 countries by catch
-top_7 <- c("Republic of China", "India", "Indonesia", "Peru", "Russian", 
-           "United States of America", "Viet")
-
-#Extracting data from countries calculations
-top_7_data <- count_bio |> 
-  filter(str_detect(fa_ffcl, paste0(top_7, collapse = "|"))) |> 
-  #Remove continent information
-  select(!contnnt)
-```
-  
-## Plotting trends globally and for top 7 countries
-  
-```{r}
 #Merging global and top 7 countries data
 global_bio |> 
   #Add an extra column to match top 7 countries
-  mutate(fa_ffcl = "Global", .after = "scenario") |> 
+  mutate(Cnt_FAO = "Global", .after = "scenario") |> 
   #Joining to top7 data
   bind_rows(top_7_data) |> 
   #Create an order category for SOVEREIGN1
-  mutate(fa_ffcl = factor(fa_ffcl, levels = c("Global", 
-                                              unique(top_7_data$fa_ffcl)), 
+  mutate(Cnt_FAO = factor(Cnt_FAO, levels = c("Global", 
+                                              unique(top_7_data$Cnt_FAO)), 
                              ordered = T)) |> 
   #Plotting
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
   #Applying base plot design
   base_gg+
   #Plotting by country
-  facet_wrap(~fa_ffcl, scales = "free_y", nrow = 8)
+  facet_wrap(~Cnt_FAO, scales = "free_y", nrow = 8)
 
 ```
   
