@@ -18,7 +18,7 @@ ID_mrgd,continent,fao_official,Country_FAO
 26521,Asia,Brunei Darussalam,Brunei Darussalam
 8493,Americas,Canada,Canada
 8309,Oceania,Christmas Island,Australia
-26517,Americas,Curaçao,NA
+26517,Americas,Cura√ßao,NA
 8462,Americas,French Guiana,France
 8440,Oceania,French Polynesia,France
 8442,Oceania,Jarvis Island,United States of America
@@ -51,13 +51,13 @@ ID_mrgd,continent,fao_official,Country_FAO
 8310,Oceania,Norfolk Island,NA
 48953,Asia,Palestine,Palestine
 8439,Oceania,Pitcairn,NA
-8338,Africa,Réunion,NA
+8338,Africa,R√©union,NA
 5689,Europe,Romania,Romania
 8413,Americas,Saint Kitts and Nevis,Saint Kitts and Nevis
 8416,Americas,Saint Lucia,Saint Lucia
 8494,Americas,Saint Pierre and Miquelon,France
 8421,Americas,Saint Vincent and the Grenadines,Saint Vincent/Grenadines
-48952,Americas,Saint Barthélemy,NA
+48952,Americas,Saint Barth√©lemy,NA
 8495,Americas,Saint Martin (French part),NA
 21803,Americas,Sint Maarten (Dutch part),NA
 8314,Oceania,Solomon Islands,Solomon Islands
@@ -126,7 +126,7 @@ ID_mrgd,continent,fao_official,Country_FAO
 26524,Asia,the Republic of Azerbaijan,Azerbaijan
 8393,Africa,the Republic of Benin,Benin
 5672,Europe,the Republic of Bulgaria,Bulgaria
-8473,Africa,the Republic of Côte d'Ivoire,NA
+8473,Africa,the Republic of C√¥te d'Ivoire,NA
 8362,Africa,the Republic of Cabo Verde,NA
 8475,Africa,the Republic of Cameroon,Cameroon
 8465,Americas,the Republic of Chile,Chile
@@ -188,7 +188,7 @@ ID_mrgd,continent,fao_official,Country_FAO
 5692,Europe,the Republic of Slovenia,Slovenia
 8396,Africa,the Republic of South Africa,South Africa
 8461,Americas,the Republic of Suriname,Suriname
-5697,Asia,the Republic of Türkiye,NA
+5697,Asia,the Republic of T√ºrkiye,NA
 8394,Africa,the Republic of the Congo,Congo
 8370,Africa,the Republic of the Gambia,Gambia
 8318,Oceania,the Republic of the Marshall Islands,Marshall Islands
