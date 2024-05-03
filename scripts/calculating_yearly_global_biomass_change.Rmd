@@ -70,7 +70,7 @@ for(m in members){
   area_grid <- area_grid |> 
     drop_na(fa_ffcl) |> 
     #Remove columns that are not relevant
-    select(!ID_mrgd:nm_mrgd)
+    select(!c(ID_mrgd:NAME_EN, Cnt_FAO))
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -277,8 +277,83 @@ f_out <- file.path(out_folder, "ensemble_perc_bio_change_global.csv")
 bio_data |>
   write_csv(f_out)
 ```
-
-
-
   
+## Calculating percentage change in fish biomass mean from global FishMIP models in the top 7 countries with highest catches
+  
+```{r}
+#Defining top 7 countries by catch
+top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", 
+           "United States of America", "Viet")
+
+#Looping through each FishMIP model
+for(m in members){
+  #Select correct area of grid cell
+  if(str_detect(m, "ipsl")){
+    area_grid <- area_ipsl_df
+    print(paste0("processing '", m, "' file, using ipsl mask"))
+  }else if(str_detect(m, "gfdl")){
+    area_grid <- area_gfdl_df
+    print(paste0("processing '", m, "' file, using gfdl mask"))
+  }
+  
+  #Keep only information for grid cells with countries recognised by FAO
+  #Extracting data from countries calculations
+  area_grid <- area_grid |> 
+    filter(str_detect(Cnt_FAO, paste0(top_7, collapse = "|"))) |> 
+    #Remove continent information
+    select(!ID_mrgd:fa_ffcl)
+  
+  #Load all data available for a single FishMIP model
+  df_model <- str_subset(global_files, m) |>
+    map(~readRDS(.)) |>
+    map_df(~bind_rows(.)) |>
+    #Add area for each grid cell and country
+    left_join(area_grid, by = join_by(x, y)) |>
+    drop_na(Cnt_FAO) |> 
+    #Calculate weighted mean for biomass per ensemble member per country
+    group_by(year, mem, esm, scenario, Cnt_FAO) |> 
+    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T))
+  
+  #Calculating reference period
+  ref_bio <- df_model |> 
+    filter(year >= 2005 & year <= 2014) |> 
+    group_by(Cnt_FAO) |> 
+    #Calculate mean per ensemble member
+    summarise(ref_bio = mean(mean_bio, na.rm = T))
+  
+  #Add reference period to weighted mean data frame
+  df_model <- df_model |> 
+    left_join(ref_bio, join_by(Cnt_FAO)) |> 
+    #Calculate percentage change
+    mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
+  
+  #Create name to save file
+  f_out <- file.path(out_folder, 
+                     str_c(m, "_yearly_perc_bio_change_top7countries.csv"))
+
+  #Saving results for each model
+  df_model |>
+    fwrite(f_out)
+}
+```
+  
+## Calculating mean ensemble percentage change in biomass for top 7 countries
+  
+```{r eval = F}
+bio_data <- list.files(out_folder, 
+                       pattern = "_yearly_perc_bio_change_top7countries.csv",
+                       full.names = T, recursive = T) |> 
+  map(~fread(.)) |> 
+  bind_rows() |> 
+  group_by(year, scenario, Cnt_FAO) |> 
+  summarise(mean_change = mean(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T))
+
+#Create name to save file
+f_out <- file.path(out_folder, "ensemble_perc_bio_change_top7countries.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+```
   
