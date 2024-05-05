@@ -1,0 +1,36 @@
+---
+title: "PLotting biomass vs catches"
+author: "Camilla Novaglio"
+date: "2024-05-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+# dowload BOATS data
+
+# tcb nat
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_nat_default_tcb_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_nat_default_tcb_global_monthly_2015_2100.nc ./ 
+
+# tcb histsoc / 2015soc
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tcb_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tcb_global_monthly_2015_2100.nc ./ 
+
+# tc histsoc / 2015soc
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tc_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tc_global_monthly_2015_2100.nc ./ 
+
+
+```{r cars}
+
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/BOATS_Data_for_catch_plot"
+
+```
