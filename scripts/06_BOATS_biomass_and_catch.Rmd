@@ -1,0 +1,211 @@
+---
+title: "PLotting biomass vs catches"
+author: "Camilla Novaglio"
+date: "2024-05-05"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# dowload BOATS data from DKRZ (06/05/2024)
+
+## tcb nat
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_nat_default_tcb_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_nat_default_tcb_global_monthly_2015_2100.nc ./ 
+
+## tcb histsoc / 2015soc
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tcb_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tcb_global_monthly_2015_2100.nc ./ 
+
+## tc histsoc / 2015soc
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/historical/boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tc_global_monthly_1950_2014.nc ./ 
+
+scp -r b381217@levante.dkrz.de:/work/bb0820/ISIMIP/ISIMIP3b/OutputData/marine-fishery_global/BOATS/ipsl-cm6a-lr/future/boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tc_global_monthly_2015_2100.nc ./ 
+
+# Extract data 
+
+```{r cars}
+
+rm(list=ls())
+library(raster)
+library(ncdf4) 
+library(stringr)
+library(lubridate)
+library(tictoc)
+library(dplyr)
+library(parallel)
+
+dir <- "/rd/gem/private/users/camillan/FAO_Report/BOATS_Data_for_catch_plot"
+
+unfished_hist = "boats_ipsl-cm6a-lr_nobasd_historical_nat_default_tcb_global_monthly_1950_2014.nc"
+unfished_fur = "boats_ipsl-cm6a-lr_nobasd_ssp585_nat_default_tcb_global_monthly_2015_2100.nc"
+fished_hist = "boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tcb_global_monthly_1950_2014.nc"
+fished_fut = "boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tcb_global_monthly_2015_2100.nc"
+catch_hist = "boats_ipsl-cm6a-lr_nobasd_historical_histsoc_default_tc_global_monthly_1950_2014.nc"
+catch_fut = "boats_ipsl-cm6a-lr_nobasd_ssp585_2015soc-from-histsoc_default_tc_global_monthly_2015_2100.nc"
+
+extract<-function(netcdf){
+  
+  # trial 
+  # netcdf = unfished_hist
+  
+  # extract data 
+  brick_data<-brick(file.path(dir, netcdf)) 
+  
+  # define variable = either tcb_unfished, tcb_fished or tc based on file name 
+  if(str_detect(netcdf, "nat.*_tcb_", negate = FALSE)){
+    variable = "tcb_unfished"
+  }else if (str_detect(netcdf, "histsoc.*_tcb_", negate = FALSE)){
+    variable = "tcb_fished"
+  }else if (str_detect(netcdf, "_tc_", negate = FALSE)){
+    variable = "tc"
+  }
+
+  # check units 
+  nc_data <- nc_open(file.path(dir, netcdf))
+
+  if(variable %in% c("tcb_unfished", "tcb_fished")){
+    units<-ncatt_get(nc_data, "tcb", "units")$value
+  }else{
+    units<-ncatt_get(nc_data, "tc", "units")$value # SHOULDN'T THIS HAVE A TIME COMPONENT? 
+  }
+  
+  nc_close(nc_data)
+
+  # define time step of output based on file name
+  if(str_detect(netcdf, "monthly", negate = FALSE)){
+    time_step = "monthly"
+  }else if (str_detect(netcdf, "annual", negate = FALSE)){
+    time_step = "annual"
+  }
+  
+  # get time vector based on file name
+  if(str_detect(netcdf, "1850", negate = FALSE)){
+    stTime = "1850-1-1"
+    enTime = "2014-12-31"
+  }else if (str_detect(netcdf, "1950", negate = FALSE)){
+    stTime = "1950-1-1"
+    enTime = "2014-12-31"
+  }else if (str_detect(netcdf, "2015", negate = FALSE)){
+    stTime = "2015-1-1"
+    enTime = "2100-12-31"
+  }
+  
+  if(time_step == "monthly"){
+    time_step_vector = "month"
+  }else if(time_step == "annual"){
+    time_step_vector = "year"
+  }
+  
+  t<- as.character(seq(ymd(stTime), ymd(enTime), by = time_step_vector))
+  # print(paste("Start time from file name ",t[1], sep = ""))
+  # print(paste("End time from file name ",t[length(t)], sep = ""))
+  
+  # IF TCB DO MEAN ACROSS MONTHS, IF TC DO SUM ACROSS MONTHS?  
+  indices<-as.Date(t)
+  indices2<-format(indices, format = "%Y")
+  indices2<-as.numeric(indices2)
+  
+  if(variable %in%c("tcb_unfished", "tcb_fished")){
+    brick_data_annual<-stackApply(brick_data, indices=indices2, fun=mean)
+  }else if (variable == "tc"){
+    brick_data_annual<-stackApply(brick_data, indices=indices2, fun=sum)
+  }
+  
+  # GLOBAL SUMS OF TCB AND TC OR WEIGHTED MEANS? HERE GLOBAL SUMS
+  # grid cell area in m
+  w2 <- raster::area(brick_data_annual[[1]], na.rm = TRUE)*1e6 # could do the IPSL file provided by Matthis but here it is the same
+  # value (tcb or tc) * area
+  x <- brick_data_annual * w2
+  # sum across grid cells 
+  global_sum<-cellStats(x, sum, na.rm = TRUE) 
+  # transform in daframe
+  global_sum<-data.frame(Year = unique(indices2), sum = global_sum) %>%
+      mutate(
+        Year = as.numeric(Year),
+        file = netcdf,
+        variable = variable)
+  rownames(global_sum)<-NULL
+  
+  # save result
+  return(global_sum = global_sum)
+
+}
+
+# apply function across netcdfs 
+netcdf = c(unfished_hist, unfished_fur, fished_hist, fished_fut, catch_hist, catch_fut)
+all_bricks<-mclapply(netcdf, function(x) extract(x), mc.cores = detectCores()-10) 
+names(all_bricks) <- netcdf
+
+# extract outputs from function above 
+global_sum<-do.call("rbind", all_bricks)
+rownames(global_sum)<-NULL
+
+```
+
+# Plot data 
+
+```{r}
+
+library(ggplot2)
+
+global_sum$sum<-global_sum$sum/1e+6 # from g to tonnes 
+global_sum$sum<-global_sum$sum/1000000 # to million tonnes
+
+# check catches against Nina's plot # look OK 
+ggplot(filter(global_sum, variable == "tc", Year <= 2014), aes(x = Year, y = sum))+
+  geom_line()
+
+# plot catches and biomass. 
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Adding no change line at 0 for reference 
+                geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+                           linetype = 2),
+                #Adding line dividing historical period and future projections
+                geom_vline(xintercept = 2015, color = "grey80", 
+                           linewidth = 0.65),
+                #Manually setting colours to be used in plots
+                scale_color_manual(values = c("tc" = "#66c2a5",
+                                              "tcb_fished" = "#fc8d62", 
+                                              "tcb_unfished" = "#8da0cb"), 
+                                   name = "Variable",
+                                   labels = c("Catches", "Biomass fished", 
+                                              "Biomass unfished")),
+                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                theme_classic(),
+                labs(y = "Million tonnes", 
+                     x = "Year"),
+                theme(legend.position = "top", legend.justification = "center", 
+                      legend.text = element_text(size = 10),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_blank(),
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)))
+
+p<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable))+
+  geom_line()+
+  base_gg
+
+png("figures/BOATS_trends.png", width=5, height=3.5, units="in", res=1200)
+p
+dev.off()
+
+# plot fo Jerome to check? 
+
+p_j<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable))+
+  geom_line()+
+  base_gg+
+  facet_wrap(~variable, scale = "free")
+
+png("figures/BOATS_trends_for_Jerme_to_check.png", width=5, height=3.5, units="in", res=1200)
+p_j
+dev.off()
+
+```

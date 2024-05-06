@@ -28,7 +28,7 @@ if(!dir.exists(out_folder)){
   dir.create(out_folder)
 }
 
-# EEZ data from Denisse ----
+# EEZ data from Denisse ---- NOT HERE ANYMORE!!! BUT OK AS CAN USE THE PRINTED VERSION BELOW. 
 eez <- file.path(out_folder, 
                  "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv") |> 
   read_csv()
@@ -162,7 +162,6 @@ fao_ema <- fao_ema |>
   mutate(O_Name_En_Emmanuel = O_Name_En) 
 
 duplicated(fao_ema)
-
 head(fao_ema)
 ```
 
@@ -194,7 +193,6 @@ fao_final <- fao |>
   select(-O_Name_En) 
 
 head(fao_final)
-
 colnames(fao_final)
 ```
 
@@ -253,7 +251,7 @@ nrow(new_key)
 filter(new_key, fa_ffcl == "Amsterdam Island & St. Paul Islands")
 filter(new_key, fa_ffcl == "Overlapping claim Falkland / Malvinas Islands: UK / Argentina")
 
-old_key<-read_csv("data/eez_keys_camilla.csv") # for reference 
+old_key<-read_csv("data/eez_keys_camilla.csv") # for reference ## NOT HERE ANYMORE BUT OK AS YOU GOT NAMES 
 head(old_key)
 
 # consider only columns needed and rename as per old key 
@@ -268,8 +266,54 @@ head(old_key)
 
 # NOTE - country only needed for the 7 top ones - so check they are OK
 
+## add list name as we can use this column for country and territories names in figures. 
+fao <- file.path(out_folder, "nocsDataExport_20240501-114742_English.csv") |> 
+  read_csv() |> 
+  #Select relevant columns
+  select(c(`FULL NAME`, `LIST NAME`)) |> 
+  #Update column names to something more descriptive
+  rename(O_name_En_Website =`FULL NAME`, 
+         figure_name =`LIST NAME`) |> 
+  rename(fao_official = O_name_En_Website)
+
+#Check result
+head(fao)
+
+new_key<-new_key %>% 
+  left_join(fao)
+
+head(new_key)
+
+# print and adjust by adding missing names that were added for fao_official in previous step
+filter(new_key, is.na(figure_name))
+filter(new_key, is.na(ID_mrgd))
+
+sort(new_key$fao_official)[18]
+sort(new_key$fao_official)[135] # "the Republic of Colombia (Quitasueño)"
+Encoding(sort(new_key$fao_official)[135])
+Encoding(sort(new_key$figure_name)[47])
+
+
 # print new final file 
-write_csv(new_key, "data/eez_keys_camilla_new.csv")
+write_csv(new_key, "data/EEZ_FAO_key_with_short_names.csv")
+
+# load final file where you updated short names and check if special characters are printed OK.
+# NEED TO REDO THSI STEP WITH FINAL DECISION - re utf simply save the csv file as csv UTF-8 on mac. 
+library(readr)
+final<-read.csv("data/EEZ_FAO_key_with_short_names2_utf.csv", fileEncoding = "UTF-8")
+
+
+sort(final$figure_name)[46] # Colombia (Quitasue√±o) # problematic, not sure why but fixed below. Also fixed by pasting Quitasueño in the csv utf file. something happens where the situation for colombia Quitasueño is the opposite as per curacao...   
+sort(final$fao_official)[134]
+sort(final$figure_name)[53]
+sort(final$figure_name)[56]
+sort(final$figure_name)[168]
+sort(final$figure_name)[172]
+sort(final$figure_name)[208]
+
+final<-final %>% 
+  mutate(figure_name = ifelse(figure_name == "Colombia (Quitasue√±o)", "Colombia (Quitasueño)", figure_name))
+sort(final$figure_name)[46]
 
 ```
 

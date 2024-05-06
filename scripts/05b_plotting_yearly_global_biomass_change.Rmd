@@ -52,6 +52,13 @@ area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
+
+head(area_gfdl_df)
+
+final3<-read.csv("data/EEZ_FAO_key_with_short_names2.csv")
+
+
+
 ```
 
 
