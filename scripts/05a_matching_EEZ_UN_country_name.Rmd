@@ -315,6 +315,8 @@ final<-final %>%
   mutate(figure_name = ifelse(figure_name == "Colombia (Quitasue√±o)", "Colombia (Quitasueño)", figure_name))
 sort(final$figure_name)[46]
 
+## NOTE the final file was called eez_keys_camilla_new.csv before these changes. 
+
 ```
 
 
