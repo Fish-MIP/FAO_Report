@@ -250,6 +250,8 @@ new_key<-new_key %>%
   select(c(ID_mrgd, continent, fa_ffcl, Country_name)) %>% 
   rename(fao_official = fa_ffcl, Country_FAO = Country_name)
 
+## this was printed and called eez_keys_camilla_new.csv 
+
 ```
 
 # Add short names as per new FAO regulation where they can be used in figs
@@ -283,8 +285,8 @@ filter(new_key, is.na(figure_name))
 # e.g. fao_official: the Federative Republic of Brazil (Trindade) -> List name: Brazil (Trindade)
 
 # small adjustments: 
-# the United States Minor Islands (Howland and Baker Islands) -> Howland and Baker Islands
-# Northern Mariana Islands -> USA as sovreign country
+# the United States Minor Outlying Islands (Howland and Baker Islands) -> Howland and Baker Islands
+# the Commonwealth of the Northern Mariana Islands -> USA as sovreign country
 
 # special characters 
 sort(new_key$fao_official)[18] # "Cura\x8dao"

@@ -53,12 +53,6 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
 
-head(area_gfdl_df)
-
-final3<-read.csv("data/EEZ_FAO_key_with_short_names2.csv")
-
-
-
 ```
 
 
@@ -125,6 +119,11 @@ bio_data <- list.files(out_folder,
                        full.names = T) |> 
   map_df(~fread(.))
 
+
+#### THIS NEEDS TO BE MOVED INTO PLOTTING FILE - OK
+
+
+
 # # Check NAs by model 
 # a<-filter(bio_data, is.na(mean_bio)) 
 # unique(a$fao_official) 
@@ -183,6 +182,14 @@ bio_data <- list.files(out_folder,
 # a$id<-paste(a$esm, a$mem)
 # unique(a$id) # boats does not have this info - not sure why
 
+
+### THIS HAS ALREADY BEEN DONE IN CALCULATING FILE - OK
+
+
+
+
+
+
 #Calculating reference period
 ref_bio <- bio_data |> 
   filter(year >= 2005 & year <= 2014) |> 
@@ -196,6 +203,21 @@ ref_bio <- bio_data |>
 # fao_eez_trial<-split(fao_eez_keys, fao_eez_keys$fao_official)
 # which(lapply(fao_eez_trial, function(x) nrow(x))>1)
 # fao_eez_trial[6]
+
+
+
+### THIS NEEDS TO BE CHEKED IN PLOTTING FILE BUT IT WAS DUE TO NON-UNIQUE FAO OFFICIAL NAMES WHICH SHOULD BE SOLVED NOW $$$$$$ BUT NEED TO CHECK IN CALCULATING - i.e. the masks 
+
+
+
+
+
+
+
+
+
+
+
 
 # some are repetition if ID_mgr is removed 
 fao_eez <-  fao_eez_keys |>
@@ -213,6 +235,22 @@ fao_eez<-fao_eez %>%
   filter((is.na(continent) & is.na(Country_FAO))|(!is.na(continent) & !is.na(Country_FAO))) 
 # nrow(fao_eez)
 
+
+
+
+
+
+
+### THIS SHOULD BE DONE IN CALCULATING - OK
+
+
+
+
+
+
+
+
+
 # calculate trends by model as needed for stat table 
 bio_data_by_model <- bio_data |> 
   #Add reference period to yearly biomass data
@@ -225,6 +263,20 @@ bio_data_by_model <- bio_data |>
 
 #Check results
 bio_data_by_model
+
+
+
+
+
+
+
+# THIS OPTION SHOULD BE TESTED AGAIN AND A COMMENT ON CALCUTING OR PLOTTING SHOULD BE ADDEDE - OK
+
+
+
+
+
+
 
 # # calculate percentage change between 2 periods
 # # correct version to me - though exact same values as per above
@@ -265,6 +317,23 @@ bio_data_by_model
 #   summarise(bio = mean(bio)) %>% 
 #   mutate(mean_change = ((bio-ref_bio)/ref_bio)*100) # B % change across decades 
 
+
+
+
+### THIS SHOULD BE DONE IN CALCULTING AS PER ABOVE - OK
+
+
+
+
+
+
+
+
+
+
+
+
+
 bio_data <- bio_data |> 
   #Add reference period to yearly biomass data
   left_join(ref_bio, by = c("mem", "esm", "fao_official")) |> 
@@ -287,6 +356,20 @@ bio_data
 We can now save the results for future reference.  
   
 ```{r}
+
+### THIS SHOULD ALL BE DONE IN CALCULATING AND THE SECOND OUTPUT TYPE SHOULD BE REMOVED FROM THE FOLDER AS NOT NEEDED ANYMORE - OK 
+
+
+
+
+
+
+
+
+
+
+
+
 #Create name to save file
 f_out <- file.path(out_folder, "ensemble_perc_bio_change_data.csv")
 
@@ -306,6 +389,9 @@ bio_data_by_model |>
 ## Defining basic plot design
   
 ```{r}
+
+# PART OF PLOTTING - OK
+
 base_gg <- list(geom_line(linewidth = 0.5),
                 #Adding no change line at 0 for reference 
                 geom_hline(yintercept = 0, color = "#709fcc", linewidth = 0.65, 
@@ -349,6 +435,10 @@ Note that data used here correspond to EEZs linked to each country main landmass
 ### Calculating global trends
   
 ```{r eval = F}
+
+# PART OF CALCULATING - OK
+
+
 #Looping through each FishMIP model
 for(m in members){
   
@@ -393,6 +483,14 @@ for(m in members){
 Now we can calculate the percentage change in global exploitable fish biomass.  
   
 ```{r eval = F}
+
+
+# PART OF CALCULTING AND AS PER COUNTRY DATA/PLOTS -OK
+
+
+
+
+
 
 # Listing all relevant files to calculate biomass projections
 global_data <- list.files(out_folder, 
@@ -443,6 +541,14 @@ global_data
 The top 7 countries by fishing catches are China (including Taiwan), India, Indonesia, Peru, Russia, United States and Viet Nam. Note that all marine areas identified to be under the jurisdiction of these countries were included in the calculation of trends.  
   
 ```{r}
+
+# PART OF CALCULTING AND AS PER COUNTRY DATA/PLOTS - OK
+
+
+
+
+
+
 
 #Defining top 7 countries by catch
 top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", "United States",
@@ -508,11 +614,27 @@ for(m in members){
 Now we can calculate the percentage change in exploitable fish biomass from the reference period (2005-2014) for the top 7 countries by fisheries catches.  
   
 ```{r}
+
+# PART OF CALCULTING AND AS PER COUNTRY DATA/PLOTS - OK
+
+
 #Listing all relevant files to calculate biomass projections
 top7_data <- list.files(out_folder, 
                         pattern = "_yearly_top7_perc_bio_change_data.csv",
                        full.names = T) |> 
   map_df(~fread(.))
+
+
+# THSE CHECKES SHOULD BE MOVED INPLOTTING ADN DONE AGAIN AS PER COUNTRY PART ABOVE BUT DENISSE CHECKED ALREADY - OK
+
+
+
+
+
+
+
+
+
 
 # # check NAs for some models 
 # a<-filter(top7_data, is.na(mean_bio)) 
@@ -537,6 +659,15 @@ top7_data <- list.files(out_folder,
 # 5: 1950 macroecological gfdl historical             the Russian Federation       NA
 
 # RERUNNING code - all good now 
+
+
+
+
+# ALL PART OF CALCULATING -OK 
+
+
+
+
 
 # Calculating top 7 reference period
 top7_ref_bio <- top7_data |> 
@@ -579,6 +710,18 @@ top7_base_data
 ## Table of stats, model agreement and wilcox.test   
 
 ```{r}
+
+
+# THIS NEEDS TO BE MOVED IN PLOTTING - OK
+
+
+
+
+
+
+
+
+
 
 ### merge all info ----
 global_data_by_model<-global_data_by_model %>% 
@@ -714,6 +857,13 @@ fwrite(table, "data/data_products/table_stats.csv")
 
 ```{r}
 
+
+
+## THIS NEEDS TO BE MOVED IN PLOTTING 
+
+
+
+
 # global trend by itself
 ODCdata<-global_data |>
   #Add an extra column to match top 7 countries
@@ -749,6 +899,17 @@ top6<-ggplot(filter(ODCdata, !fao_official %in% c("Global", "the United States o
 ## Uncertaity plot for FAO major fishing countries 
 
 ```{r}
+
+# THIS SHOULD BE MOVED IN PLOTTING - OK
+
+
+
+
+
+
+
+
+
 
 # use mean and sd calculated above 
 
@@ -789,6 +950,16 @@ dev.off()
 ## Plotting trends globally and for top 7 countries
   
 ```{r}
+
+## PART OF PLOTTING -OK
+
+
+
+
+
+
+
+
 #Merging global and top 7 countries data
 global_data |> 
   #Add an extra column to match top 7 countries
@@ -819,6 +990,10 @@ ggsave(filename = file.path(out_folder, "top_7_global_trends.pdf"),
 In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
   
 ```{r}
+
+# PART OF PLOTTING -OK
+
+
 #Filtering data
 bio_data |> 
   #Extract EEZs in Asia
@@ -841,6 +1016,10 @@ ggsave(filename = file.path(out_folder, "asia_perc_change.pdf"),
 In this figure, we will exclude marine areas under the jurisdiction of countries in Africa as classified by the FAO.  
   
 ```{r}
+
+# PART OF PLOTTING -OK
+
+
 #Filtering data
 bio_data |> 
   #Extract EEZs in Africa
@@ -863,6 +1042,10 @@ ggsave(filename = file.path(out_folder, "africa_perc_change.pdf"),
 In this figure, we will exclude marine areas under the jurisdiction of countries in Europe as classified by the FAO.  
   
 ```{r}
+
+# PART OF PLOTTING -OK
+
+
 #Filtering data
 bio_data |> 
   #Extract EEZs in Europe
@@ -885,6 +1068,11 @@ ggsave(filename = file.path(out_folder, "europe_perc_change.pdf"),
 In this figure, we will exclude marine areas under the jurisdiction of countries in the Americas as classified by the FAO.  
   
 ```{r}
+
+
+# PART OF PLOTTING -OK
+
+
 #Filtering data
 bio_data |> 
   #Extract EEZs in the Americas
@@ -907,6 +1095,10 @@ ggsave(filename = file.path(out_folder, "americas_perc_change.pdf"),
 In this figure, we will exclude marine areas under the jurisdiction of countries in Oceania as classified by the FAO.  
   
 ```{r}
+
+# PART OF PLOTTING -OK
+
+
 #Filtering data
 bio_data |> 
   #Extract EEZs in Oceania
@@ -928,6 +1120,17 @@ ggsave(filename = file.path(out_folder, "oceania_perc_change.pdf"),
 ## Figure 7 - FAO regions
   
 ```{r}
+
+# PART OF PLOTTING -OK
+
+
+
+
+
+
+
+
+
 #Filtering data
 bio_data |> 
   #Removing EEZs

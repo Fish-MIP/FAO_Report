@@ -8,6 +8,7 @@ output: pdf_document
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
+rm(list = ls())
 #Data wrangling
 library(tidyverse)
 library(data.table)
@@ -38,11 +39,30 @@ area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
+
+# adding FAO official short names for countries and territories 
+## NOTE - this won't be needed if area_gfdl_df and area_ipsl_df will be recreated using EEZ_FAO_key_with_short_names_utf.csv  
+short_names <- file.path(out_folder, "Merged_FAO_EEZ/EEZ_FAO_key_with_short_names_utf.csv") |> 
+  read.csv(fileEncoding = "UTF-8") %>% 
+  select(-ID_mrgd) %>% # merge by fa_ffcl
+  rename(contnnt = continent, fa_ffcl = fao_official, Cnt_FAO = Country_FAO, fa_ffcl_shrt = figure_name)
+
+area_gfdl_df<-area_gfdl_df %>% 
+  select(-contnnt, -Cnt_FAO) %>% # replace also info on continent and country as there might have been small changes during the creation and revision of the short_names file
+  mutate(fa_ffcl = ifelse(fa_ffcl == "the United States Minor Outlying Islands (Howland and Baker Islands)", "Howland and Baker Islands", fa_ffcl)) %>% # adjustment to country name done on "short_names"
+  left_join(short_names)
+
+area_ipsl_df<-area_ipsl_df %>% 
+  select(-contnnt, -Cnt_FAO) %>% 
+  mutate(fa_ffcl = ifelse(fa_ffcl == "the United States Minor Outlying Islands (Howland and Baker Islands)", "Howland and Baker Islands", fa_ffcl)) %>% # adjustment to country name done on "short_names"
+  left_join(short_names)
+
 ```
   
 ## Getting FishMIP output files
   
 ```{r}
+
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
                            full.names = T, recursive = T)
@@ -50,6 +70,7 @@ global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds",
 #Getting a list of models
 members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
   unique()
+
 ```
   
 ## Calculating percentage change in fish biomass mean per country from global FishMIP models
@@ -70,7 +91,7 @@ for(m in members){
   area_grid <- area_grid |> 
     drop_na(fa_ffcl) |> 
     #Remove columns that are not relevant
-    select(!c(ID_mrgd:NAME_EN, Cnt_FAO))
+    select(!c(ID_mrgd, OCEAN, NAME_EN, Cnt_FAO))
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -79,7 +100,7 @@ for(m in members){
     #Add area for each grid cell and country
     left_join(area_grid, by = join_by(x, y)) |>
     #Calculate weighted mean for biomass per ensemble member per country
-    group_by(year, mem, esm, scenario, contnnt, fa_ffcl) |> 
+    group_by(year, mem, esm, scenario, contnnt, fa_ffcl, fa_ffcl_shrt) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     #Remove rows outside country boundaries
     drop_na(fa_ffcl)
@@ -87,13 +108,13 @@ for(m in members){
   #Calculating reference period
   ref_bio <- df_model |> 
     filter(year >= 2005 & year <= 2014) |> 
-    group_by(contnnt, fa_ffcl) |> 
+    group_by(contnnt, fa_ffcl, fa_ffcl_shrt) |> 
     #Calculate mean per ensemble member
     summarise(ref_bio = mean(mean_bio, na.rm = T))
   
   #Add reference period to weighted mean data frame
   df_model <- df_model |> 
-    left_join(ref_bio, join_by(contnnt, fa_ffcl)) |> 
+    left_join(ref_bio, join_by(contnnt, fa_ffcl, fa_ffcl_shrt)) |> 
     #Calculate percentage change
     mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
   
@@ -114,8 +135,17 @@ bio_data <- list.files(out_folder,
                        pattern = "_yearly_perc_bio_change_country.csv",
                        full.names = T, recursive = T) |> 
   map(~fread(.)) |> 
-  bind_rows() |> 
-  group_by(year, scenario, contnnt, fa_ffcl) |> 
+  bind_rows()
+  
+#Create name to save file
+f_out <- file.path(out_folder, "mem_perc_bio_change_country.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+
+bio_data <- bio_data |>
+  group_by(year, scenario, contnnt, fa_ffcl, fa_ffcl_shrt) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
 
@@ -146,7 +176,7 @@ for(m in members){
   area_grid <- area_grid |> 
     drop_na(NAME_EN) |>
     #Remove columns that are not relevant
-    select(x:cell_area, NAME_EN)
+    select(x,y,cell_area, NAME_EN)
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -172,7 +202,7 @@ for(m in members){
     left_join(ref_bio, join_by(NAME_EN)) |> 
     #Calculate percentage change
     mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
-  
+
   #Create name to save file
   f_out <- file.path(out_folder, 
                      str_c(m, "_yearly_perc_bio_change_fao_region.csv"))
@@ -190,7 +220,16 @@ bio_data <- list.files(out_folder,
                        pattern = "_yearly_perc_bio_change_fao_region.csv",
                        full.names = T, recursive = T) |> 
   map(~fread(.)) |> 
-  bind_rows() |> 
+  bind_rows()
+  
+#Create name to save file
+f_out <- file.path(out_folder, "mem_perc_bio_change_fao_region.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+
+bio_data <- bio_data |>
   group_by(year, scenario, NAME_EN) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
@@ -265,7 +304,16 @@ bio_data <- list.files(out_folder,
                        pattern = "_yearly_perc_bio_change_global.csv",
                        full.names = T, recursive = T) |> 
   map(~fread(.)) |> 
-  bind_rows() |> 
+  bind_rows()
+  
+#Create name to save file
+f_out <- file.path(out_folder, "mem_perc_bio_change_global.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+
+bio_data <- bio_data |>
   group_by(year, scenario) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
@@ -301,8 +349,8 @@ for(m in members){
   area_grid <- area_grid |> 
     filter(str_detect(Cnt_FAO, paste0(top_7, collapse = "|"))) |> 
     #Remove continent information
-    select(!ID_mrgd:fa_ffcl)
-  
+    select(!c(ID_mrgd,OCEAN,NAME_EN,fa_ffcl,fa_ffcl_shrt))
+
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
     map(~readRDS(.)) |>
@@ -344,7 +392,16 @@ bio_data <- list.files(out_folder,
                        pattern = "_yearly_perc_bio_change_top7countries.csv",
                        full.names = T, recursive = T) |> 
   map(~fread(.)) |> 
-  bind_rows() |> 
+  bind_rows()
+
+#Create name to save file
+f_out <- file.path(out_folder, "mem_perc_bio_change_top7countries.csv")
+
+#Saving results for each model
+bio_data |>
+  write_csv(f_out)
+
+bio_data <- bio_data |>
   group_by(year, scenario, Cnt_FAO) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
