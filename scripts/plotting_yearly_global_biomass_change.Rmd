@@ -366,7 +366,7 @@ top_7_data<-top_7_data |>
                              Cnt_FAO == "the United States of America" ~ "United States of America",
                              .default = as.character(Cnt_FAO)))
   
-global_bio |> 
+top_7<-global_bio |> 
   #Add an extra column to match top 7 countries
   mutate(Cnt_FAO = "Global", .after = "scenario") |> 
   #Joining to top7 data
@@ -381,13 +381,17 @@ global_bio |>
   base_gg+
   #Plotting by country
   facet_wrap(~Cnt_FAO, scales = "free_y", nrow = 8)
-
+top_7
 ```
   
 ```{r, eval = F}
 #Saving plot
 ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
        device = "pdf", width = 6, height = 12)
+
+png("figures/top_7_perc_change.png", width=6, height= 12, units="in",res=1200)
+top_7
+dev.off()
 
 ```
 
