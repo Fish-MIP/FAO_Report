@@ -17,7 +17,7 @@ library(tidyverse)
 library(data.table)
 
 # Base folder for project (both inputs nad outputs)
-base_folder <- "/rd/gem/private/users/camillan/FAO_Report/EEZ-FAO_name_conversion"
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ"
 
 ```
 
@@ -32,7 +32,7 @@ Columns:
 ```{r}
 
 eez <- file.path(base_folder, 
-                 "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv") |> 
+                 "FAO_MajorAreas_200NM_cont_keys.csv") |> 
   read_csv()
 
 ```
@@ -223,8 +223,8 @@ fao_final2 <- fao_final |>
 
 ```{r}
 
-write.csv(eez, file.path(base_folder, "EEZ_key.csv")) 
-write.csv(fao_final, file.path(base_folder, "FAO_key.csv"))
+# write.csv(eez, file.path(base_folder, "EEZ_key.csv")) 
+# write.csv(fao_final, file.path(base_folder, "FAO_key.csv"))
 
 ```
 
@@ -298,7 +298,7 @@ Encoding(sort(new_key$fao_official)[18])
 Encoding(sort(new_key$figure_name)[135])
 
 # print new final file 
-write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
+# write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
 
 ```
 
