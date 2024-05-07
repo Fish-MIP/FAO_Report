@@ -1,0 +1,321 @@
+---
+title: "Matching EEZs to UN country names"
+author: "Camilla Novaglio"
+date: "2024-02-26"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Loading libraries adn defining forlders 
+  
+```{r, message=FALSE, warning=FALSE}
+
+rm(list = ls())
+
+library(tidyverse)
+library(data.table)
+
+# Base folder for project (both inputs nad outputs)
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/EEZ-FAO_name_conversion"
+
+```
+
+# EEZ data
+Columns:
+`Ocean` = FAO_fishing areas
+`ID_mrgd` = key linked to each EEZ lat and lon
+`nm_mrgd` = EEZ name 
+`continent_map` = continent - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). This combines continent from the original EEZ file with decisions taken by considering the FAO data and by looking at maps (Fig.2). 
+`fa_ffcl` = FAO official country names - comes from previous iteration of the EEZ & FAO data (using Stefania and Emmanuel' datasets). Though the list of EEZ is the one from the original EEZ mask.   
+
+```{r}
+
+eez <- file.path(base_folder, 
+                 "Merged_FAO_EEZ/FAO_MajorAreas_200NM_cont_keys.csv") |> 
+  read_csv()
+
+```
+
+# FAO data from https://www.fao.org/nocs/en (all countries, areas and territories) 
+Columns:
+`FULL NAME` = FAO official name for countries, territories and areas
+`SHORT NAME` = FAO short name 
+`ENGLISH_LIST NAME` = FAO short name option 2
+
+```{r}
+fao <- file.path(base_folder, "nocsDataExport_20240501-114742_English.csv") |> 
+  read_csv() |> 
+  #Select relevant columns
+  select(c(`FULL NAME`, `SHORT NAME`, `ENGLISH_LIST NAME`)) |> 
+  #Update column names to something more descriptive
+  rename(O_name_En_Website =`FULL NAME`, 
+         Short_name_En_Website =`SHORT NAME`, 
+         Short_name_En_Website2 =`ENGLISH_LIST NAME`) |> 
+  # to join with Emmanuel and Stefania information
+  mutate(O_Name_En = O_name_En_Website)
+
+#Check result
+head(fao)
+```
+
+# FAO data from Emmanuel Blondel 
+Columns:
+`CONTCD` = continent
+`ISO_3` = ISO code for countries 
+`O_Name_En` = official FAO name 
+`ISO3CD` = ISO code for countries and territories
+
+```{r}
+fao_ema <- file.path(base_folder, "countries_un_fromEmmanuelShapeFiles_cleaned.csv") |> 
+  read.csv() |>
+  #Keep unique records only
+  unique()
+```
+
+# Create a ISO_3 to Country name dataset
+
+```{r}
+# example: 
+fao_ema |>
+  # list of country code
+  select(c(ISO_3, O_Name_En)) |> 
+  unique() |> 
+  # need to isolate GBR = United Kingdom
+  filter(ISO_3 == "GBR")
+
+# 1 list of country (excluding territories) code
+
+key1 <- fao_ema |>
+  select(ISO_3) |> 
+  unique()
+
+# 2 list of country and territory code and of country and territory names 
+
+key2 <- fao_ema |>
+  select(c(ISO3CD, O_Name_En)) |> 
+  rename(ISO_3 = ISO3CD, Country = O_Name_En) |>
+  unique()
+
+filter(key2, ISO_3 == "GBR")
+filter(key2, Country == "Bermuda")
+
+# 3 left join to keep only list of country code as per 1 and add country names as per 2
+
+key3 <- key1 |>
+  left_join(key2)
+
+head(key3)
+filter(key3, ISO_3 == "GBR")
+filter(key3, Country == "Bermuda")
+
+```
+
+# Check data merging and official FAO names duplicates
+
+```{r}
+
+# Consider continent and official English name and add key 3 (country information) to Emmanuel's dataset. 
+
+fao2<-fao_ema |> 
+  select(CONTCD, O_Name_En, ISO_3) |>
+  right_join(key3)
+filter(fao2, ISO_3 == "GBR")
+
+# Check for duplicates
+
+duplicates <- fao2 |> 
+  group_by(O_Name_En) |> 
+  filter(n() > 1)
+
+duplicates <- unique(duplicates$O_Name_En)
+duplicates <- fao_ema |> 
+  filter(O_Name_En %in% duplicates)
+
+# check one by one - all checked and fixed below
+duplicates<-split(duplicates, duplicates$O_Name_En)
+length(duplicates)
+duplicates[1] # no official name # only coming up when using read.csv() instead of read_csv()
+duplicates[2] # Au Ashmore - not in eez data 
+duplicates[3] # Saba etc 
+duplicates[4] # Clipperton 
+
+```
+
+# ROMNAM & MAPLAB are identifying columns, keep them in the final dataset 
+
+```{r}
+
+fao_ema <- fao_ema |> 
+  # keep also ISO3CD for merging with Stefania's data below 
+  select(CONTCD, ROMNAM, MAPLAB, O_Name_En, ISO_3, ISO3CD) |> 
+  right_join(key3) |> 
+  # to join with FAO data from website and Stefania.
+  mutate(O_Name_En_Emmanuel = O_Name_En) 
+
+duplicated(fao_ema)
+head(fao_ema)
+
+```
+
+# Add additional information from Stefania's FAO dataset, just for checking
+Columns:
+`ISO3_Code` = ISO code for countries and territories 
+`Official_Name_En` = official FAO name 
+
+```{r}
+
+fao_st <- file.path(base_folder, "Country_Item_14022024.csv") |>
+  read.csv() |>
+  unique()
+
+fao_st <- fao_st |> 
+  select(c(ISO3_Code, Official_Name_En)) |> 
+  unique() |> 
+  rename(ISO3CD = ISO3_Code, O_Name_En_Stefania = Official_Name_En) |> 
+  # to join with website and Emmanuel information.
+  mutate(O_Name_En = O_Name_En_Stefania)
+
+head(fao_st)
+sort(unique(fao_ema$ISO3CD))
+sort(unique(fao_st$ISO3CD))
+
+```
+
+# Merge all info into a final FAO dataset
+
+```{r}
+
+fao_final <- fao_ema |> # Emmanuel + Stefania
+  full_join(fao_st)
+
+fao_final <- fao_final |> # + website
+  full_join(fao) |> 
+  # not needed anymore as the merging is done. 
+  select(-O_Name_En) 
+
+```
+
+# Adjust columns
+
+```{r}
+
+fao_final2 <- fao_final |> 
+  rename(ISO3_country = ISO_3, ISO3_territory = ISO3CD, Country_name = Country, 
+         Continent_ID = CONTCD, Romname_Emmanuel = ROMNAM, 
+         Maplab_Emmanuel = MAPLAB) |> 
+  mutate(Continent_name = case_when(Continent_ID == "ASI" ~ "Asia",
+                                    Continent_ID == "AFR" ~ "Africa",
+                                    Continent_ID == "AME" ~ "America",
+                                    Continent_ID == "OCE" ~ "Oceania",
+                                    Continent_ID == "EUR" ~ "Europe",
+                                    .default = Continent_ID)) |> 
+  relocate(O_name_En_Website, Short_name_En_Website, Country_name,
+           Continent_name, Continent_ID, ISO3_country, ISO3_territory,
+           O_Name_En_Emmanuel, O_Name_En_Stefania, Romname_Emmanuel,
+           Maplab_Emmanuel, Short_name_En_Website2) |> 
+  arrange(Country_name, O_name_En_Website)
+
+```
+
+# **PRINT 1**: Print datasets
+## Using the EEZ file as master, manually match FAO names, continent and sovereign country.
+
+```{r}
+
+write.csv(eez, file.path(base_folder, "EEZ_key.csv")) 
+write.csv(fao_final, file.path(base_folder, "FAO_key.csv"))
+
+```
+
+# Load the new file and clean it 
+
+```{r}
+
+new_key<- file.path(base_folder,"EEZ_FAO_key.csv") %>% 
+  read_csv() %>% 
+  # remove join and overlapping 
+  filter(str_detect(fa_ffcl, "Overlapping|Joint", negate = T)) %>% 
+  # remove EEZs not included in FAO data and with no information on the country they belong to as per "assumptions" files 
+  filter(!fa_ffcl %in% c("Amsterdam Island & St. Paul Islands", "Crozet Islands", "Europa Island", "Oecussi Ambeno", "Protected Zone established under the Torres Strait Treaty")) %>% 
+  # remove FAO major fishing areas 
+  filter(is.na(OCEAN))
+
+head(new_key)
+# filter(new_key, fa_ffcl == "Amsterdam Island & St. Paul Islands")
+# filter(new_key, fa_ffcl == "Overlapping claim Falkland / Malvinas Islands: UK / Argentina")
+
+# consider only columns needed 
+new_key<-new_key %>% 
+  select(c(ID_mrgd, continent, fa_ffcl, Country_name)) %>% 
+  rename(fao_official = fa_ffcl, Country_FAO = Country_name)
+
+```
+
+# Add short names as per new FAO regulation where they can be used in figs
+new column considered: 
+`LIST NAME` = Short Name for Lists and Tables
+
+```{r}
+
+fao <- file.path(base_folder, "nocsDataExport_20240501-114742_English.csv") |> 
+  read_csv() |> 
+  #Select relevant columns
+  select(c(`FULL NAME`, `LIST NAME`)) |> 
+  #Update column names to something more descriptive
+  rename(O_name_En_Website =`FULL NAME`, 
+         figure_name =`LIST NAME`) |> 
+  rename(fao_official = O_name_En_Website)
+
+new_key<-new_key %>% 
+  left_join(fao)
+
+```
+
+# **PRINT 2**: Print the dataset to: 
+## 1 add missing short names for those countries where fao_official was added in previous steps
+## 2 save the file as csv UTF-8 to adjust names with special characters
+
+```{r}
+
+# missing short names 
+filter(new_key, is.na(figure_name))
+# e.g. fao_official: the Federative Republic of Brazil (Trindade) -> List name: Brazil (Trindade)
+
+# small adjustments: 
+# the United States Minor Islands (Howland and Baker Islands) -> Howland and Baker Islands
+# Northern Mariana Islands -> USA as sovreign country
+
+# special characters 
+sort(new_key$fao_official)[18] # "Cura\x8dao"
+sort(new_key$fao_official)[47] # "R\x8eunion"
+sort(new_key$fao_official)[49] # "Saint Barth\x8elemy"
+sort(new_key$fao_official)[135] # "the Republic of Colombia (Quitasueño)" # NOTE: changed to Quitasueño in csv before saving
+sort(new_key$fao_official)[141] # "the Republic of C\x99te d'Ivoire"   
+sort(new_key$fao_official)[196] # "the Republic of T\x9frkiye" 
+
+Encoding(sort(new_key$fao_official)[18])
+Encoding(sort(new_key$figure_name)[135])
+
+# print new final file 
+write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
+
+```
+
+# Load **FINAL** file to check 
+
+```{r}
+
+# library(readr)
+final<-file.path(base_folder, "EEZ_FAO_key_with_short_names_utf.csv") %>% 
+  read.csv(fileEncoding = "UTF-8")
+
+# all good
+sort(final$figure_name)[46]
+sort(final$figure_name)[53]
+sort(final$figure_name)[56]
+sort(final$figure_name)[169]
+sort(final$figure_name)[173]
+sort(final$figure_name)[209]
+
+```
