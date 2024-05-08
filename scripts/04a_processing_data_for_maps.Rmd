@@ -3,6 +3,8 @@ title: "Processing biomass data to create maps of biomass change"
 author: "Denisse Fierro Arcos"
 date: "2024-04-23"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction
@@ -122,7 +124,7 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
 
 #Save ensemble data
 maps_data |> 
-  write_csv("../data/ensemble_perc_bio_change_data_map.csv")
+  write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
 ## Calculating annual fisheries catch
@@ -227,7 +229,7 @@ fisheries_catch_clean <- fisheries_catch_clean |>
 
 #Saving clean fisheries catch data
 fisheries_catch_clean |> 
-  write_csv("../data/world_mean_annual_catch.csv")
+  write_csv("data/world_mean_annual_catch.csv")
 ```
   
 ## Calculating percentage difference in human populations 
@@ -259,7 +261,7 @@ pop_sum <- function(file){
 }
 
 #Apply function to all relevant files
-pop_change <- list.files("../data/", pattern = "national_annual", 
+pop_change <- list.files("data/", pattern = "national_annual", 
                          full.names = T) |> 
   map(~pop_sum(.)) |> 
   #Join all data frames
@@ -277,7 +279,7 @@ pop_change <- list.files("../data/", pattern = "national_annual",
 
 #Save results 
 pop_change |> 
-  write_csv("../data/world_population_change.csv")
+  write_csv("data/world_population_change.csv")
 ```
     
 ## Calculating biomass change by FAO region
@@ -365,7 +367,7 @@ fao_map_data <- list.files(out_folder,
 
 #Save ensemble data
 fao_map_data |> 
-  write_csv("../data/ensemble_perc_bio_change_fao_map.csv")
+  write_csv("data/ensemble_perc_bio_change_fao_map.csv")
 ```
   
 ## Calculating proportion of sustainable fisheries by country
@@ -385,7 +387,7 @@ fao_fisheries <- read_csv(list.files(out_folder,
 
 #Save results
 fao_fisheries |> 
-  write_csv("../data/prop_sustainable_fisheries_fao.csv")
+  write_csv("data/prop_sustainable_fisheries_fao.csv")
 ```
   
 ## Calculating standard deviation in fish biomass estimates from global FishMIP models
@@ -413,5 +415,5 @@ maps_data_sd <- list.files(out_folder,
 
 #Save results
 maps_data_sd |> 
-  write_csv("../data/ensemble_sd_bio_change_data_map.csv")
+  write_csv("data/ensemble_sd_bio_change_data_map.csv")
 ```

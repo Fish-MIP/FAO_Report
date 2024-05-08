@@ -162,6 +162,11 @@ main
 #Saving plot
 ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main, 
        device = "pdf", width = 14, height = 9)
+
+pdf("figures/fao_eez_global_map.pdf", width=14, height= 9)
+main
+dev.off()
+
 ```
   
 ## Figure 3 FAO report - Percentage change per decade and scenario.
@@ -171,7 +176,7 @@ Capture fisheries production data comes from the [FAO's Fisheries and Aquacultur
   
 ```{r}
 #Load fisheries data
-fisheries_catch <- read_csv("../data/world_mean_annual_catch.csv") |> 
+fisheries_catch <- read_csv("data/world_mean_annual_catch.csv") |> 
   mutate(class_fish = factor(class_fish, 
                              levels = c("<0.25", "0.25-1", "1-2", "2-4", 
                                         "4-6", ">6"), ordered = T))
@@ -190,7 +195,7 @@ We will transform the data frame containing the percentage change into a multi-l
   
 ```{r}
 #Loading ensemble biomass change
-maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv")
+maps_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv")
 
 #Extract data for scenario, transform to raster and reproject
 maps_data_proj <- maps_data |> 
@@ -325,6 +330,10 @@ all_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 14, height = 9)
+
+pdf("figures/global_perc_change_map_50-00.pdf", width=14, height= 9)
+all_plots
+dev.off()
 ```
   
 ## Figure 5 FAO report - Asia 
@@ -422,6 +431,11 @@ asia_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), device = "pdf",
        width = 14, height = 9)
+
+pdf("figures/asia_perc_change_map_50-00.pdf", width=14, height= 9)
+asia_plots
+dev.off()
+
 ```
   
 ## Figure 7 FAO report - Americas
@@ -565,6 +579,11 @@ americas_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "americas_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 10, height = 9)
+
+pdf("figures/americas_perc_change_map_50-00.pdf", width=14, height= 9)
+americas_plots
+dev.off()
+
 ```  
   
 ## Figure 9 FAO report - Europe
@@ -701,6 +720,11 @@ europe_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 10, height = 6)
+
+pdf("figures/europe_perc_change_map_50-00.pdf", width=14, height= 9)
+europe_plots
+dev.off()
+
 ```
   
 ## Figure 11 FAO report - Africa
@@ -794,6 +818,10 @@ africa_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 10, height = 9)
+
+pdf("figures/africa_perc_change_map_50-00.pdf", width=14, height= 9)
+africa_plots
+dev.off()
 ```
   
 ## Figure 13 FAO report - Oceania
@@ -926,6 +954,10 @@ oceania_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 11, height = 8)
+
+pdf("figures/oceania_perc_change_map_50-00.pdf", width=14, height= 9)
+oceania_plots
+dev.off()
 ```
     
 ## Figure 15 FAO report - FAO regions
@@ -933,7 +965,7 @@ Finally, we will create maps for mean biomass change within the FAO regions.
   
 ```{r}
 #Listing all relevant files to calculate biomass projections
-maps_data <- read_csv("../data/ensemble_perc_bio_change_fao_map.csv")
+maps_data <- read_csv("data/ensemble_perc_bio_change_fao_map.csv")
 
 #Add to FAO EEZ mask
 choro_data_proj <- area_gfdl_df |> 
@@ -1017,6 +1049,11 @@ fao_reg_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"), 
        device = "pdf", width = 14, height = 9)
+
+pdf("figures/fao_regions_perc_change_map_50-00.pdf", width=14, height= 9)
+fao_reg_plots
+dev.off()
+
 ```
   
 ## Figure 16 FAO report - FAO sustainable fisheries
@@ -1024,7 +1061,7 @@ Finally, we will create a choropleth map for the proportion of sustainable fishe
   
 ```{r}
 #Loading FAO fisheries data
-fao_fisheries <- read_csv("../data/prop_sustainable_fisheries_fao.csv")
+fao_fisheries <- read_csv("data/prop_sustainable_fisheries_fao.csv")
 
 fao_fisheries <- fao_proj |> 
   left_join(fao_fisheries, join_by(NAME_EN))
@@ -1036,7 +1073,7 @@ fao_fisheries
 Finally, we can map this information.  
   
 ```{r}
-ggplot()+
+fao_fishereies_plot<-ggplot()+
   #Plotting FAO classified by ocean basin
   geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
   geom_sf(data = eez_proj, fill = "white", colour = "white")+
@@ -1061,19 +1098,24 @@ ggplot()+
   theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
         legend.margin = margin(0, 0, 0, 0),
         legend.box.margin = margin(0, 0, 0, 0))
+fao_fishereies_plot
 ```
   
 ```{r}
 # Saving fisheries map
 ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), 
        device = "pdf", width = 14, height = 9)
+
+pdf("figures/fao_regions_perc_sustainable_fisheries.pdf", width=14, height= 9)
+fao_fishereies_plot
+dev.off()
 ```
   
 ## Figure 18 FAO report - FAO standard deviation
   
 ```{r, eval = F}
 #Load standard deviation
-maps_data_sd <- read_csv("../data/ensemble_sd_bio_change_data_map.csv")
+maps_data_sd <- read_csv("data/ensemble_sd_bio_change_data_map.csv")
 
 #Extract data for scenario, transform to raster and reproject
 maps_data_sd_proj <- maps_data_sd |> 
@@ -1137,7 +1179,7 @@ p00_585 <- ggplot()+
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean00_ssp585_sd)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
-  guides(fill = guide_colorbar(title = "Standard deviation",
+  guides(fill = guide_colorbar(title = "Standard deviation (%)",
                                title.position = "top", title.hjust = 0.5, 
                                barwidth = 15))+
   theme(legend.position = "bottom")
@@ -1165,5 +1207,10 @@ all_plots
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), device = "pdf",
        width = 14, height = 9)
+
+pdf("figures/global_sd_map_50-00.pdf", width=14, height= 9)
+all_plots
+dev.off()
+
 ```
 
