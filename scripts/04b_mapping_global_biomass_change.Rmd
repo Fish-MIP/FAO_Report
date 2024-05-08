@@ -3,6 +3,8 @@ title: "Plotting biomass change under different SSPs"
 author: "Denisse Fierro Arcos"
 date: "2024-01-09"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction
@@ -155,13 +157,13 @@ main <- ggplot()+
         legend.text = element_text(size = 13))
 
 #Checking result
-main
+# main
 ```
   
 ```{r, eval = F}
 #Saving plot
-ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main, 
-       device = "pdf", width = 14, height = 9)
+# ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main, 
+#        device = "pdf", width = 14, height = 9)
 
 pdf("figures/fao_eez_global_map.pdf", width=14, height= 9)
 main
@@ -275,6 +277,7 @@ land <- ggplot()+
                              label.position = "bottom", nrow = 1, 
                              keywidth = unit(1.25, "cm"), label.hjust = 0.5))+
   theme(legend.position = "bottom")
+
 #Get legend for land
 leg_land <- get_legend(land)
 
@@ -323,13 +326,13 @@ all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                        ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
-all_plots
+# all_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 14, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 14, height = 9)
 
 pdf("figures/global_perc_change_map_50-00.pdf", width=14, height= 9)
 all_plots
@@ -424,13 +427,13 @@ asia_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                         ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
-asia_plots
+# asia_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), device = "pdf",
-       width = 14, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), device = "pdf",
+#        width = 14, height = 9)
 
 pdf("figures/asia_perc_change_map_50-00.pdf", width=14, height= 9)
 asia_plots
@@ -572,13 +575,13 @@ americas_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 rm(amercent, amercent_bound, eez_amer)
 
 #Check final map
-americas_plots
+# americas_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "americas_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 10, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "americas_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 10, height = 9)
 
 pdf("figures/americas_perc_change_map_50-00.pdf", width=14, height= 9)
 americas_plots
@@ -713,13 +716,13 @@ europe_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 rm(eez_euro, eurocent, eurocent_bound)
 
 #Check final map
-europe_plots
+# europe_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 10, height = 6)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 10, height = 6)
 
 pdf("figures/europe_perc_change_map_50-00.pdf", width=14, height= 9)
 europe_plots
@@ -811,13 +814,13 @@ africa_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                           ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 
 #Check final map
-africa_plots
+# africa_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 10, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 10, height = 9)
 
 pdf("figures/africa_perc_change_map_50-00.pdf", width=14, height= 9)
 africa_plots
@@ -947,13 +950,13 @@ oceania_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 rm(oceancent, oceancent_bound, eez_ocean)
 
 #Check final map
-oceania_plots
+# oceania_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 11, height = 8)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 11, height = 8)
 
 pdf("figures/oceania_perc_change_map_50-00.pdf", width=14, height= 9)
 oceania_plots
@@ -1042,13 +1045,13 @@ fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                            rel_heights = c(1, 1, 0.4))
 
 #Check final map
-fao_reg_plots
+# fao_reg_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"), 
-       device = "pdf", width = 14, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"), 
+#        device = "pdf", width = 14, height = 9)
 
 pdf("figures/fao_regions_perc_change_map_50-00.pdf", width=14, height= 9)
 fao_reg_plots
@@ -1098,13 +1101,13 @@ fao_fishereies_plot<-ggplot()+
   theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
         legend.margin = margin(0, 0, 0, 0),
         legend.box.margin = margin(0, 0, 0, 0))
-fao_fishereies_plot
+# fao_fishereies_plot
 ```
   
 ```{r}
-# Saving fisheries map
-ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), 
-       device = "pdf", width = 14, height = 9)
+# # Saving fisheries map
+# ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"), 
+#        device = "pdf", width = 14, height = 9)
 
 pdf("figures/fao_regions_perc_sustainable_fisheries.pdf", width=14, height= 9)
 fao_fishereies_plot
@@ -1200,13 +1203,13 @@ all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                        rel_heights = c(1, 1, 0.4))
 
 #Checking results
-all_plots
+# all_plots
 ```
   
 ```{r}
-# Saving multi-panel plot
-ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), device = "pdf",
-       width = 14, height = 9)
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), device = "pdf",
+#        width = 14, height = 9)
 
 pdf("figures/global_sd_map_50-00.pdf", width=14, height= 9)
 all_plots
