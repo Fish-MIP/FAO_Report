@@ -269,7 +269,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
 land <- ggplot()+
   geom_sf(data = world_proj, aes(fill = class_fish))+
   scale_fill_brewer(palette = "Blues", na.value = "#dcdcdc", 
-                    guides(title = "Yearly landings between 2012-2021 (million tonnes)"),
+                    name = "Yearly landings between 2012-2021 (million tonnes)",
                     labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", ">6",
                                "No data"))+
   guides(fill = guide_legend(title.position = "top", title.hjust = 0.5, 
@@ -281,17 +281,26 @@ land <- ggplot()+
 #Get legend for land
 leg_land <- get_legend(land)
 
+# work around: 
+leg_land = cowplot::get_plot_component(land, 'guide-box-bottom', return_all = TRUE)
+cowplot::ggdraw(leg_land)
+
 #Plotting fish biomass to get legend
 fish <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
   scale_fill_binned(limits = c(-50, 50), n.breaks = 8, oob = oob_squish, 
                     type = scale_fill_custom, 
-                    guides(title = "% change in fish biomass"))+
+                    name = "% change in fish biomass")+
   guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, 
                                barwidth = 15))+
   theme(legend.position = "bottom")
+
 #Get legend for land
 leg_fish <- get_legend(fish)
+
+# work around: 
+leg_fish = cowplot::get_plot_component(fish, 'guide-box-bottom', return_all = TRUE)
+cowplot::ggdraw(leg_fish)
 
 #SSP1-2.6 2041-2050
 p50_126 <- ggplot()+
