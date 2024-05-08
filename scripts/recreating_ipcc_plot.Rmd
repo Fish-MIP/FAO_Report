@@ -1,0 +1,235 @@
+---
+title: "recreating_ipcc_plot"
+author: "Julia Blanchard"
+date: "2024-05-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Get data from IPCC figure S4 Summary for policy makers
+
+Figure SPM.4 in IPCC, 2021: Summary for Policymakers. In: Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani, S.L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press, Cambridge, UK and New York, NY,USA, pp. 3−32, doi: 10.1017/9781009157896.001 .]
+
+
+```{r}
+
+co2<-read.csv("../data/Carbon_dioxide_Gt_CO2_yr.csv") 
+
+
+co2<-melt(co2,id=c("years"))
+names(co2)<-c("year","scenario","Co2")
+
+library(reshape2)
+
+
+base_gg <- list(geom_line(),
+                #Adding no change line at 0 for reference 
+                geom_hline(yintercept = 0, color = "grey", linewidth = 0.5, 
+                           linetype = 1),
+                #Adding line dividing historical period and future projections
+                #geom_vline(xintercept = 2015, color = "#709fcc", 
+                #           linewidth = 0.65),
+                #Manually setting colours to be used in plots
+                 scale_color_manual(values = c(
+                                               "ssp119" = "#00ADCF",
+                                               "ssp126" = "#173C66",
+                                               "ssp245"="#F79420",
+                                               "ssp370"="#E71D25",
+                                               "ssp585" = "#951B1E"
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                scale_linetype_manual(values = c(
+                                               "ssp119" = 2,
+                                               "ssp126" = 1,
+                                               "ssp245"=2,
+                                               "ssp370"=2,
+                                               "ssp585" = 1
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                scale_size_manual(values = c(
+                                               "ssp119" = 0.5,
+                                               "ssp126" = 1,
+                                               "ssp245"=0.5,
+                                               "ssp370"=0.5,
+                                               "ssp585" = 1
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                # # #Adding SD as shading, here 5% and 95% range
+                 # geom_ribbon(aes(ymin = X5.,
+                 #                ymax = X95., fill = scenario),
+                 #             alpha = 0.1,color=NA),
+                 # scale_fill_manual(values = c("hist" = "black",
+                 #                               "ssp119" = "#00ADCF",
+                 #                               "ssp126" = "#173C66",
+                 #                               "ssp245"="#F79420",
+                 #                               "ssp370"="#E71D25",
+                 #                               "ssp585" = "#951B1E"
+                 #                              
+                 #                               ),
+                 #                   name = "Scenarios",
+                 #                  labels = c("Historical", "SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                 guides(color = guide_legend(nrow = 7, title.position = "left")),
+                theme_bw(),
+                labs(y = bquote(CO[2]~"emissions Gt/year")),
+                 theme(legend.position = "right", legend.justification = "center", 
+                       legend.text = element_text(size = 8),
+                       panel.grid.minor.y = element_blank(), 
+                       axis.title.x = element_blank(),
+                       axis.title.y = element_text(size = 10),
+                       axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                  hjust = 0.65)))
+
+ a<-ggplot(data = co2, aes(x = year, y = Co2, color = scenario,linetype=scenario,size=scenario))+
+ base_gg  + theme(legend.position="none")
+
+
+
+```
+
+
+
+
+## Get data from IPCC figure S8 Summary for policy makers
+
+Citation:
+
+Figure SPM.8 in IPCC, 2021: Summary for Policymakers. In: Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani, S.L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press, Cambridge, UK and New York, NY,USA, pp. 3−32, doi: 10.1017/9781009157896.001 .]
+
+
+
+```{r}
+library(tidyverse)
+
+#historical Global mean surface air temperature (GSAT) anomalies relative to 1850-1900
+
+hist<-read.csv("../data/tas_global_Historical.csv") 
+ssp119<-read.csv("../data/tas_global_SSP1_1_9.csv")
+ssp126<-read.csv("../data/tas_global_SSP1_2_6.csv")
+ssp245<-read.csv("../data/tas_global_SSP2_4_5.csv")
+ssp370<-read.csv("../data/tas_global_SSP3_7_0.csv")
+ssp585<-read.csv("../data/tas_global_SSP5_8_5.csv")
+
+hist$scenario <-"hist"
+ssp119$scenario <-"ssp119"
+ssp126$scenario <-"ssp126"
+ssp245$scenario <-"ssp245"
+ssp370$scenario <-"ssp370"
+ssp585$scenario <-"ssp585"
+
+tas_global<-rbind(hist,ssp119,ssp126,ssp245,ssp370,ssp585)
+summary(tas_global)
+tas_global$scenario<-as.factor(tas_global$scenario)
+
+```
+
+## Plot trends
+
+First get base ggplot style
+
+```{r, echo=FALSE}
+base_gg <- list(geom_line(),
+                #Adding no change line at 0 for reference 
+                #geom_hline(yintercept = 1.5, color = "#709fcc", linewidth = 0.65, 
+                 #          linetype = 2),
+                #Adding line dividing historical period and future projections
+                #geom_vline(xintercept = 2015, color = "#709fcc", 
+                #           linewidth = 0.65),
+                #Manually setting colours to be used in plots
+                 scale_color_manual(values = c("hist" = "black",
+                                               "ssp119" = "#00ADCF",
+                                               "ssp126" = "#173C66",
+                                               "ssp245"="#F79420",
+                                               "ssp370"="#E71D25",
+                                               "ssp585" = "#951B1E"
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                scale_linetype_manual(values = c("hist" = 1,
+                                               "ssp119" = 2,
+                                               "ssp126" = 1,
+                                               "ssp245"=2,
+                                               "ssp370"=2,
+                                               "ssp585" = 1
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                scale_size_manual(values = c("hist" = 1,
+                                               "ssp119" = 0.5,
+                                               "ssp126" = 1,
+                                               "ssp245"=0.5,
+                                               "ssp370"=0.5,
+                                               "ssp585" = 1
+                                               ),
+                                   name = "Scenarios",
+                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                # # #Adding SD as shading, here 5% and 95% range
+                 geom_ribbon(aes(ymin = X5.,
+                                ymax = X95., fill = scenario),
+                             alpha = 0.1,color=NA),
+                 scale_fill_manual(values = c("hist" = "black",
+                                               "ssp119" = "#00ADCF",
+                                               "ssp126" = "#173C66",
+                                               "ssp245"="#F79420",
+                                               "ssp370"="#E71D25",
+                                               "ssp585" = "#951B1E"
+                                              
+                                               ),
+                                   name = "Scenarios",
+                                  labels = c("Historical", "SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                 guides(color = guide_legend(nrow = 7, title.position = "left")),
+                theme_bw(),
+                labs(y = "Global surface temperature change"),
+                 theme(legend.position = "bottom", legend.justification = "center", 
+                       legend.text = element_text(size = 8),
+                       panel.grid.minor.y = element_blank(), 
+                       axis.title.x = element_blank(),
+                       axis.title.y = element_text(size = 10),
+                       axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                  hjust = 0.65)))
+
+ b<-ggplot(data = tas_global, aes(x = Year, y = Mean, color = scenario,linetype=scenario,size=scenario))+
+ base_gg + 
+ scale_y_continuous(labels = ~ paste0(.x, "\u00B0"))
+ 
+ 
+
+library(patchwork)
+combined <- a + b 
+fig_scen<-combined + plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = 'A')
+
+ggsave(fig_scen,filename="/Users/juliab6/Dropbox/FishMIP MAIN/FishMIP Repos/FAO_Report/figures/fig_scen.png")
+
+
+```
+
+# Cascading Uncertainty Plot
+
+
+```{r}
+library(devtools)
+install_github(c("SantanderMetGroup/loadeR.java",
+                 "SantanderMetGroup/climate4R.UDG",
+                 "SantanderMetGroup/loadeR",
+                 "SantanderMetGroup/transformeR",
+                 "SantanderMetGroup/visualizeR",
+                 "SantanderMetGroup/downscaleR"))
+library(visualizeR)
+
+load(url("http://meteo.unican.es/work/visualizeR/data/multimip_sdelta_es.rda"), verbose=T)
+cat(multimip.README)
+filter.members <- multimip.factors[["Method"]]=="GCM" & ! multimip.factors[["GCM"]] %in% c("CNRM-CM5-r8", "EC-EARTH-r3")
+sdeltas <- multimip.prtas.sdeltas["tas",c("GFDL-ESM2M-r1","IPSL-CM5A-MR-r1")]
+factors <- lapply(multimip.factors, function(x) factor(x[filter.members]))
+title <- "Delta T (K)"
+cascadePlot(sdeltas, factors, multimip.stages, title=title, density.offset=2)
+
+```
+
