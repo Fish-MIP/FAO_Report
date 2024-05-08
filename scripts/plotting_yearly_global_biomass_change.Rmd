@@ -12,6 +12,7 @@ editor_options:
 ```{r, message=FALSE, warning=FALSE}
 rm(list = ls())
 library(tidyverse)
+library(data.table)
 ```
 
 ## Setting up notebook
@@ -380,16 +381,20 @@ top_7<-global_bio |>
   #Applying base plot design
   base_gg+
   #Plotting by country
-  facet_wrap(~Cnt_FAO, scales = "free_y", nrow = 8)
-top_7
+  facet_wrap(~Cnt_FAO, scales = "free_y", nrow = 4)+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9, face = "bold"))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
-       device = "pdf", width = 6, height = 12)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
+#        device = "pdf", width = 6, height = 12)
 
-png("figures/top_7_perc_change.png", width=6, height= 12, units="in",res=1200)
+pdf("figures/top_7_perc_change.pdf", width=9, height= 10)
 top_7
 dev.off()
 
@@ -418,6 +423,7 @@ dev.off()
 In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
   
 ```{r}
+
 #Filtering data
 asia<-count_bio |> 
   #Extract EEZs in Asia
@@ -427,16 +433,20 @@ asia<-count_bio |>
   #Plotting by country
   facet_wrap(~fa_ffcl_shrt, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(20)))
-asia
+             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "asia_perc_change.pdf"), 
-       device = "pdf", width = 10, height = 14.35)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "asia_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 14.35)
 
-png("figures/asia_perc_change.png", width=10, height= 14.35, units="in",res=1200)
+pdf("figures/asia_perc_change.pdf", width=9, height= 10)
 asia
 dev.off()
 
@@ -455,16 +465,20 @@ africa<-count_bio |>
   #Plotting by country
   facet_wrap(~fa_ffcl_shrt, scales = "free_y", ncol = 5, 
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(20)))
-africa
+             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "africa_perc_change.pdf"), 
-       device = "pdf", width = 10, height = 14.35)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "africa_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 14.35)
 
-png("figures/africa_perc_change.png", width=10, height= 14.35, units="in",res=1200)
+pdf("figures/africa_perc_change.pdf", width=9, height= 12)
 africa
 dev.off()
 ```
@@ -474,7 +488,13 @@ In this figure, we will exclude marine areas under the jurisdiction of countries
   
 ```{r}
 #Filtering data
-europe<-count_bio |> 
+
+sort(unique(count_bio$fa_ffcl_shrt))
+
+count_bio_europe<-count_bio %>% 
+  mutate(fa_ffcl_shrt = ifelse(fa_ffcl_shrt == "United Kingdom of Great Britain and Northern Ireland", "United Kingdom" , fa_ffcl_shrt))
+
+europe<-count_bio_europe |> 
   #Extract EEZs in Europe
   filter(contnnt == "Europe") |> 
   ggplot(aes(x = year, y = mean_change, colour = scenario))+
@@ -482,16 +502,20 @@ europe<-count_bio |>
   #Plotting by country
   facet_wrap(~fa_ffcl_shrt, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))
-europe
+             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "europe_perc_change.pdf"),
-       device = "pdf", width = 12, height = 16)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "europe_perc_change.pdf"),
+#        device = "pdf", width = 12, height = 16)
 
-png("figures/europe_perc_change.png", width=12, height= 16, units="in",res=1200)
+pdf("figures/europe_perc_change.pdf", width=9, height= 9)
 europe
 dev.off()
 
@@ -510,16 +534,20 @@ americas<-count_bio |>
   #Plotting by country
   facet_wrap(~fa_ffcl_shrt, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))
-americas
+             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))+
+   theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "americas_perc_change.pdf"), 
-       device = "pdf", width = 12, height = 17.22)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "americas_perc_change.pdf"), 
+#        device = "pdf", width = 12, height = 17.22)
 
-png("figures/americas_perc_change.png", width=12, height= 17.22, units="in",res=1200)
+pdf("figures/americas_perc_change.pdf", width=9, height= 13)
 americas
 dev.off()
 ```
@@ -537,16 +565,20 @@ oceania<-count_bio |>
   #Plotting by country
   facet_wrap(~fa_ffcl_shrt, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))
-oceania
+             labeller = labeller(fa_ffcl_shrt = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "oceania_perc_change.pdf"),
-       device = "pdf", width = 10, height = 9)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "oceania_perc_change.pdf"),
+#        device = "pdf", width = 10, height = 9)
 
-png("figures/oceania_perc_change.png", width=12, height= 9, units="in",res=1200)
+pdf("figures/oceania_perc_change.pdf", width=9, height= 9)
 oceania
 dev.off()
 ```
@@ -562,17 +594,21 @@ fao_regions<-fao_bio |>
   #Plotting by FAO sector
   facet_wrap(~NAME_EN, scales = "free_y", ncol = 5,
              #Ensure labels wrap at ~30 characters
-             labeller = labeller(NAME_EN = label_wrap_gen(30)))
-fao_regions
+             labeller = labeller(NAME_EN = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
 ```
   
 ```{r, eval = F}
-#Saving plot
-ggsave(filename = file.path(base_folder, "fao_regions_perc_change.pdf"), 
-       device = "pdf", width = 10, height = 6)
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "fao_regions_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 6)
 
-png("figures/fao_regions_perc_change.png", width=10, height= 6, units="in",res=1200)
-oceania
+pdf("figures/fao_regions_perc_change.pdf", width=9, height= 6)
+fao_regions
 dev.off()
 ```
   
