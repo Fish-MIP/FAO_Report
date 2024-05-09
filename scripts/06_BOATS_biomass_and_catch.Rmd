@@ -140,7 +140,7 @@ extract<-function(netcdf){
 
 # apply function across netcdfs 
 netcdf = c(unfished_hist, unfished_fur, fished_hist, fished_fut, catch_hist, catch_fut)
-all_bricks<-mclapply(netcdf, function(x) extract(x), mc.cores = detectCores()-10) 
+all_bricks<-mclapply(netcdf, function(x) extract(x), mc.cores = detectCores()-2) 
 names(all_bricks) <- netcdf
 
 # extract outputs from function above 
