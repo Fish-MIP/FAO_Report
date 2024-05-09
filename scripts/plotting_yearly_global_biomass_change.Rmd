@@ -214,11 +214,35 @@ stats<-all_scale_data_by_model %>%
     min = min(mean_across_decade),
     max = max(mean_across_decade),
     n_model = n(), # to calculate agreement across models
-    n_positive = sum(mean_across_decade>0), # should 0 be included in positive? 
+    n_positive = sum(mean_across_decade>0),
     n_negative = sum(mean_across_decade<0), 
     same_sign = max(n_positive,n_negative),
     agreement = (same_sign/n_model)*100) %>% 
   ungroup()
+
+# # check 
+# # should 0 be included in positive when calculating model agreement? 
+# stats2<-all_scale_data_by_model %>% 
+#   group_by(fa_ffcl_shrt, mem, esm, scenario, decade, contnnt, spatial_scale) %>% 
+#   summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  # across decade to have one (mean) value of change per model and exclude temporal variability from the calculations below 
+#   ungroup() %>% 
+#   group_by(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale) %>% 
+#   summarise(
+#     mean = mean(mean_across_decade), # then across model 
+#     median = median(mean_across_decade),
+#     sd = sd(mean_across_decade),
+#     min = min(mean_across_decade),
+#     max = max(mean_across_decade),
+#     n_model = n(), # to calculate agreement across models
+#     n_positive = sum(mean_across_decade>=0),
+#     n_negative = sum(mean_across_decade<0), 
+#     same_sign = max(n_positive,n_negative),
+#     agreement = (same_sign/n_model)*100) %>% 
+#   ungroup()
+# 
+# # check - no difference anyway
+# setdiff(stats$agreement, stats2$agreement)
+# setdiff(c(1,2,35), c(1,2,7))
 
 # check 
 filter(stats, fa_ffcl_shrt == "Albania")
