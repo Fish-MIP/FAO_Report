@@ -1,0 +1,25 @@
+---
+title: "Plotting model correlation by LME"
+author: "Camilla Novaglio"
+output: html_document
+date: "2024-05-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load libraries 
+
+```{r}
+
+
+```
+
+## Load correlation data from Rynne et al. 
+
+```{r}
+
+cor<-read_csv("data/LMECorrelation_forCami.csv")
+
+```

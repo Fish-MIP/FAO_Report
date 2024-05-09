@@ -417,3 +417,24 @@ maps_data_sd <- list.files(out_folder,
 maps_data_sd |> 
   write_csv("data/ensemble_sd_bio_change_data_map.csv")
 ```
+
+## Coefficient of variation 
+The coefficient of variation (CV): the ratio of the standard deviation to the mean (or its absolute value), expressed as a percentage.
+
+```{r}
+
+# (maps_data_sd/abs(maps_data))*100
+
+colnames(maps_data_sd)
+colnames(maps_data)
+maps_data_cv<-maps_data_sd %>% 
+  full_join(maps_data) %>% 
+  mutate(rel_change_mean50_ssp126_cv = (rel_change_mean50_ssp126_sd/abs(rel_change_mean50_ssp126_mean))*100, 
+         rel_change_mean00_ssp126_cv = (rel_change_mean00_ssp126_sd/abs(rel_change_mean00_ssp126_mean))*100,
+         rel_change_mean50_ssp585_cv = (rel_change_mean50_ssp585_sd/abs(rel_change_mean50_ssp585_mean))*100,
+         rel_change_mean00_ssp585_cv = (rel_change_mean00_ssp585_sd/abs(rel_change_mean00_ssp585_mean))*100)
+  
+maps_data_cv |> 
+  write_csv("data/ensemble_cv_bio_change_data_map.csv")
+
+```

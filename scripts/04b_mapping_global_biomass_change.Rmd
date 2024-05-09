@@ -1199,6 +1199,10 @@ p00_585 <- ggplot()+
 #Get legend for land
 legend <- get_legend(p00_585)
 
+# work around: 
+legend = cowplot::get_plot_component(p00_585, 'guide-box-bottom', return_all = TRUE)
+cowplot::ggdraw(legend)
+
 #Remove legend from last plot
 p00_585 <- p00_585+
   theme(legend.position = "none")
@@ -1225,4 +1229,119 @@ all_plots
 dev.off()
 
 ```
+
+## Coefficient of variation 
+
+```{r}
+
+#Load standard deviation
+maps_data_cv <- read_csv("data/ensemble_cv_bio_change_data_map.csv")
+
+#Extract data for scenario, transform to raster and reproject
+maps_data_cv_proj <- maps_data_cv |> 
+  #Selecting coordinate columns and percentage change columns
+  select(x, y, ends_with("_cv")) |> 
+  #Transform to multi-layer raster
+  rast(type = "xyz", crs = "epsg:4326") |> 
+  #Reproject to Robinson
+  project(y = rob_proj) 
+
+```
+
+```{r}
+#Define base steps for maps
+base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
+                                     na.value = NA, limits = c(0, 200), 
+                                     oob = oob_squish),
+                geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
+                        color = "#dbdade", fill = "#dbdade"),
+                geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
+                        colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                #Adding coastlines and international boundaries
+                geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
+                        color = "#484848", show.legend = F, 
+                        aes(linetype = as.factor(TYPE))),
+                scale_linetype_manual(values = c("0" = "solid",
+                                                 "1" = "twodash", 
+                                                 "2" = "dotdash", 
+                                                 "3" = "dashed", 
+                                                 "4" = "dotted")),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound[world_bound$TYPE == 8,], 
+                        linetype = "longdash", lwd = 0.25, color = "#838285",
+                        show.legend = F),
+                theme_bw(),
+                theme(axis.title = element_blank(), 
+                      panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
+
+#SSP1-2.6 2041-2050
+p50_126 <- ggplot()+
+  geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp126_cv)+
+  labs(title = "SSP1-2.6: 2041-2050")+
+  base_gg
+
+#SSP5-8.5 2041-2050
+p50_585 <- ggplot()+
+  geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp585_cv)+
+  labs(title = "SSP5-8.5: 2041-2050")+
+  base_gg
+
+#SSP1-2.6 2091-2100
+p00_126 <- ggplot()+
+  geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp126_cv)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
+
+#SSP5-8.5 2091-2100
+p00_585 <- ggplot()+
+  geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp585_cv)+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_colorbar(title = "Coefficient of variation (%)",
+                               title.position = "top", title.hjust = 0.5, 
+                               barwidth = 15))+
+  theme(legend.position = "bottom")
+
+#Get legend for land
+legend <- get_legend(p00_585)
+
+# work around: 
+legend = cowplot::get_plot_component(p00_585, 'guide-box-bottom', return_all = TRUE)
+cowplot::ggdraw(legend)
+
+#Remove legend from last plot
+p00_585 <- p00_585+
+  theme(legend.position = "none")
+
+#Plotting everything together
+all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1, 
+                                 labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
+                       legend, ncol = 1, nrow = 3, 
+                       rel_heights = c(1, 1, 0.4))
+
+#Checking results
+# all_plots
+
+```
+
+```{r}
+# # Saving multi-panel plot
+# ggsave(file.path(out_folder, "global_cv_map_50-00.pdf"), device = "pdf",
+#        width = 14, height = 9)
+
+# jpeg("figures/global_cv_map_50-00.jpeg")
+# all_plots
+# dev.off()
+
+pdf("figures/global_cv_map_50-00.pdf", width=14, height= 9)
+all_plots
+dev.off()
+
+```
+
 
