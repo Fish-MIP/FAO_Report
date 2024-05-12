@@ -1344,4 +1344,45 @@ dev.off()
 
 ```
 
+## Model agreement 
+
+```{r}
+
+# combine Maps of % change + SD + model agreement. 
+
+# model agreement, only for rel_change_mean00_ssp585? 
+# Listing all relevant files to calculate biomass projections
+maps_data_agreement_proj  <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv", 
+                        full.names = T) |> 
+  map_df(~fread(.)) |> 
+  bind_rows() |>
+  # consider only relevant columns 
+  select(x,y,mem,esm, rel_change_mean00_ssp585,rel_change_mean00_ssp126) %>%
+  # wide format
+  gather(scenario, value, -c(x,y,mem,esm)) %>% 
+  #Calculations performed by grid cell
+  group_by(x, y, scenario) %>% 
+  summarise(n_model = n(), # to calculate agreement across models
+            n_positive = sum(value>0, na.rm = T),
+            n_negative = sum(value<0, na.rm = T), 
+            same_sign = max(n_positive,n_negative),
+            agreement = (same_sign/n_model)*100) %>% # 0 land to be converted into NAs 
+  spread(scenario) # GOT HERE - NEED TO FINISH  
+  
+  
+  
+  
+  # #Selecting coordinate columns and percentage change columns
+  # select(x, y, ends_with("_agreement")) |> 
+  # #Transform to multi-layer raster
+  # rast(type = "xyz", crs = "epsg:4326") |> 
+  # #Reproject to Robinson
+  # project(y = rob_proj) 
+
+
+
+
+
+```
+
 
