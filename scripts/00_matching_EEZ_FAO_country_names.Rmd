@@ -326,7 +326,7 @@ eez <- eez |>
   mutate(continent = case_when(is.na(continent) ~ CONTINENT,
                                T ~ continent)) |> 
   #Remove columns that are not relevant
-  select(!c(F_CODE, NAME_EN:CONTINENT))
+  select(!c(F_CODE, OCEAN, MRGID:CONTINENT))
 
 #Save results
 eez |> 
