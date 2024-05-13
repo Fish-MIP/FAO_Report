@@ -8,7 +8,6 @@ output: pdf_document
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
-rm(list = ls())
 #Data wrangling
 library(tidyverse)
 library(data.table)
@@ -39,30 +38,11 @@ area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
-
-# adding FAO official short names for countries and territories 
-## NOTE - this won't be needed if area_gfdl_df and area_ipsl_df will be recreated using EEZ_FAO_key_with_short_names_utf.csv  
-short_names <- file.path(out_folder, "Merged_FAO_EEZ/EEZ_FAO_key_with_short_names_utf.csv") |> 
-  read.csv(fileEncoding = "UTF-8") %>% 
-  select(-ID_mrgd) %>% # merge by fa_ffcl
-  rename(contnnt = continent, fa_ffcl = fao_official, Cnt_FAO = Country_FAO, fa_ffcl_shrt = figure_name)
-
-area_gfdl_df<-area_gfdl_df %>% 
-  select(-contnnt, -Cnt_FAO) %>% # replace also info on continent and country as there might have been small changes during the creation and revision of the short_names file
-  mutate(fa_ffcl = ifelse(fa_ffcl == "the United States Minor Outlying Islands (Howland and Baker Islands)", "Howland and Baker Islands", fa_ffcl)) %>% # adjustment to country name done on "short_names"
-  left_join(short_names)
-
-area_ipsl_df<-area_ipsl_df %>% 
-  select(-contnnt, -Cnt_FAO) %>% 
-  mutate(fa_ffcl = ifelse(fa_ffcl == "the United States Minor Outlying Islands (Howland and Baker Islands)", "Howland and Baker Islands", fa_ffcl)) %>% # adjustment to country name done on "short_names"
-  left_join(short_names)
-
 ```
   
 ## Getting FishMIP output files
   
 ```{r}
-
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
                            full.names = T, recursive = T)
@@ -70,7 +50,6 @@ global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds",
 #Getting a list of models
 members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
   unique()
-
 ```
   
 ## Calculating percentage change in fish biomass mean per country from global FishMIP models
@@ -89,9 +68,9 @@ for(m in members){
   
   #Keep only information for grid cells with countries recognised by FAO
   area_grid <- area_grid |> 
-    drop_na(fa_ffcl) |> 
+    drop_na(fao_official) |> 
     #Remove columns that are not relevant
-    select(!c(ID_mrgd, OCEAN, NAME_EN, Cnt_FAO))
+    select(!c(ID_mrgd:nm_mrgd, Country_FAO))
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -100,21 +79,21 @@ for(m in members){
     #Add area for each grid cell and country
     left_join(area_grid, by = join_by(x, y)) |>
     #Calculate weighted mean for biomass per ensemble member per country
-    group_by(year, mem, esm, scenario, contnnt, fa_ffcl, fa_ffcl_shrt) |> 
+    group_by(year, mem, esm, scenario, continent, fao_official, figure_name) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     #Remove rows outside country boundaries
-    drop_na(fa_ffcl)
+    drop_na(fao_official)
   
   #Calculating reference period
   ref_bio <- df_model |> 
     filter(year >= 2005 & year <= 2014) |> 
-    group_by(contnnt, fa_ffcl, fa_ffcl_shrt) |> 
+    group_by(continent, fao_official, figure_name) |> 
     #Calculate mean per ensemble member
     summarise(ref_bio = mean(mean_bio, na.rm = T))
   
   #Add reference period to weighted mean data frame
   df_model <- df_model |> 
-    left_join(ref_bio, join_by(contnnt, fa_ffcl, fa_ffcl_shrt)) |> 
+    left_join(ref_bio, join_by(continent, fao_official, figure_name)) |> 
     #Calculate percentage change
     mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
   
@@ -145,7 +124,7 @@ bio_data |>
   write_csv(f_out)
 
 bio_data <- bio_data |>
-  group_by(year, scenario, contnnt, fa_ffcl, fa_ffcl_shrt) |> 
+  group_by(year, scenario, continent, fao_official, figure_name) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
 
@@ -176,7 +155,7 @@ for(m in members){
   area_grid <- area_grid |> 
     drop_na(NAME_EN) |>
     #Remove columns that are not relevant
-    select(x,y,cell_area, NAME_EN)
+    select(x:cell_area, NAME_EN)
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -258,7 +237,7 @@ for(m in members){
   
   #Keep only information for grid cells within country boundaries
   area_grid <- area_grid |> 
-    drop_na(fa_ffcl) |>
+    drop_na(fao_official) |>
     #Remove columns that are not relevant
     select(x:cell_area)
   
@@ -347,9 +326,9 @@ for(m in members){
   #Keep only information for grid cells with countries recognised by FAO
   #Extracting data from countries calculations
   area_grid <- area_grid |> 
-    filter(str_detect(Cnt_FAO, paste0(top_7, collapse = "|"))) |> 
+    filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
     #Remove continent information
-    select(!c(ID_mrgd,OCEAN,NAME_EN,fa_ffcl,fa_ffcl_shrt))
+    select(x:cell_area, continent, Country_FAO)
 
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -357,21 +336,21 @@ for(m in members){
     map_df(~bind_rows(.)) |>
     #Add area for each grid cell and country
     left_join(area_grid, by = join_by(x, y)) |>
-    drop_na(Cnt_FAO) |> 
+    drop_na(Country_FAO) |> 
     #Calculate weighted mean for biomass per ensemble member per country
-    group_by(year, mem, esm, scenario, Cnt_FAO) |> 
+    group_by(year, mem, esm, scenario, Country_FAO) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T))
   
   #Calculating reference period
   ref_bio <- df_model |> 
     filter(year >= 2005 & year <= 2014) |> 
-    group_by(Cnt_FAO) |> 
+    group_by(Country_FAO) |> 
     #Calculate mean per ensemble member
     summarise(ref_bio = mean(mean_bio, na.rm = T))
   
   #Add reference period to weighted mean data frame
   df_model <- df_model |> 
-    left_join(ref_bio, join_by(Cnt_FAO)) |> 
+    left_join(ref_bio, join_by(Country_FAO)) |> 
     #Calculate percentage change
     mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100)
   
@@ -402,7 +381,7 @@ bio_data |>
   write_csv(f_out)
 
 bio_data <- bio_data |>
-  group_by(year, scenario, Cnt_FAO) |> 
+  group_by(year, scenario, Country_FAO) |> 
   summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
 

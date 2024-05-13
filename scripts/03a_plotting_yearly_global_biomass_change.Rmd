@@ -1,0 +1,682 @@
+---
+title: "Plotting temporal biomass change"
+author: "Denisse Fierro Arcos"
+date: "2024-04-30"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Loading libraries
+  
+```{r, message=FALSE, warning=FALSE}
+rm(list = ls())
+library(tidyverse)
+library(data.table)
+```
+
+## Setting up notebook
+
+```{r}
+#Base folder for project
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/"
+
+# Ensemble data ----
+
+#Ensemble percentage change in biomass by countries
+count_bio <- list.files(base_folder, "ensemble_perc_bio_change_country.csv",
+                        recursive = T, full.names = T) |> 
+  read_csv()
+
+#Ensemble percentage change in biomass by FAO regions
+fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
+                        recursive = T, full.names = T) |> 
+  read_csv()
+
+#Ensemble percentage change in biomass globally
+global_bio <- list.files(base_folder, "ensemble_perc_bio_change_global.csv",
+                         recursive = T, full.names = T) |> 
+  read_csv()
+
+#Loading data for top 7 countries
+top_7_data <- list.files(base_folder,
+                         "ensemble_perc_bio_change_top7countries.csv",
+                         recursive = T, full.names = T) |> 
+  read_csv()
+
+# Data by model ----
+
+#mem percentage change in biomass by countries
+count_bio_by_model <- list.files(base_folder, 
+                                 "mem_perc_bio_change_country.csv",
+                                 recursive = T, full.names = T) |> 
+  read_csv()
+
+#mem percentage change in biomass by FAO regions
+fao_bio_by_model <- list.files(base_folder, 
+                               "mem_perc_bio_change_fao_region.csv",
+                               recursive = T, full.names = T) |> 
+  read_csv()
+
+#mem percentage change in biomass globally
+global_bio_by_model <- list.files(base_folder, 
+                                  "mem_perc_bio_change_global.csv", 
+                                  recursive = T, full.names = T) |> 
+  read_csv()
+
+#mem data for top 7 countries
+top_7_data_by_model <- list.files(base_folder,
+                         "mem_perc_bio_change_top7countries.csv",
+                         recursive = T, full.names = T) |> 
+  read_csv()
+
+```
+
+## Checks 
+
+```{r}
+
+# Check NAs by model ----
+
+# by country - either countries on the Caspian Sea for which data is avaialble only from a few IPSL-forced models or  countries with small coasts for which data is avaialble only from a few GFDL-forced models  
+a<-filter(count_bio_by_model, is.na(mean_bio))
+unique(a$fao_official) 
+
+# [1] "Turkmenistan"                    "the Hashemite Kingdom of Jordan" "the Kingdom of Bahrain"
+# [4] "the Republic of Albania"         "the Republic of Azerbaijan"      "the Republic of Djibouti"
+# [7] "the Republic of Iraq"            "the Republic of Kazakhstan"      "the Republic of the Sudan"
+# [10] "the State of Kuwait"             "the Kingdom of Belgium"          "the Republic of Cameroon"
+
+a<-filter(count_bio_by_model, fao_official == "Turkmenistan", !is.na(mean_bio))
+a$id<-paste(a$esm, a$mem)
+unique(a$id) # only models with Caspian Sea
+
+a<-filter(count_bio_by_model, fao_official == "the Hashemite Kingdom of Jordan", !is.na(mean_bio))
+a$id<-paste(a$esm, a$mem)
+unique(a$id) # only gfdl model (but boats) # # almost landlocked
+
+a<-filter(count_bio_by_model, fao_official == "the Kingdom of Bahrain", !is.na(mean_bio))
+a$id<-paste(a$esm, a$mem)
+unique(a$id) # only gfdl model (including boats)
+
+# for global
+a<-filter(global_bio_by_model, is.na(mean_bio))
+a$id<-paste(a$mem, a$esm)
+unique(a$id)
+
+# for fao regions
+a<-filter(fao_bio_by_model, is.na(mean_bio))
+a$id<-paste(a$mem, a$esm)
+unique(a$id)
+
+# for top 7 
+a<-filter(top_7_data_by_model, is.na(mean_bio))
+a$id<-paste(a$mem, a$esm)
+unique(a$id)
+
+# CHECK correct way of calculating % changes between periods for stat table ----
+
+# calculate percentage change between 2 periods
+# Calculating reference period
+ref_bio <- count_bio_by_model |>
+  filter(year >= 2005 & year <= 2014) |>
+  #Calculate mean per ensemble member
+  group_by(mem, esm, fao_official) |>
+  dplyr::summarise(ref_bio = mean(mean_bio, na.rm = T))
+
+# between decades
+last_decade_bio <- count_bio_by_model |>
+  filter(year >= 2041 & year <= 2050) |>
+  #Calculate mean per ensemble member
+  group_by(mem, esm, scenario, fao_official) |>
+  dplyr::summarise(last_decade_bio = mean(mean_bio, na.rm = T))
+
+change_between_decades<-last_decade_bio %>%
+  full_join(ref_bio) %>%
+  arrange(fao_official) %>%
+  mutate(perc_change = ((last_decade_bio-ref_bio)/ref_bio)*100)
+
+# check differences between averaging % changes across last decade and option above 
+count_bio_by_model %>% filter(year %in%(2041:2050)) %>% group_by(mem, esm, scenario, fao_official) %>% summarise(mean = mean(perc_change)) %>% arrange(fao_official)
+change_between_decades
+
+# check the 2 approaches with fake data
+# mean biomass across ref decade for each model, assuming one country
+ref<-data.frame(model = c("mod1", "mod2"), ref_bio = c(10,12))
+# biomass per year per model
+year<-data.frame(model= c("mod1", "mod1", "mod2", "mod2"), year = c(1,2,1,2), bio = c(5,10, 11,13))
+
+# approach 1
+# A % change between mean biomass across ref decade per model and biomass per future years per model
+all<-ref %>%
+  full_join(year) %>%
+  mutate(per_change = ((bio-ref_bio)/ref_bio)*100) %>%
+  group_by(model) %>%
+  summarise(mean_change = mean(per_change)) # B mean percentage change across years
+
+# approach 2
+# A mean biomass across ref decade and mean biomass across future years
+all2<-ref %>%
+  full_join(year) %>%
+  group_by(model, ref_bio) %>%
+  summarise(bio = mean(bio)) %>%
+  mutate(mean_change = ((bio-ref_bio)/ref_bio)*100) # B % change across decades
+
+```
+
+## Table of stats
+
+```{r}
+
+count_bio_by_model<-count_bio_by_model %>% 
+  mutate(spatial_scale = "countries")
+
+global_bio_by_model<-global_bio_by_model %>% 
+  mutate(spatial_scale = "global", 
+         figure_name = "global")
+
+top_7_data_by_model<-top_7_data_by_model %>% 
+  mutate(spatial_scale = "top_7_countries") %>% 
+  rename(figure_name = Country_FAO) %>% # can use short names also for countries
+  mutate(figure_name = case_when(figure_name == "the People's Republic of China" ~ "China",
+                                  figure_name == "the Republic of India" ~ "India",
+                                  figure_name == "the Republic of Indonesia" ~ "Indonesia",
+                                  figure_name == "the Republic of Peru" ~ "Peru",
+                                  figure_name == "the Russian Federation" ~ "Russia",
+                                  figure_name == "the Socialist Republic of Viet Nam" ~ "Viet Nam",
+                                  figure_name == "the United States of America" ~ "United States of America", 
+                                  .default = as.character(figure_name)))
+
+fao_bio_by_model<-fao_bio_by_model %>% 
+  mutate(spatial_scale = "FAO_area") %>% 
+  rename(figure_name = NAME_EN)
+
+all_scale_data_by_model<-count_bio_by_model %>% 
+  full_join(global_bio_by_model) %>% 
+  full_join(top_7_data_by_model) %>% 
+  full_join(fao_bio_by_model) %>% 
+  filter(year %in% c(2041:2050, 2091:2100)) %>% 
+  mutate(decade = ifelse(year %in% c(2041:2050), "2041-2050", "2091-2100")) %>% 
+  filter(!is.na(perc_change)) # some models do not output info on some countries (e.g. the Kingdom of Bahrain) as explored above. 
+
+filter(all_scale_data_by_model, fao_official == "the Kingdom of Bahrain")
+
+### mean, median, sd, min and max, agreement, wilcox ----
+stats<-all_scale_data_by_model %>% 
+  group_by(figure_name, mem, esm, scenario, decade, continent, spatial_scale) %>% 
+  summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  # across decade to have one (mean) value of change per model and exclude temporal variability from the calculations below 
+  ungroup() %>% 
+  group_by(figure_name, scenario, decade, continent, spatial_scale) %>% 
+  summarise(
+    mean = mean(mean_across_decade), # then across model 
+    median = median(mean_across_decade),
+    sd = sd(mean_across_decade),
+    min = min(mean_across_decade),
+    max = max(mean_across_decade),
+    n_model = n(), # to calculate agreement across models
+    n_positive = sum(mean_across_decade>0),
+    n_negative = sum(mean_across_decade<0), 
+    same_sign = max(n_positive,n_negative),
+    agreement = (same_sign/n_model)*100) %>% 
+  ungroup()
+
+# # check 
+# # should 0 be included in positive when calculating model agreement? 
+# stats2<-all_scale_data_by_model %>% 
+#   group_by(figure_name, mem, esm, scenario, decade, continent, spatial_scale) %>% 
+#   summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  # across decade to have one (mean) value of change per model and exclude temporal variability from the calculations below 
+#   ungroup() %>% 
+#   group_by(figure_name, scenario, decade, continent, spatial_scale) %>% 
+#   summarise(
+#     mean = mean(mean_across_decade), # then across model 
+#     median = median(mean_across_decade),
+#     sd = sd(mean_across_decade),
+#     min = min(mean_across_decade),
+#     max = max(mean_across_decade),
+#     n_model = n(), # to calculate agreement across models
+#     n_positive = sum(mean_across_decade>=0),
+#     n_negative = sum(mean_across_decade<0), 
+#     same_sign = max(n_positive,n_negative),
+#     agreement = (same_sign/n_model)*100) %>% 
+#   ungroup()
+# 
+# # check - no difference anyway
+# setdiff(stats$agreement, stats2$agreement)
+# setdiff(c(1,2,35), c(1,2,7))
+
+# check 
+filter(stats, figure_name == "Albania")
+filter(stats, spatial_scale == "top_7_countries")
+
+stats<-stats %>% 
+  select(-c(n_positive, n_negative, same_sign))
+
+# test on momdel agreement
+data.frame(n_model = 10,
+           n_positive = 5,
+           n_negative = 5) %>%
+  mutate(same_sign = max(n_positive, n_negative),
+         agreement = (same_sign/n_model)*100)
+
+# check by plotting considering top 7 countries
+to_plot<-top_7_data_by_model %>%
+  filter(year %in% c(2041:2050),
+         scenario == "ssp126") %>%
+  mutate(id = paste(esm, mem, sep ="_"))
+
+ggplot(to_plot, aes(x = year, y = perc_change, group = id, color = id))+
+  geom_line()+
+  geom_hline(yintercept = 0, color = "black")+
+  facet_wrap(~figure_name)
+
+#### wilcox test ----
+# http://www.sthda.com/english/wiki/unpaired-two-samples-wilcoxon-test-in-r
+# from example: The p-value of the test is 0.02712, which is less than the significance level alpha = 0.05. We can conclude that men’s median weight is significantly different from women’s median weight with a p-value = 0.02712.
+
+w_test<-all_scale_data_by_model %>% 
+  spread(scenario, perc_change) %>% 
+  group_by(figure_name, decade, spatial_scale) %>%
+  summarise(wilcox_p = wilcox.test(ssp126, ssp585, alternative = "two.sided")$p.value) %>% 
+  ungroup()
+
+# check warnings
+dplyr::last_dplyr_warnings() # warning for 4 countries
+filter(w_test, figure_name == "Bahrain", decade == "2041-2050", spatial_scale == "countries") # values are provided but might not be trustable is my interpretation.
+
+# check single test
+w_test_warnings<-all_scale_data_by_model %>%
+  spread(scenario, perc_change) %>%
+  filter(figure_name == "Bahrain",
+         decade == "2041-2050",
+         spatial_scale == "countries")
+
+wilcox.test(w_test_warnings$ssp126, w_test_warnings$ssp585, alternative = "two.sided")$p.value
+# where ties is when both set have the same value.
+
+# check test
+# check if values from the table are the same as the below - yes
+filter(w_test, figure_name == "Viet Nam")
+
+# test to understand wilcox - STILL NEED TO CHECK AS NOT WELL UNDERSTOOD
+# between scenarios in 2050 - row values
+trial<-top_7_data_by_model %>%
+  filter(figure_name == "Viet Nam",
+         year >= 2041 & year <= 2050)
+
+# boxplot
+ggplot(trial, aes(x=scenario, y=perc_change)) +
+    geom_boxplot() +
+    geom_jitter(color="black", size=0.4, alpha=0.9)
+
+trial_test<-trial %>%
+  spread(scenario, perc_change)
+
+wilcox.test(trial_test$ssp126, trial_test$ssp585, alternative = "two.sided")$p.value # 0.0590907 not significant
+
+# between scenarios in 2100 - row values
+trial<-top_7_data_by_model %>%
+  filter(figure_name == "Viet Nam",
+         year >= 2091 & year <= 2100)
+
+# boxplot
+ggplot(trial, aes(x=scenario, y=perc_change)) +
+    geom_boxplot() +
+    geom_jitter(color="black", size=0.4, alpha=0.9)
+
+trial_test<-trial %>%
+  spread(scenario, perc_change)
+
+wilcox.test(trial_test$ssp126, trial_test$ssp585, alternative = "two.sided")$p.value # 1.967129e-20 with raw values this is very significant although sd of values overlap in trend figure.
+
+# combine tables 
+table<-stats %>% 
+  full_join(w_test)
+
+filter(table, figure_name == "Albania")
+filter(table, spatial_scale == "top_7_countries")
+
+# print tables 
+fwrite(table, paste0(base_folder,"table_stats.csv"))
+fwrite(table, "data/data_products/table_stats.csv")
+
+```
+
+## Defining basic plot design
+  
+```{r}
+base_gg <- list(geom_line(linewidth = 0.5),
+                #Adding no change line at 0 for reference 
+                geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+                           linetype = 2),
+                #Adding line dividing historical period and future projections
+                geom_vline(xintercept = 2015, color = "grey80", 
+                           linewidth = 0.65),
+                #Adding SD as shading 
+                geom_ribbon(aes(ymin = mean_change-sd_change,
+                                ymax = mean_change+sd_change, fill = scenario),
+                            alpha = 0.3, color = NA),
+                #Manually setting colours to be used in plots
+                scale_color_manual(values = c("historical" = "black",
+                                              "ssp126" = "#33bbee", 
+                                              "ssp585" = "#ee3377"), 
+                                   name = "Scenarios",
+                                   labels = c("Historical", "SSP1-2.6", 
+                                              "SSP5-8.5")),
+                scale_fill_manual(values = c("historical" = "black", 
+                                             "ssp126" = "#33bbee", 
+                                             "ssp585" = "#ee3377"), 
+                                  name = "Scenarios",
+                                  labels = c("Historical", "SSP1-2.6", 
+                                             "SSP5-8.5")),
+                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                theme_classic(),
+                labs(y = "Change in exploitable\nfish biomass (%)"),
+                theme(legend.position = "top", legend.justification = "center", 
+                      legend.text = element_text(size = 10),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_blank(),
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)))
+```
+
+## Trends globally and for top 7 countries with highest catches
+  
+```{r}
+#Merging global and top 7 countries data
+
+top_7_data<-top_7_data |>
+  mutate(Country_FAO = case_when(Country_FAO == "the People's Republic of China" ~ "China",
+                             Country_FAO == "the Republic of India" ~ "India",
+                             Country_FAO == "the Republic of Indonesia" ~ "Indonesia",
+                             Country_FAO == "the Republic of Peru" ~ "Peru",
+                             Country_FAO == "the Russian Federation" ~ "Russia",
+                             Country_FAO == "the Socialist Republic of Viet Nam" ~ "Viet Nam",
+                             Country_FAO == "the United States of America" ~ "United States of America",
+                             .default = as.character(Country_FAO)))
+  
+top_7<-global_bio |> 
+  #Add an extra column to match top 7 countries
+  mutate(Country_FAO = "Global", .after = "scenario") |> 
+  #Joining to top7 data
+  bind_rows(top_7_data) |> 
+  #Create an order category for SOVEREIGN1
+  mutate(Country_FAO = factor(Country_FAO, levels = c("Global", 
+                                              unique(top_7_data$Country_FAO)), 
+                             ordered = T)) |> 
+  #Plotting
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  #Applying base plot design
+  base_gg+
+  #Plotting by country
+  facet_wrap(~Country_FAO, scales = "free_y", nrow = 4)+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9, face = "bold"))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
+#        device = "pdf", width = 6, height = 12)
+
+pdf("figures/top_7_perc_change.pdf", width=9, height= 10)
+top_7
+dev.off()
+
+```
+
+## Plotting trends for single country or the globe 
+
+```{r}
+#Selecting country from trends per country variable
+plot_country <- count_bio |> 
+  filter(fao_official == "Australia") |> 
+  #Plot
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  #Apply base plotting scheme
+  base_gg
+
+#Saving output
+png("figures/Au_trends.png", width = 5, height = 3.5, units = "in", res = 1200)
+#Check country plot
+plot_country
+#Remove figure from memory
+dev.off()
+```
+
+## Figure 2 - Asia
+In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
+  
+```{r}
+
+#Filtering data
+asia<-count_bio |> 
+  #Extract EEZs in Asia
+  filter(continent == "Asia") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~figure_name, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(figure_name = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "asia_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 14.35)
+
+pdf("figures/asia_perc_change.pdf", width=9, height= 10)
+asia
+dev.off()
+
+```
+  
+## Figure 3 - Africa
+In this figure, we will exclude marine areas under the jurisdiction of countries in Africa as classified by the FAO.  
+  
+```{r}
+#Filtering data
+africa<-count_bio |> 
+  #Extract EEZs in Africa
+  filter(continent == "Africa") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~figure_name, scales = "free_y", ncol = 5, 
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(figure_name = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "africa_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 14.35)
+
+pdf("figures/africa_perc_change.pdf", width=9, height= 12)
+africa
+dev.off()
+```
+  
+## Figure 4 - Europe
+In this figure, we will exclude marine areas under the jurisdiction of countries in Europe as classified by the FAO.  
+  
+```{r}
+#Filtering data
+
+sort(unique(count_bio$figure_name))
+
+count_bio_europe<-count_bio %>% 
+  mutate(figure_name = ifelse(figure_name == "United Kingdom of Great Britain and Northern Ireland", "United Kingdom" , figure_name))
+
+europe<-count_bio_europe |> 
+  #Extract EEZs in Europe
+  filter(continent == "Europe") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~figure_name, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(figure_name = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "europe_perc_change.pdf"),
+#        device = "pdf", width = 12, height = 16)
+
+pdf("figures/europe_perc_change.pdf", width=9, height= 9)
+europe
+dev.off()
+
+```
+  
+## Figure 5 - Americas
+In this figure, we will exclude marine areas under the jurisdiction of countries in the Americas as classified by the FAO.  
+  
+```{r}
+#Filtering data
+americas<-count_bio |> 
+  #Extract EEZs in the Americas
+  filter(continent == "Americas") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~figure_name, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(figure_name = label_wrap_gen(25)))+
+   theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "americas_perc_change.pdf"), 
+#        device = "pdf", width = 12, height = 17.22)
+
+pdf("figures/americas_perc_change.pdf", width=9, height= 13)
+americas
+dev.off()
+```
+  
+## Figure 6 - Oceania
+In this figure, we will exclude marine areas under the jurisdiction of countries in Oceania as classified by the FAO.  
+  
+```{r}
+#Filtering data
+oceania<-count_bio |> 
+  #Extract EEZs in Oceania
+  filter(continent == "Oceania") |> 
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by country
+  facet_wrap(~figure_name, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(figure_name = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "oceania_perc_change.pdf"),
+#        device = "pdf", width = 10, height = 9)
+
+pdf("figures/oceania_perc_change.pdf", width=9, height= 9)
+oceania
+dev.off()
+```
+  
+## Figure 7 - FAO regions
+  
+```{r}
+#Filtering data
+fao_regions<-fao_bio |> 
+  #Plotting data
+  ggplot(aes(x = year, y = mean_change, colour = scenario))+
+  base_gg+
+  #Plotting by FAO sector
+  facet_wrap(~NAME_EN, scales = "free_y", ncol = 5,
+             #Ensure labels wrap at ~30 characters
+             labeller = labeller(NAME_EN = label_wrap_gen(25)))+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 9))+ # face = "bold"
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+
+```
+  
+```{r, eval = F}
+# #Saving plot
+# ggsave(filename = file.path(base_folder, "fao_regions_perc_change.pdf"), 
+#        device = "pdf", width = 10, height = 6)
+
+pdf("figures/fao_regions_perc_change.pdf", width=9, height= 6)
+fao_regions
+dev.off()
+```
+  
+## Uncertaity plot 
+
+```{r}
+
+# use mean and sd calculated above 
+
+# sort values
+sorting<-table %>% 
+  filter(spatial_scale == "FAO_area") %>% 
+  filter(scenario == "ssp585", decade == "2091-2100") %>% 
+  arrange(-mean)
+
+sorting<-unique(sorting$figure_name)
+sorting<-factor(sorting, levels=unique(sorting))
+
+bio_dataOCD <-table %>% 
+  filter(spatial_scale == "FAO_area") %>% 
+  mutate(figure_name = factor(figure_name, levels = sorting))
+
+uncert_decade<-ggplot(filter(bio_dataOCD, figure_name != "Arctic Sea"), aes(x=figure_name, y=mean, group=scenario, color=scenario)) + 
+  geom_point()+ 
+  geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.2,
+                position=position_dodge(0.05))+
+  theme_classic() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey80", linewidth = 1)+
+  scale_color_manual(name = "Scenario", labels = c("SSP1-2.6", "SSP5-8.5"), values=c("#33bbee", "#ee3377"))+
+  labs(x="FAO Major Fishing Area", y = "Change in exploitable fish biomass (%)") +
+  coord_flip()+
+  theme(axis.text=element_text(size=14),
+        legend.title = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        axis.title=element_text(size=14)) + # face = "bold"
+  facet_wrap(~decade)
+
+png("figures/FAOarea_uncertity.png", width=10, height=5, units="in",res=1200)
+uncert_decade
+dev.off()
+
+```
+  
