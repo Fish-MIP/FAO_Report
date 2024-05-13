@@ -156,7 +156,7 @@ for(i in seq_along(years)){
   clean <- fisheries_catch |> 
     #Both columns have the same index
     select(c(years[i], years_flag[i]))
-  #Chang column names so it is easy to identify them
+  #Change column names so it is easy to identify them
   names(clean) <- c("year", "flag")
   #Change year row to NA if there is an "E" or "..." in the flag column
   clean <- clean |> 
@@ -217,7 +217,10 @@ fisheries_catch_clean <- fisheries_catch_clean |>
                           #countries with 0 values in first group
                           breaks = c(-1e-6, .25, 1, 2, 4, 6, 20),
                           labels = c("<0.25", "0.25-1", "1-2", "2-4", "4-6", 
-                                     ">6")))
+                                     ">6"))) |> 
+   mutate(class_fish = factor(class_fish, 
+                             levels = c("<0.25", "0.25-1", "1-2", "2-4", 
+                                        "4-6", ">6"), ordered = T))
 
 #Add ISO codes to fisheries data
 fisheries_catch_clean <- fisheries_catch_clean |> 
@@ -299,7 +302,7 @@ for(m in members){
   
   #Keeping information within FAO regions only
   area_grid <- area_grid |> 
-    drop_na(NAME_EN) |> 
+    drop_na(OCEAN) |> 
     #Keeping relevant columns 
     select(x:ID_mrgd)
   
@@ -418,23 +421,22 @@ maps_data_sd |>
   write_csv("data/ensemble_sd_bio_change_data_map.csv")
 ```
 
-## Coefficient of variation 
+## Calculating coefficient of variation 
 The coefficient of variation (CV): the ratio of the standard deviation to the mean (or its absolute value), expressed as a percentage.
 
 ```{r}
-
-# (maps_data_sd/abs(maps_data))*100
-
-colnames(maps_data_sd)
-colnames(maps_data)
-maps_data_cv<-maps_data_sd %>% 
-  full_join(maps_data) %>% 
-  mutate(rel_change_mean50_ssp126_cv = (rel_change_mean50_ssp126_sd/abs(rel_change_mean50_ssp126_mean))*100, 
-         rel_change_mean00_ssp126_cv = (rel_change_mean00_ssp126_sd/abs(rel_change_mean00_ssp126_mean))*100,
-         rel_change_mean50_ssp585_cv = (rel_change_mean50_ssp585_sd/abs(rel_change_mean50_ssp585_mean))*100,
-         rel_change_mean00_ssp585_cv = (rel_change_mean00_ssp585_sd/abs(rel_change_mean00_ssp585_mean))*100)
+maps_data_cv <- maps_data_sd |> 
+  full_join(maps_data) |> 
+  mutate(rel_change_mean50_ssp126_cv =
+           (rel_change_mean50_ssp126_sd/abs(rel_change_mean50_ssp126_mean))*100, 
+         rel_change_mean00_ssp126_cv = 
+           (rel_change_mean00_ssp126_sd/abs(rel_change_mean00_ssp126_mean))*100,
+         rel_change_mean50_ssp585_cv = 
+           (rel_change_mean50_ssp585_sd/abs(rel_change_mean50_ssp585_mean))*100,
+         rel_change_mean00_ssp585_cv = 
+           (rel_change_mean00_ssp585_sd/abs(rel_change_mean00_ssp585_mean))*100)
   
+#Saving result
 maps_data_cv |> 
   write_csv("data/ensemble_cv_bio_change_data_map.csv")
-
 ```
