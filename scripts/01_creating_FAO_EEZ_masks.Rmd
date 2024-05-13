@@ -106,8 +106,6 @@ rast_df <- function(ras_mask, ras_area, metadata, out_file = NULL){
   #Return data frame of raster mask
   return(area_df)
 }
-
-
 ```
   
 ## Applying rasterise function
@@ -146,6 +144,22 @@ gfdl_df <- rast_df(gfdl_mask, gfdl, meta,
 #Saving IPSL raster as data frame
 ipsl_df <- rast_df(ipsl_mask, ipsl, meta, 
                    file.path(fao_dir, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv"))
+```
+  
+## Saving shapefile with updated continent names
+  
+```{r}
+#Keep relevant columns from metadata
+meta <- meta |> 
+  select(ID_mrgd, continent)
+
+fao_eez_shp |> 
+  #Keep only relevant columns in shapefile
+  select(NAME_EN, ID_mrgd, nm_mrgd) |> 
+  #Replacing with updated continent column
+  left_join(meta, join_by(ID_mrgd)) |> 
+  #Saving result in FAO report folder
+  write_sf(file.path(fao_dir, "FAO_MajorAreas_200NM.shp"), append = F)
 ```
   
 Masks are now ready to be used in the workflow described in this repository.  
