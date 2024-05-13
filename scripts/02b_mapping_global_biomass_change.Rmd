@@ -1,6 +1,6 @@
 ---
 title: "Plotting biomass change under different SSPs"
-author: "Denisse Fierro Arcos"
+author: "Denisse Fierro Arcos & Camilla Novaglio"
 date: "2024-01-09"
 output: pdf_document
 editor_options: 
@@ -16,6 +16,7 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
+rm(list=ls())
 #Data wrangling
 library(tidyverse)
 #Using more than one scale in plots
@@ -268,7 +269,20 @@ land <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-leg_land <- get_legend(land)
+# leg_land <- get_legend(land)
+
+### DO NOT REMOVE - THE APPPROACH ABOVE DOES NOT WORK FOR ME AS EXPLAIN IN MY EMAIL. 
+# WHY THE ABOVE DOES NOT WORK: 
+# leg_land <- get_legend(land)
+# Warning message:
+# In get_plot_component(plot, "guide-box") :
+#   Multiple components found; returning the first one. To return all, use `return_all = TRUE`.
+# leg_land
+# zeroGrob[NULL] # NO LEGEND
+
+# MY WORKAROUND:
+leg_land = cowplot::get_plot_component(land, 'guide-box-bottom', return_all = TRUE)
+# cowplot::ggdraw(leg_land) 
 
 #Plotting fish biomass to get legend
 fish <- ggplot()+
@@ -281,36 +295,39 @@ fish <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-leg_fish <- get_legend(fish)
+# leg_fish <- get_legend(fish)
+
+### DO NOT REMOVE 
+leg_fish = cowplot::get_plot_component(fish, 'guide-box-bottom', return_all = TRUE)
 
 #SSP1-2.6 2041-2050
-p50_126 <- ggplot()+
+p50_126_change <- ggplot()+ #### KEEP THE NEW NAMES (_change) FOR THESE 4 FIGS AS I NEED TO RE-USE THEM LATER AND DO NOT WANT TO OVERWRITE THEM 
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
 #SSP5-8.5 2041-2050
-p50_585 <- ggplot()+
+p50_585_change <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp585_mean)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
 #SSP1-2.6 2091-2100
-p00_126 <- ggplot()+
+p00_126_change <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp126_mean)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
 
 #SSP5-8.5 2091-2100
-p00_585 <- ggplot()+
+p00_585_change <- ggplot()+
   geom_spatraster(data = maps_data_proj$rel_change_mean00_ssp585_mean)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg
 
 #Plotting everything together
-all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
+all_plots <- plot_grid(plot_grid(p50_126_change, p50_585_change, ncol = 2, nrow = 1,
                                  labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                       plot_grid(p00_126_change, p00_585_change, ncol = 2, nrow = 1,
                                  labels = c("c", "d"), label_x = 0.1),
                        plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
                        ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
@@ -320,14 +337,23 @@ all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 # Saving multi-panel plot
 ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 8)
+
+## DO NOT REMOVE - I CANNOT DOWLOAD FROM GEM RIGHT NOW AND NEED EASY ACCESS TO PLOTS 
+# I AM NOT PUSHING FIGURES ON GITHUB SO NOT A BIG DEAL TO KEEP THIS IN FOR NOW. COMMENT OUT IF YOU WANT.
+ggsave("figures/global_perc_change_map_50-00.pdf", all_plots,
+       device = "pdf", width = 14, height = 8)
+
 ```
   
 ## Figure 5 FAO report - Asia 
   
 ```{r}
+
+#### NO continent COLUMN IN THIS DATAFRAME, REPLACED WITH contnnt BUT CODE BELOW STILL DOES NOT WORK. SAME FOR OTHER "CONTINENT" MAPS
+
 #Extracting data for Asia
 asia_data <- maps_data |> 
-  filter(continent == "Asia")
+  filter(contnnt == "Asia") 
 
 #Selecting Asian countries
 asia_cent <- world |> 
@@ -338,6 +364,10 @@ asia_cent <- world |>
   mutate(class_fish = factor(class_fish, 
                              levels = c("<0.25", "0.25-1", "1-2", "2-4", 
                                         "4-6", ">6"), ordered = T))
+
+## THIS IS THE ERRO I GET: 
+# Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : 
+#   Loop 0 is not valid: Edge 0 is degenerate (duplicate vertex)
 ```
     
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
@@ -1144,25 +1174,25 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                       legend.position = "none"))
 
 #SSP1-2.6 2041-2050
-p50_126 <- ggplot()+
+p50_126_SD <- ggplot()+ #### KEEP THE NEW NAMES (_SD) FOR THESE 4 FIGS AS I NEED TO RE-USE THEM LATER AND DO NOT WANT TO OVERWRITE THEM 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean50_ssp126_sd)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
 #SSP5-8.5 2041-2050
-p50_585 <- ggplot()+
+p50_585_SD <- ggplot()+
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean50_ssp585_sd)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
 #SSP1-2.6 2091-2100
-p00_126 <- ggplot()+
+p00_126_SD <- ggplot()+ 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean00_ssp126_sd)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
 
 #SSP5-8.5 2091-2100
-p00_585 <- ggplot()+
+p00_585_SD <- ggplot()+ # SAME AS FOR FIGURE ABOVE 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean00_ssp585_sd)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
@@ -1172,18 +1202,21 @@ p00_585 <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-legend <- get_legend(p00_585)
+# legend <- get_legend(p00_585_SD)
+
+## DO NOT REMOVE 
+legend_sd = cowplot::get_plot_component(p00_585_SD, 'guide-box-bottom', return_all = TRUE)
 
 #Remove legend from last plot
-p00_585 <- p00_585+
+p00_585_SD <- p00_585_SD+
   theme(legend.position = "none")
 
 #Plotting everything together
-all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1, 
+all_plots <- plot_grid(plot_grid(p50_126_SD, p50_585_SD, ncol = 2, nrow = 1, 
                                  labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                       plot_grid(p00_126_SD, p00_585_SD, ncol = 2, nrow = 1,
                                  labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 3, 
+                       legend_sd, ncol = 1, nrow = 3, 
                        rel_heights = c(1, 1, 0.4))
 ```
   
@@ -1193,7 +1226,7 @@ ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 9)
 ```
 
-## Figure Non-FAO report - Coefficient of variation 
+## Figure FAO report - Coefficient of variation 
 
 ```{r}
 #Load coefficient of variation
@@ -1239,25 +1272,25 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                       legend.position = "none"))
 
 #SSP1-2.6 2041-2050
-p50_126 <- ggplot()+
+p50_126_CV <- ggplot()+
   geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp126_cv)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
 
 #SSP5-8.5 2041-2050
-p50_585 <- ggplot()+
+p50_585_CV <- ggplot()+
   geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp585_cv)+
   labs(title = "SSP5-8.5: 2041-2050")+
   base_gg
 
 #SSP1-2.6 2091-2100
-p00_126 <- ggplot()+
+p00_126_CV <- ggplot()+
   geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp126_cv)+
   labs(title = "SSP1-2.6: 2091-2100")+
   base_gg
 
 #SSP5-8.5 2091-2100
-p00_585 <- ggplot()+
+p00_585_CV <- ggplot()+
   geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp585_cv)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
@@ -1267,18 +1300,21 @@ p00_585 <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-legend <- get_legend(p00_585)
+# legend <- get_legend(p00_585)
+
+## DO NOT REMOVE 
+legend_cv = cowplot::get_plot_component(p00_585_CV, 'guide-box-bottom', return_all = TRUE)
 
 #Remove legend from last plot
-p00_585 <- p00_585+
+p00_585_CV <- p00_585_CV+
   theme(legend.position = "none")
 
 #Plotting everything together
-all_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1, 
+all_plots <- plot_grid(plot_grid(p50_126_CV, p50_585_CV, ncol = 2, nrow = 1, 
                                  labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(p00_126, p00_585, ncol = 2, nrow = 1,
+                       plot_grid(p00_126_CV, p00_585_CV, ncol = 2, nrow = 1,
                                  labels = c("c", "d"), label_x = 0.1),
-                       legend, ncol = 1, nrow = 3, 
+                       legend_cv, ncol = 1, nrow = 3, 
                        rel_heights = c(1, 1, 0.4))
 ```
 
@@ -1288,13 +1324,15 @@ ggsave(file.path(out_folder, "global_cv_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 9)
 ```
 
-## Figure Non-FAO report - Model agreement 
-Combining maps of percentage change, standard deviation (SD) and model agreement.  
+## Figure FAO report - Model agreement 
+
+Combining maps of percentage change (_change), standard deviation (_SD) and model agreement (_agreement).  
   
 ```{r}
-# model agreement, only for rel_change_mean00_ssp585? 
+
+library(data.table)
 # Listing all relevant files to calculate biomass projections
-maps_data_agreement_proj <- list.files(out_folder, 
+maps_data_agreement <- list.files(out_folder, 
                                        pattern = "perc_bio_change_data_map.csv", 
                                        full.names = T) |> 
   map_df(~fread(.)) |> 
@@ -1307,26 +1345,101 @@ maps_data_agreement_proj <- list.files(out_folder,
   #Calculations performed by grid cell
   group_by(x, y, scenario) |> 
   #Calculate agreement across models
-  summarise(n_model = n(), 
-            n_positive = sum(value > 0, na.rm = T),
-            n_negative = sum(value < 0, na.rm = T), 
+  summarise(n_model = sum(!is.na(value)), # numbers of models for which info is available 
+            n_positive = sum(value >= 0, na.rm = T), # number of non-negative estimates 
+            n_negative = sum(value < 0, na.rm = T), # number of negative estimates
             same_sign = max(n_positive, n_negative),
-            # 0 land to be converted into NAs 
             agreement = (same_sign/n_model)*100) |> 
-  #spread and gather have been superseded for a couple of years
-  #use pivot_wider and pivot_longer instead
-  spread(scenario) # GOT HERE - NEED TO FINISH
+  ungroup() %>% 
+  # convert 0 land into NAs 
+  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) %>% 
+  select(c(x,y,scenario, agreement)) %>% 
+  pivot_wider(names_from = scenario, values_from = agreement) 
+  
+maps_data_agreement_proj<-maps_data_agreement %>%   
+  #Transform to multi-layer raster
+  rast(type = "xyz", crs = "epsg:4326") |>
+  #Reproject to Robinson
+  project(y = rob_proj)
 
-  
-  
-  
-  
-  # #Selecting coordinate columns and percentage change columns
-  # select(x, y, ends_with("_agreement")) |> 
-  # #Transform to multi-layer raster
-  # rast(type = "xyz", crs = "epsg:4326") |> 
-  # #Reproject to Robinson
-  # project(y = rob_proj) 
+```
+
+```{r}
+
+#Define base steps for maps
+base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
+                                     na.value = NA, limits = c(50, 100), 
+                                     oob = oob_squish),
+                geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
+                        color = "#dbdade", fill = "#dbdade"),
+                geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
+                        colour = "#5b5b5b",
+                        show.legend = F, linewidth = 0.25),
+                #Adding coastlines and international boundaries
+                geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
+                        color = "#484848", show.legend = F, 
+                        aes(linetype = as.factor(TYPE))),
+                scale_linetype_manual(values = c("0" = "solid",
+                                                 "1" = "twodash", 
+                                                 "2" = "dotdash", 
+                                                 "3" = "dashed", 
+                                                 "4" = "dotted")),
+                geom_sf(inherit.aes = F, 
+                        data = world_bound_proj[world_bound_proj$TYPE == 8,], 
+                        linetype = "longdash", lwd = 0.25, color = "#838285",
+                        show.legend = F),
+                theme_bw(),
+                theme(axis.title = element_blank(), 
+                      panel.border = element_rect(colour = NA),
+                      plot.title = element_text(hjust = 0.5),
+                      legend.position = "none"))
+
+#SSP1-2.6 2091-2100
+p00_126_agreement <- ggplot()+ 
+  geom_spatraster(data = maps_data_agreement_proj$rel_change_mean00_ssp126)+
+  labs(title = "SSP1-2.6: 2091-2100")+
+  base_gg
+
+#SSP5-8.5 2091-2100
+p00_585_agreement <- ggplot()+
+  geom_spatraster(data = maps_data_agreement_proj$rel_change_mean00_ssp585)+
+  labs(title = "SSP5-8.5: 2091-2100")+
+  base_gg+
+  guides(fill = guide_colorbar(title = "Model agreement (%)",
+                               title.position = "top", title.hjust = 0.5, 
+                               barwidth = 15))+
+  theme(legend.position = "bottom")
+
+#Get legend for land
+legend_agreement = cowplot::get_plot_component(p00_585_agreement, 'guide-box-bottom', return_all = TRUE)
+cowplot::ggdraw(legend) 
+
+#Remove legend from last plot
+p00_585_agreement <- p00_585_agreement+
+  theme(legend.position = "none")
+
+#Plotting everything together
+## NOT QUITE RIGHT- NEEDS FIXING
+all_plots <- plot_grid(plot_grid(plot_grid(p00_126_change, p00_585_change, ncol = 2, nrow = 1,
+                                 labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2),
+                       ncol = 1, nrow = 2, rel_heights = c(1, 0.4)),
+                       plot_grid(plot_grid(p00_126_SD, p00_585_SD, ncol = 2, nrow = 1,
+                                 labels = c("c", "d"), label_x = 0.1),
+                       legend_sd, ncol = 1, nrow = 2,
+                       rel_heights = c(1, 0.4)), 
+                       plot_grid(plot_grid(p00_126_agreement, p00_585_agreement, ncol = 2, nrow = 1,
+                                 labels = c("e", "f"), label_x = 0.1),
+                       legend_agreement, ncol = 1, nrow = 3,
+                       rel_heights = c(1, 0.4)),
+                       ncol = 1, nrow = 3, rel_heights = c(1, 1, 1))
+
 ```
 
 
+```{r}
+
+ggsave("figures/agreement_map_00.pdf", all_plots,
+       device = "pdf", width = 14, height = 13.5)
+
+```
