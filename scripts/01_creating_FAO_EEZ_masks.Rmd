@@ -1,0 +1,152 @@
+---
+title: "Creating masks to extract ESM data"
+author: "Denisse Fierro Arcos"
+date: "2024-05-13"
+output: pdf_document
+---
+
+# Introduction
+In this notebook, we will create masks for GFDL and IPSL forced FishMIP models, which will include area of the grid cell, as well as FAO regions and country names.  
+  
+## Loading libraries
+  
+```{r}
+library(terra)
+library(sf)
+library(readr)
+library(dplyr)
+library(tidyr)
+```
+  
+## Setting up
+  
+```{r}
+#Defining base directory
+base_dir <- "/rd/gem/private/shared_resources/"
+
+#Loading FAO-EEZ shapefile
+fao_eez_shp <- list.files(base_dir, "FAO_MajorAreas_200NM.shp", 
+                          recursive = T, full.names = T) |> 
+  read_sf()
+
+#Loading GFDL area grid cell file
+gfdl <- list.files(base_dir, 
+                   "gfdl-esm4_areacello_w-fractions_60arcmin_global_fixed.nc",
+                   recursive = T, full.names = T) |> 
+  rast()
+
+#Change grid cells with a value of 0 to NA
+gfdl[gfdl == 0] <- NA
+
+#Change variable name
+names(gfdl) <- "cell_area"
+
+#Loading IPSL area grid cell file
+ipsl <- list.files(base_dir, 
+                   "ipsl-cm6a-lr_areacello_wo-fractions_60arcmin_global_fixed.nc",
+                   recursive = T, full.names = T) |> 
+  rast()
+```
+  
+## Defining functions
+The first function will rasterize the shapefile and save the resulting raster. While the second function will transform the raster into a data frame and save it.  
+  
+```{r}
+rast_save <- function(shp, ras, field, touches = T, fun = min, out_file = NULL){
+  #Inputs:
+  # - shp (sf object): shapefile containing limits of regions to be rasterised
+  # - ras (SpatRaster): sample raster to be used for rasterising
+  # - field (character): name of shp column to be used in rasterise function
+  # - touches (boolean): default is TRUE - grid cells touched by polygon 
+  #                      boundary to be included in rasterised region
+  # - fun (function): default min. If multiple regions fall into a single cell,
+  #                   define what function to be used by rasterise function
+  # - out_file (character): OPTIONAL. File path to save rasterised shapefile
+  
+  #Applying rasterisation
+  shp_ras <- rasterize(shp, ras, field = shp[[field]], touches = touches,
+                       fun = fun)
+  #Saving output
+  if(!is.null(out_file)){
+    writeCDF(shp_ras, out_file, varname = "region", 
+           longname = "Fish-MIP regions", missval = NA, overwrite = T)
+  }
+
+  #Returning rasterised file
+  return(shp_ras)
+}
+
+rast_df <- function(ras_mask, ras_area, metadata, out_file = NULL){
+  #Inputs:
+  # - ras_mask (SpatRaster): raster mask to be converted to data frame
+  # - ras_area (SpatRaster): raster containing area of grid cell
+  # - metadata (data frame): contains metadata to interpret mask
+  # - out_file (character): OPTIONAL. File path to save data frame
+
+  #Change raster mask to data frame
+  mask_df <- ras_mask |>
+    as.data.frame(xy = T) 
+  
+  #Change area file to data frame
+  area_df <- ras_area |> 
+    as.data.frame(xy = T) |> 
+    #Join to raster mask
+    left_join(mask_df, join_by(x, y)) |> 
+    #Remove rows with no data in the "cell_area" column
+    drop_na(cell_area) |> 
+    #Join with metadata file
+    left_join(metadata, join_by(ID_mrgd))
+  
+  #Save result
+  if(!is.null(out_file)){
+    area_df |> 
+      write_csv(out_file)
+  }
+  
+  #Return data frame of raster mask
+  return(area_df)
+}
+
+
+```
+  
+## Applying rasterise function
+  
+```{r}
+#Defining output folder
+fao_dir <- "/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ"
+
+#Creating GFDL mask
+gfdl_mask <- rast_save(fao_eez_shp, gfdl, "ID_mrgd",
+                       out_file = file.path(fao_dir, 
+                                            "gfdl-esm4_60arcmin_global_FAO-EEZ.nc"))
+
+#Creating IPSL mask
+ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
+                       out_file = file.path(fao_dir, 
+                                            "ipsl-cm6a_60arcmin_global_FAO-EEZ.nc"))
+```
+  
+## Applying function to save raster as data frame
+  
+```{r}
+#Loading metadata file
+meta <- list.files(fao_dir, "FAO-Major-Areas_EEZ_continent_keys.csv",
+                   recursive = T, full.name = T) |> 
+  read_csv()
+
+#Changing the name of layer to match metadata file
+names(gfdl_mask) <- "ID_mrgd"
+names(ipsl_mask) <- "ID_mrgd"
+
+#Saving GFDL raster as data frame
+gfdl_df <- rast_df(gfdl_mask, gfdl, meta, 
+                   file.path(fao_dir, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv"))
+
+#Saving IPSL raster as data frame
+ipsl_df <- rast_df(ipsl_mask, ipsl, meta, 
+                   file.path(fao_dir, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv"))
+```
+  
+Masks are now ready to be used in the workflow described in this repository.  
+  
