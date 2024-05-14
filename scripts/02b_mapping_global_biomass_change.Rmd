@@ -1104,7 +1104,7 @@ ggsave(file.path(out_plot, "fao_regions_perc_sustainable_fisheries.pdf"),
   
 ## Figure 18 FAO report - FAO standard deviation
   
-```{r, eval = F}
+```{r}
 #Load standard deviation
 maps_data_sd <- read_csv("data/ensemble_sd_bio_change_data_map.csv")
 
@@ -1217,8 +1217,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
                         color = "#dbdade", fill = "#dbdade"),
                 geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
-                        colour = "white",
-                        show.legend = F, linewidth = 0.25),
+                        colour = "white", show.legend = F, linewidth = 0.5),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
@@ -1289,34 +1288,7 @@ Combining maps of percentage change (`*_change`), standard deviation (`*_SD`) an
   
 ```{r}
 # Listing all relevant files to calculate biomass projections
-maps_data_agreement <- list.files(out_folder, 
-                                  pattern = "perc_bio_change_data_map.csv", 
-                                  full.names = T) |> 
-  map_df(~fread(.)) |> 
-  bind_rows() |>
-  # consider only relevant columns 
-  select(c(x:esm, starts_with("rel_change_mean00"))) |>
-  #Restructuring data - longer format
-  pivot_longer(starts_with("rel_change_mean00"), names_to = "scenario", 
-               values_to = "value") |> 
-  #Calculations performed by grid cell
-  group_by(x, y, scenario) |> 
-  #Calculate agreement across models
-  # numbers of models for which info is available
-  summarise(n_model = sum(!is.na(value)), 
-            # number of non-negative estimates 
-            n_positive = sum(value >= 0, na.rm = T), 
-            # number of negative estimates
-            n_negative = sum(value < 0, na.rm = T), 
-            same_sign = max(n_positive, n_negative),
-            agreement = (same_sign/n_model)*100) |> 
-  ungroup() |> 
-  # convert 0 land into NAs 
-  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
-  select(c(x,y,scenario, agreement)) |> 
-  pivot_wider(names_from = scenario, values_from = agreement) 
-  
-maps_data_agreement_proj <- maps_data_agreement |>   
+maps_data_agreement_proj <- read_csv("data/ensemble_model_agreement.csv") |>   
   #Transform to multi-layer raster
   rast(type = "xyz", crs = "epsg:4326") |>
   #Reproject to Robinson
@@ -1395,8 +1367,7 @@ p_agree <- plot_grid(p_agree, legend_agreement, nrow = 2,
 #Putting all plots together
 all_plots <- plot_grid(p_change, p_sd, p_agree, nrow = 3)
 ```
-
-
+  
 ```{r}
 ggsave(file.path(out_plot, "agreement_map_00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 13.5)
