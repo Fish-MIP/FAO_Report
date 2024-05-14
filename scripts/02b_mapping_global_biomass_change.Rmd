@@ -3,8 +3,6 @@ title: "Plotting biomass change under different SSPs"
 author: "Denisse Fierro Arcos & Camilla Novaglio"
 date: "2024-01-09"
 output: pdf_document
-editor_options: 
-  chunk_output_type: console
 ---
 
 # Introduction
@@ -16,9 +14,9 @@ Note that outputs from all [global FishMIP models](https://fishmip.org/modelling
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
-rm(list=ls())
 #Data wrangling
 library(tidyverse)
+library(data.table)
 #Using more than one scale in plots
 library(ggnewscale)
 #Dealing with raster data
@@ -49,6 +47,12 @@ base_folder <- "/rd/gem/private/users/camillan"
 out_folder <- file.path(base_folder, "FAO_Report")
 if(!dir.exists(out_folder)){
   dir.create(out_folder)
+}
+
+#Defining location for plots
+out_plot <- file.path(base_folder, "FAO_Report/maps_global_regions")
+if(!dir.exists(out_plot)){
+  dir.create(out_plot)
 }
 
 #Getting GFDL grid area
@@ -90,7 +94,7 @@ world_bound_proj <- world_bound |>
 
 #FAO and EEZ boundaries - unprojected
 fao_eez <- read_sf(list.files(out_folder, 
-                               pattern = "FAO_MajorAreas_200NM.shp", 
+                               pattern = "FAO_MajorAreas_200NM_cont.shp", 
                                recursive = T, full.names = T))
 
 #FAO - EEZ boundaries - projected
@@ -157,7 +161,7 @@ main <- ggplot()+
 Saving map showing FAO regions and EEZs classified by continent.  
   
 ```{r, eval = F}
-ggsave(filename = file.path(out_folder, "fao_eez_global_map.pdf"), main,
+ggsave(filename = file.path(out_plot, "fao_eez_global_map.pdf"), main,
        device = "pdf", width = 14, height = 9)
 ```
   
@@ -254,7 +258,13 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       panel.border = element_rect(colour = NA),
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"))
-
+```
+  
+Since we are using the same legend for data shown on land and the ocean, we will extract them once and apply them to all maps. To do this we will use the `get_legend` function from the `cowplot` package, but this option may not work with all operating system.  
+  
+If you get any errors, you can using the `get_plot_component` function instead. Replace line 275 with `get_plot_component(land, 'guide-box-bottom', return_all = TRUE)`, where `land` refers to the map with data plotted on land only. Make sure to do the same for the fish biomass map in line 288.   
+  
+```{r}
 #Plotting land masses to get legend
 land <- ggplot()+
   geom_sf(data = world_proj, aes(fill = class_fish))+
@@ -269,20 +279,7 @@ land <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-# leg_land <- get_legend(land)
-
-### DO NOT REMOVE - THE APPPROACH ABOVE DOES NOT WORK FOR ME AS EXPLAIN IN MY EMAIL. 
-# WHY THE ABOVE DOES NOT WORK: 
-# leg_land <- get_legend(land)
-# Warning message:
-# In get_plot_component(plot, "guide-box") :
-#   Multiple components found; returning the first one. To return all, use `return_all = TRUE`.
-# leg_land
-# zeroGrob[NULL] # NO LEGEND
-
-# MY WORKAROUND:
-leg_land = cowplot::get_plot_component(land, 'guide-box-bottom', return_all = TRUE)
-# cowplot::ggdraw(leg_land) 
+leg_land <- get_legend(land)
 
 #Plotting fish biomass to get legend
 fish <- ggplot()+
@@ -294,14 +291,15 @@ fish <- ggplot()+
                                barwidth = 15))+
   theme(legend.position = "bottom")
 
-#Get legend for land
-# leg_fish <- get_legend(fish)
-
-### DO NOT REMOVE 
-leg_fish = cowplot::get_plot_component(fish, 'guide-box-bottom', return_all = TRUE)
-
+#Get legend for fish biomass
+leg_fish <- get_legend(fish)
+```
+  
+We can now plot the maps for all scenario and period combinations. 
+  
+```{r}
 #SSP1-2.6 2041-2050
-p50_126_change <- ggplot()+ #### KEEP THE NEW NAMES (_change) FOR THESE 4 FIGS AS I NEED TO RE-USE THEM LATER AND DO NOT WANT TO OVERWRITE THEM 
+p50_126_change <- ggplot()+ 
   geom_spatraster(data = maps_data_proj$rel_change_mean50_ssp126_mean)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
@@ -325,35 +323,30 @@ p00_585_change <- ggplot()+
   base_gg
 
 #Plotting everything together
-all_plots <- plot_grid(plot_grid(p50_126_change, p50_585_change, ncol = 2, nrow = 1,
-                                 labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(p00_126_change, p00_585_change, ncol = 2, nrow = 1,
-                                 labels = c("c", "d"), label_x = 0.1),
+all_plots <- plot_grid(plot_grid(p50_126_change, p50_585_change, ncol = 2, 
+                                 nrow = 1, labels = c("a", "b"), label_x = 0.1),
+                       plot_grid(p00_126_change, p00_585_change, ncol = 2, 
+                                 nrow = 1, labels = c("c", "d"), label_x = 0.1),
                        plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2), 
                        ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 ```
   
+We can save the final figure including four maps.    
+  
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "global_perc_change_map_50-00.pdf"), all_plots,
+ggsave(file.path(out_plot, "global_perc_change_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 8)
-
-## DO NOT REMOVE - I CANNOT DOWLOAD FROM GEM RIGHT NOW AND NEED EASY ACCESS TO PLOTS 
-# I AM NOT PUSHING FIGURES ON GITHUB SO NOT A BIG DEAL TO KEEP THIS IN FOR NOW. COMMENT OUT IF YOU WANT.
-ggsave("figures/global_perc_change_map_50-00.pdf", all_plots,
-       device = "pdf", width = 14, height = 8)
-
 ```
   
 ## Figure 5 FAO report - Asia 
   
 ```{r}
-
-#### NO continent COLUMN IN THIS DATAFRAME, REPLACED WITH contnnt BUT CODE BELOW STILL DOES NOT WORK. SAME FOR OTHER "CONTINENT" MAPS
+sf_use_s2(F)
 
 #Extracting data for Asia
 asia_data <- maps_data |> 
-  filter(contnnt == "Asia") 
+  filter(continent == "Asia") 
 
 #Selecting Asian countries
 asia_cent <- world |> 
@@ -364,10 +357,6 @@ asia_cent <- world |>
   mutate(class_fish = factor(class_fish, 
                              levels = c("<0.25", "0.25-1", "1-2", "2-4", 
                                         "4-6", ">6"), ordered = T))
-
-## THIS IS THE ERRO I GET: 
-# Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : 
-#   Loop 0 is not valid: Edge 0 is degenerate (duplicate vertex)
 ```
     
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
@@ -411,7 +400,11 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"),
                 lims(x = c(25, 160), y = c(-15, 50)))
+```
 
+We will apply the plotting instructions to the four maps that we need in the figure for Asia.  
+
+```{r}
 #SSP1-2.6 2041-2050
 p50_126 <- asia_data |> 
   ggplot(aes(x, y, fill = rel_change_mean50_ssp126_mean))+
@@ -455,7 +448,7 @@ rm(asia_cent)
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), asia_plots, 
+ggsave(file.path(out_plot, "asia_perc_change_map_50-00.pdf"), asia_plots, 
        device = "pdf", width = 14, height = 8)
 ```
   
@@ -463,7 +456,6 @@ ggsave(file.path(out_folder, "asia_perc_change_map_50-00.pdf"), asia_plots,
 As we did with Europe, we would like the Americas to show in the middle of the map, so we will have to pre-process our data before plotting the maps.  
   
 ```{r}
-sf_use_s2(F)
 #Split world in two hemispheres 
 west <- st_crop(world, st_bbox(c(xmin = -180, ymin = -60, 
                                  xmax = 20, ymax = 90)))
@@ -495,10 +487,10 @@ amercent_bound <- rbind(west,
 #Split EEZ in two hemispheres
 eez_west <- eez |> 
   filter(continent == "Americas") |> 
-  st_crop(st_bbox(c(xmin = -180, ymin = -60, xmax = 20, ymax = 90)))
+  st_crop(st_bbox(c(xmin = -180, ymin = -65, xmax = 20, ymax = 90)))
 eez_east <- eez |> 
   filter(continent == "Americas") |> 
-  st_crop(st_bbox(c(xmin = 160, ymin = -60, xmax = 180, ymax = 90)))
+  st_crop(st_bbox(c(xmin = 160, ymin = -65, xmax = 180, ymax = 90)))
 #Merge together
 eez_amer <- rbind(eez_west,
                   st_set_crs(st_transform(eez_east, 
@@ -516,7 +508,7 @@ americas_data <- maps_data |>
   #Converting to raster
   rast(crs = "epsg:4326") |> 
   #Reprojecting so raster is centered in the Americas
-  project(rast(ext(-200, 20, -60, 90), res = 1)) |> 
+  project(rast(ext(-200, 20, -65, 90), res = 1)) |> 
   #Return to data frame
   as.data.frame(xy = T)
 ```
@@ -524,6 +516,10 @@ americas_data <- maps_data |>
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
   
 ```{r}
+#Define linetypes to be used in plots
+line_manual <- c("0" = "solid", "1" = "twodash", "2" = "dotdash", 
+                 "3" = "dashed", "4" = "dotted")
+
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
                                   type = scale_fill_custom, 
@@ -542,11 +538,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = amercent_bound, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = amercent_bound[amercent_bound$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -556,7 +548,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       panel.border = element_rect(colour = NA),
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"),
-                coord_sf(ylim = c(-60, 87), expand = F))
+                coord_sf(ylim = c(-70, 87), expand = F))
 
 #SSP1-2.6 2041-2050
 p50_126 <- americas_data |> 
@@ -601,7 +593,7 @@ rm(amercent, amercent_bound, eez_amer)
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "americas_perc_change_map_50-00.pdf"), 
+ggsave(file.path(out_plot, "americas_perc_change_map_50-00.pdf"), 
        americas_plots, device = "pdf", width = 10, height = 9)
 ```  
   
@@ -681,11 +673,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = eurocent_bound, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = eurocent_bound[eurocent_bound$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -740,7 +728,7 @@ rm(eez_euro, eurocent, eurocent_bound)
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"),
+ggsave(file.path(out_plot, "europe_perc_change_map_50-00.pdf"),
        europe_plots, device = "pdf", width = 10, height = 6)
 ```
   
@@ -749,7 +737,7 @@ ggsave(file.path(out_folder, "europe_perc_change_map_50-00.pdf"),
 ```{r}
 #Extract data for scenario, transform to raster and reproject
 africa_data <- maps_data |> 
-  filter(continent == "AFR")
+  filter(continent == "Africa")
 
 #Selecting African countries
 africa_cent <- world |> 
@@ -788,11 +776,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = world_bound, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = world_bound[world_bound$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -802,7 +786,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       panel.border = element_rect(colour = NA),
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"),
-                lims(x = c(-29, 85), y = c(-55, 40)))
+                lims(x = c(-29, 85), y = c(-60, 40)))
 
 #SSP1-2.6 2041-2050
 p50_126 <- africa_data |> 
@@ -847,7 +831,7 @@ rm(africa_cent)
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "africa_perc_change_map_50-00.pdf"),
+ggsave(file.path(out_plot, "africa_perc_change_map_50-00.pdf"),
        africa_plots, device = "pdf", width = 9, height = 9)
 ```
   
@@ -934,11 +918,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = oceancent_bound, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 theme_bw(),
                 theme(axis.title = element_blank(), 
                       panel.border = element_rect(colour = NA),
@@ -988,7 +968,7 @@ rm(oceancent, oceancent_bound, eez_ocean)
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "oceania_perc_change_map_50-00.pdf"),
+ggsave(file.path(out_plot, "oceania_perc_change_map_50-00.pdf"),
        oceania_plots, device = "pdf", width = 13, height = 8)
 ```
     
@@ -1026,11 +1006,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = world_bound_proj[world_bound_proj$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -1076,7 +1052,7 @@ fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "fao_regions_perc_change_map_50-00.pdf"),
+ggsave(file.path(out_plot, "fao_regions_perc_change_map_50-00.pdf"),
        fao_reg_plots, device = "pdf", width = 14, height = 9)
 ```
   
@@ -1104,9 +1080,7 @@ fao_fisheries_plot <- ggplot()+
   #Adding coastlines and international boundaries
   geom_sf(data = world_bound_proj, lwd = 0.25, color = "#484848", 
           show.legend = F, aes(linetype = as.factor(TYPE)))+
-  scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
-                                   "2" = "dotdash", "3" = "dashed", 
-                                   "4" = "dotted"))+
+  scale_linetype_manual(values = line_manual)+
   geom_sf(data = world_bound_proj[world_bound_proj$TYPE == 8,], 
           linetype = "longdash", lwd = 0.25, color = "#838285", 
           show.legend = F)+
@@ -1124,7 +1098,7 @@ fao_fisheries_plot <- ggplot()+
   
 ```{r}
 # Saving fisheries map
-ggsave(file.path(out_folder, "fao_regions_perc_sustainable_fisheries.pdf"),
+ggsave(file.path(out_plot, "fao_regions_perc_sustainable_fisheries.pdf"),
        fao_fisheries_plot, device = "pdf", width = 14, height = 9)
 ```
   
@@ -1158,11 +1132,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = world_bound_proj[world_bound_proj$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -1174,7 +1144,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                       legend.position = "none"))
 
 #SSP1-2.6 2041-2050
-p50_126_SD <- ggplot()+ #### KEEP THE NEW NAMES (_SD) FOR THESE 4 FIGS AS I NEED TO RE-USE THEM LATER AND DO NOT WANT TO OVERWRITE THEM 
+p50_126_SD <- ggplot()+ 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean50_ssp126_sd)+
   labs(title = "SSP1-2.6: 2041-2050")+
   base_gg
@@ -1192,7 +1162,7 @@ p00_126_SD <- ggplot()+
   base_gg
 
 #SSP5-8.5 2091-2100
-p00_585_SD <- ggplot()+ # SAME AS FOR FIGURE ABOVE 
+p00_585_SD <- ggplot()+ 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean00_ssp585_sd)+
   labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
@@ -1202,10 +1172,7 @@ p00_585_SD <- ggplot()+ # SAME AS FOR FIGURE ABOVE
   theme(legend.position = "bottom")
 
 #Get legend for land
-# legend <- get_legend(p00_585_SD)
-
-## DO NOT REMOVE 
-legend_sd = cowplot::get_plot_component(p00_585_SD, 'guide-box-bottom', return_all = TRUE)
+legend_sd <- get_legend(p00_585_SD)
 
 #Remove legend from last plot
 p00_585_SD <- p00_585_SD+
@@ -1222,7 +1189,7 @@ all_plots <- plot_grid(plot_grid(p50_126_SD, p50_585_SD, ncol = 2, nrow = 1,
   
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "global_sd_map_50-00.pdf"), all_plots, 
+ggsave(file.path(out_plot, "global_sd_map_50-00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 9)
 ```
 
@@ -1250,17 +1217,13 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
                         color = "#dbdade", fill = "#dbdade"),
                 geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
-                        colour = "#5b5b5b",
+                        colour = "white",
                         show.legend = F, linewidth = 0.25),
                 #Adding coastlines and international boundaries
                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = world_bound_proj[world_bound_proj$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -1300,10 +1263,7 @@ p00_585_CV <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-# legend <- get_legend(p00_585)
-
-## DO NOT REMOVE 
-legend_cv = cowplot::get_plot_component(p00_585_CV, 'guide-box-bottom', return_all = TRUE)
+legend_cv <- get_legend(p00_585_CV)
 
 #Remove legend from last plot
 p00_585_CV <- p00_585_CV+
@@ -1320,21 +1280,18 @@ all_plots <- plot_grid(plot_grid(p50_126_CV, p50_585_CV, ncol = 2, nrow = 1,
 
 ```{r}
 # Saving multi-panel plot
-ggsave(file.path(out_folder, "global_cv_map_50-00.pdf"), all_plots, 
+ggsave(file.path(out_plot, "global_cv_map_50-00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 9)
 ```
 
 ## Figure FAO report - Model agreement 
-
-Combining maps of percentage change (_change), standard deviation (_SD) and model agreement (_agreement).  
+Combining maps of percentage change (`*_change`), standard deviation (`*_SD`) and model agreement (`*_agreement`).  
   
 ```{r}
-
-library(data.table)
 # Listing all relevant files to calculate biomass projections
 maps_data_agreement <- list.files(out_folder, 
-                                       pattern = "perc_bio_change_data_map.csv", 
-                                       full.names = T) |> 
+                                  pattern = "perc_bio_change_data_map.csv", 
+                                  full.names = T) |> 
   map_df(~fread(.)) |> 
   bind_rows() |>
   # consider only relevant columns 
@@ -1345,27 +1302,28 @@ maps_data_agreement <- list.files(out_folder,
   #Calculations performed by grid cell
   group_by(x, y, scenario) |> 
   #Calculate agreement across models
-  summarise(n_model = sum(!is.na(value)), # numbers of models for which info is available 
-            n_positive = sum(value >= 0, na.rm = T), # number of non-negative estimates 
-            n_negative = sum(value < 0, na.rm = T), # number of negative estimates
+  # numbers of models for which info is available
+  summarise(n_model = sum(!is.na(value)), 
+            # number of non-negative estimates 
+            n_positive = sum(value >= 0, na.rm = T), 
+            # number of negative estimates
+            n_negative = sum(value < 0, na.rm = T), 
             same_sign = max(n_positive, n_negative),
             agreement = (same_sign/n_model)*100) |> 
-  ungroup() %>% 
+  ungroup() |> 
   # convert 0 land into NAs 
-  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) %>% 
-  select(c(x,y,scenario, agreement)) %>% 
+  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
+  select(c(x,y,scenario, agreement)) |> 
   pivot_wider(names_from = scenario, values_from = agreement) 
   
-maps_data_agreement_proj<-maps_data_agreement %>%   
+maps_data_agreement_proj <- maps_data_agreement |>   
   #Transform to multi-layer raster
   rast(type = "xyz", crs = "epsg:4326") |>
   #Reproject to Robinson
   project(y = rob_proj)
-
 ```
 
 ```{r}
-
 #Define base steps for maps
 base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
                                      na.value = NA, limits = c(50, 100), 
@@ -1379,11 +1337,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
                         color = "#484848", show.legend = F, 
                         aes(linetype = as.factor(TYPE))),
-                scale_linetype_manual(values = c("0" = "solid",
-                                                 "1" = "twodash", 
-                                                 "2" = "dotdash", 
-                                                 "3" = "dashed", 
-                                                 "4" = "dotted")),
+                scale_linetype_manual(values = line_manual),
                 geom_sf(inherit.aes = F, 
                         data = world_bound_proj[world_bound_proj$TYPE == 8,], 
                         linetype = "longdash", lwd = 0.25, color = "#838285",
@@ -1411,35 +1365,39 @@ p00_585_agreement <- ggplot()+
   theme(legend.position = "bottom")
 
 #Get legend for land
-legend_agreement = cowplot::get_plot_component(p00_585_agreement, 'guide-box-bottom', return_all = TRUE)
-cowplot::ggdraw(legend) 
+legend_agreement <- get_legend(p00_585_agreement)
 
 #Remove legend from last plot
 p00_585_agreement <- p00_585_agreement+
   theme(legend.position = "none")
 
-#Plotting everything together
-## NOT QUITE RIGHT- NEEDS FIXING
-all_plots <- plot_grid(plot_grid(plot_grid(p00_126_change, p00_585_change, ncol = 2, nrow = 1,
-                                 labels = c("a", "b"), label_x = 0.1),
-                       plot_grid(leg_land, leg_fish, nrow = 1, ncol = 2),
-                       ncol = 1, nrow = 2, rel_heights = c(1, 0.4)),
-                       plot_grid(plot_grid(p00_126_SD, p00_585_SD, ncol = 2, nrow = 1,
-                                 labels = c("c", "d"), label_x = 0.1),
-                       legend_sd, ncol = 1, nrow = 2,
-                       rel_heights = c(1, 0.4)), 
-                       plot_grid(plot_grid(p00_126_agreement, p00_585_agreement, ncol = 2, nrow = 1,
-                                 labels = c("e", "f"), label_x = 0.1),
-                       legend_agreement, ncol = 1, nrow = 3,
-                       rel_heights = c(1, 0.4)),
-                       ncol = 1, nrow = 3, rel_heights = c(1, 1, 1))
+#Plotting change maps and legend
+p_change <- plot_grid(p00_126_change, p00_585_change, ncol = 2, 
+                      labels = c("a", "b"), label_x = 0.1)
+#Adding legend
+p_change <- plot_grid(p_change, 
+                      plot_grid(leg_land, leg_fish, ncol = 2),
+                      nrow = 2, rel_heights = c(1, 0.4))
 
+#Plotting standard deviation maps and legend
+p_sd <- plot_grid(p00_126_SD, p00_585_SD, ncol = 2, labels = c("c", "d"), 
+                  label_x = 0.1)
+#Adding legend
+p_sd <- plot_grid(p_sd, legend_sd, nrow = 2, rel_heights = c(1, 0.4))
+
+#Plotting agreement maps and legend
+p_agree <- plot_grid(p00_126_agreement, p00_585_agreement, ncol = 2, 
+                     labels = c("e", "f"), label_x = 0.1)
+#Adding legend
+p_agree <- plot_grid(p_agree, legend_agreement, nrow = 2, 
+                     rel_heights = c(1, 0.4))
+
+#Putting all plots together
+all_plots <- plot_grid(p_change, p_sd, p_agree, nrow = 3)
 ```
 
 
 ```{r}
-
-ggsave("figures/agreement_map_00.pdf", all_plots,
+ggsave(file.path(out_plot, "agreement_map_00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 13.5)
-
 ```
