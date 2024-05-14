@@ -147,20 +147,53 @@ names(all_bricks) <- netcdf
 global_sum<-do.call("rbind", all_bricks)
 rownames(global_sum)<-NULL
 
+library(data.table)
+fwrite(global_sum, "data/BOATS_data.csv")
+
 ```
 
 # Plot data 
 
 ```{r}
 
+library(data.table)
 library(ggplot2)
 
-global_sum$sum<-global_sum$sum/1e+6 # from g to tonnes 
-global_sum$sum<-global_sum$sum/1000000 # to million tonnes
+global_sum<-read_csv("data/BOATS_data.csv")
 
-# check catches against Nina's plot # look OK 
-ggplot(filter(global_sum, variable == "tc", Year <= 2014), aes(x = Year, y = sum))+
-  geom_line()
+global_sum<-global_sum %>% 
+  mutate(sum = (sum/1e+6)/1000000) %>% # from g to tonnes & to million tonnes
+  dplyr::select(-file)
+
+# identify the stable peak in catches 
+peak<-global_sum %>% 
+  filter(variable == "tc") %>% 
+  arrange(-sum) %>% # 2002-2009
+  filter(Year %in% c(2002:2009)) %>% 
+  summarise(mean_tc = mean(sum))
+
+# calculate % exploitable biomass at unfished conditions relative to the years of peak in catches
+ref_unfished<-global_sum %>% 
+  filter(variable == "tcb_unfished") %>% 
+  filter(Year %in% c(2002:2009)) %>% 
+  summarise(mean_tcb_unfished = mean(sum))
+
+global_sum2<-global_sum %>% 
+  pivot_wider(names_from = variable, values_from = sum) %>% 
+  mutate(tcb_unfished_perc = ((tcb_unfished-ref_unfished$mean_tcb_unfished)/ref_unfished$mean_tcb_unfished)) 
+
+# multiply??  
+# multiply the catches by the % change in exploitable fish biomass 
+# multiply the % change in exploitable fish biomass by the peak of the catches. 
+
+global_sum2<-global_sum2 %>%
+  mutate(tc_potential = tc*tcb_unfished_perc) %>%
+  pivot_longer(!Year, names_to = "variable", values_to = "value") %>% 
+  mutate(type = ifelse(variable %in% c("tc", "tc_potential"), "catches", "biomass"))
+
+ggplot(filter(global_sum2, variable != "tcb_unfished_perc"), aes(x = Year, y = value, group = variable, color = variable))+
+  geom_line()+
+  facet_wrap(~type, scale = "free")
 
 # plot catches and biomass. 
 base_gg <- list(geom_line(linewidth = 0.5),
@@ -193,19 +226,8 @@ p<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable)
   geom_line()+
   base_gg
 
-png("figures/BOATS_trends.png", width=5, height=3.5, units="in", res=1200)
-p
-dev.off()
-
-# plot fo Jerome to check? 
-
-p_j<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable))+
-  geom_line()+
-  base_gg+
-  facet_wrap(~variable, scale = "free")
-
-png("figures/BOATS_trends_for_Jerme_to_check.png", width=5, height=3.5, units="in", res=1200)
-p_j
-dev.off()
+# png("figures/BOATS_trends.png", width=5, height=3.5, units="in", res=1200)
+# p
+# dev.off()
 
 ```
