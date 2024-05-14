@@ -440,3 +440,41 @@ maps_data_cv <- maps_data_sd |>
 maps_data_cv |> 
   write_csv("data/ensemble_cv_bio_change_data_map.csv")
 ```
+  
+## Calculating model agreement
+
+```{r}
+# Listing all relevant files to calculate biomass projections
+maps_data_agreement <- list.files(out_folder, 
+                                  pattern = "perc_bio_change_data_map.csv", 
+                                  full.names = T) |> 
+  map_df(~fread(.)) |> 
+  bind_rows() |>
+  # consider only relevant columns 
+  select(c(x:esm, starts_with("rel_change_mean00"))) |>
+  #Restructuring data - longer format
+  pivot_longer(starts_with("rel_change_mean00"), names_to = "scenario", 
+               values_to = "value") |> 
+  #Calculations performed by grid cell
+  group_by(x, y, scenario) |> 
+  #Calculate agreement across models
+  # numbers of models for which info is available
+  summarise(n_model = sum(!is.na(value)), 
+            # number of non-negative estimates 
+            n_positive = sum(value >= 0, na.rm = T), 
+            # number of negative estimates
+            n_negative = sum(value < 0, na.rm = T), 
+            same_sign = max(n_positive, n_negative),
+            agreement = (same_sign/n_model)*100) |> 
+  ungroup() |> 
+  # convert 0 land into NAs 
+  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
+  select(c(x,y,scenario, agreement)) |> 
+  pivot_wider(names_from = scenario, values_from = agreement) 
+
+#Save results
+maps_data_agreement |> 
+  write_csv("data/ensemble_model_agreement.csv")
+```
+
+  
