@@ -165,55 +165,61 @@ global_sum<-global_sum %>%
   mutate(sum = (sum/1e+6)/1000000) %>% # from g to tonnes & to million tonnes
   dplyr::select(-file)
 
-# identify the stable peak in catches 
-peak<-global_sum %>% 
-  filter(variable == "tc") %>% 
-  arrange(-sum) %>% # 2002-2009
-  filter(Year %in% c(2002:2009)) %>% 
-  summarise(mean_tc = mean(sum))
+# # identify the stable peak in catches 
+ peak<-global_sum %>% 
+   filter(variable == "tc") %>% 
+   arrange(-sum) %>% # 2002-2009
+   filter(Year %in% c(2002:2009)) %>% 
+   summarise(mean_tc = mean(sum))
 
 # calculate % exploitable biomass at unfished conditions relative to the years of peak in catches
-ref_unfished<-global_sum %>% 
-  filter(variable == "tcb_unfished") %>% 
-  filter(Year %in% c(2002:2009)) %>% 
-  summarise(mean_tcb_unfished = mean(sum))
+ ref_unfished<-global_sum %>% 
+   filter(variable == "tcb_unfished") %>% 
+   filter(Year %in% c(2000:2009)) %>% 
+   summarise(mean_tcb_unfished = mean(sum))
 
 global_sum2<-global_sum %>% 
   pivot_wider(names_from = variable, values_from = sum) %>% 
-  mutate(tcb_unfished_perc = ((tcb_unfished-ref_unfished$mean_tcb_unfished)/ref_unfished$mean_tcb_unfished)) 
+  mutate(tcb_unfished_perc = tcb_unfished/unlist(ref_unfished)) 
 
-# multiply??  
-# multiply the catches by the % change in exploitable fish biomass 
-# multiply the % change in exploitable fish biomass by the peak of the catches. 
+# multiply peak catch (e.g MSY) by the % change in exploitable fish biomass 
 
+#global_sum2$tc_potential<-global_sum2$tcb_unfished
 global_sum2<-global_sum2 %>%
-  mutate(tc_potential = tc*tcb_unfished_perc) %>%
-  pivot_longer(!Year, names_to = "variable", values_to = "value") %>% 
-  mutate(type = ifelse(variable %in% c("tc", "tc_potential"), "catches", "biomass"))
+  mutate(tc_potential = unlist(peak)*tcb_unfished_perc)  %>%
+  pivot_longer(!Year)
 
-ggplot(filter(global_sum2, variable != "tcb_unfished_perc"), aes(x = Year, y = value, group = variable, color = variable))+
-  geom_line()+
-  facet_wrap(~type, scale = "free")
+
+df1<-as.data.frame(filter(global_sum2, name %in% c("tcb_unfished","tcb_fished")))
+                   
+df2<-as.data.frame(filter(global_sum2, name %in% c("tc","tc_potential")))
+
+
+p1<-ggplot(df1, aes(x = Year, y = value, group = name, color = name))+
+  geom_line()
+
+
+p2<-ggplot(df2, aes(x = Year, y = value, group = name, color = name))+
+  geom_line() + base_gg
 
 # plot catches and biomass. 
-base_gg <- list(geom_line(linewidth = 0.5),
+base_gg1 <- list(geom_line(linewidth = 0.5),
                 #Adding no change line at 0 for reference 
-                geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
-                           linetype = 2),
+                #geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+                 #          linetype = 2),
                 #Adding line dividing historical period and future projections
                 geom_vline(xintercept = 2015, color = "grey80", 
                            linewidth = 0.65),
                 #Manually setting colours to be used in plots
-                scale_color_manual(values = c("tc" = "#66c2a5",
-                                              "tcb_fished" = "#fc8d62", 
+                scale_color_manual(values = c("tcb_fished" = "#fc8d62", 
                                               "tcb_unfished" = "#8da0cb"), 
                                    name = "Variable",
-                                   labels = c("Catches", "Biomass fished", 
+                                   labels = c("Biomass fished", 
                                               "Biomass unfished")),
                 guides(color = guide_legend(nrow = 1, title.position = "left")),
                 theme_classic(),
                 labs(y = "Million tonnes", 
-                     x = "Year"),
+                     x = ""),
                 theme(legend.position = "top", legend.justification = "center", 
                       legend.text = element_text(size = 10),
                       panel.grid.minor.y = element_blank(), 
@@ -222,10 +228,53 @@ base_gg <- list(geom_line(linewidth = 0.5),
                       axis.text.x = element_text(angle = 45, vjust = 0.765, 
                                                  hjust = 0.65)))
 
-p<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable))+
-  geom_line()+
-  base_gg
+# plot catches and biomass. 
+base_gg2 <- list(geom_line(linewidth = 0.5),
+                #Adding no change line at 0 for reference 
+                #geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+                 #          linetype = 2),
+                #Adding line dividing historical period and future projections
+                geom_vline(xintercept = 2015, color = "grey80", 
+                           linewidth = 0.65),
+                #Manually setting colours to be used in plots
+                scale_color_manual(values = c("tc" = "#fc8d62", 
+                                              "tc_potential" = "#8da0cb"), 
+                                   name = "Variable",
+                                   labels = c("Catches", 
+                                              "Maximum Potential Catches")),
+                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                theme_classic(),
+                labs(y = "Million tonnes per year", 
+                     x = ""),
+                theme(legend.position = "top", legend.justification = "center", 
+                      legend.text = element_text(size = 10),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_blank(),
+                      axis.title.y = element_text(size = 12),
+                      axis.text.x = element_text(angle = 45, vjust = 0.765, 
+                                                 hjust = 0.65)))
 
+
+# p<-ggplot(global_sum, aes(x = Year, y = sum, group = variable, color = variable))+
+#   geom_line()+
+#   base_gg
+p1<-p1 + base_gg1
+p2<-p2 +base_gg2
+
+library(patchwork)
+ combined <- p1 + p2 +
+   plot_layout(guides = "collect") & theme(legend.position = 'bottom') 
+
+# 
+# # combine all in one figure
+# fig_scen <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1), 
+#                       plot_grid(NULL, NULL, nrow = 1, rel_widths = c(0.5, 1, 0.5)),
+#                       ncol = 1, nrow = 2, rel_heights = c(1, 0.1))
+
+#### NEED TO FIX LEGENF & ADD LABELS
+ 
+ 
+ 
 # png("figures/BOATS_trends.png", width=5, height=3.5, units="in", res=1200)
 # p
 # dev.off()
