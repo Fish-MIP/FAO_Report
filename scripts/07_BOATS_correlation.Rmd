@@ -3,6 +3,8 @@ title: "Plotting model correlation by LME"
 author: "Camilla Novaglio"
 output: html_document
 date: "2024-05-09"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -13,13 +15,58 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 
+library(data.table)
 
 ```
 
-## Load correlation data from Rynne et al. 
+## PLot 
 
 ```{r}
 
-cor<-read_csv("data/LMECorrelation_forCami.csv")
+# Load correlation data from Rynne et al. 
+cor<-fread("data/LMEcorrelation_forCami.csv")
+
+# arrange data 
+cor<-cor %>% 
+  select(MEMs, `LME NAME`, `IPSL_CM6A_LR CMIP6`,`GFDL-ESM4 CMIP6`) %>% 
+  pivot_longer(!c(`LME NAME`, MEMs), names_to = "ESM", values_to = "correlation")
+
+to_plot<-cor %>% 
+  filter(MEMs == "boats", ESM == "IPSL_CM6A_LR CMIP6",  !is.na(correlation)) %>%
+  arrange(correlation) %>% # First sort by val. This sorts the dataframe but NOT the factor levels
+  mutate(`LME NAME`=factor(`LME NAME`, levels=`LME NAME`))
+
+to_plot2<-cor %>% 
+  filter(MEMs == "boats", ESM == "GFDL-ESM4 CMIP6",  !is.na(correlation)) %>%
+  arrange(correlation) %>% 
+  mutate(`LME NAME`=factor(`LME NAME`, levels=`LME NAME`))
+
+to_plot_combined<-to_plot %>%
+  full_join(to_plot2) %>% 
+  filter(!`LME NAME` %in% c("Central Arctic", "Canadian High Arctic - North Greenland")) # only available for GFDL. 
+
+# plot data
+plot<-ggplot(to_plot_combined, aes(x=`LME NAME`, y=correlation, color = ESM, shape = ESM)) +
+  geom_point()+
+  theme_classic() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey80", linewidth = 1)+
+  scale_color_manual(name = "Earth system model", values=c("#c2a5cf", "#008837"), labels = c("GFDL-ESM4", "IPSL-CM6A-LR"))+ 
+  scale_shape_manual(name = "Earth system model", values = c(16,15), labels = c("GFDL-ESM4", "IPSL-CM6A-LR"))+
+  labs(x="Large Marine Ecosystem", y = "Correlation") +
+  coord_flip() +
+  ylim(-1,1)+
+  theme_classic() +
+  theme(text = element_text(size = 10), 
+        axis.title = element_text(size = 9),
+        axis.text = element_text(size = 7),
+        legend.title=element_text(size = 9), 
+        legend.text=element_text(size = 8),
+        legend.key.size = unit(0.1, "cm"),
+        legend.position = "bottom", legend.justification = "center") 
+
+# save plot
+pdf("data/data_products/BOATS_correlation.pdf", width=5.5, height=7)
+plot
+dev.off()
 
 ```
