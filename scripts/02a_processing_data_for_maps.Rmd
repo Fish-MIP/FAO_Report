@@ -114,7 +114,7 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   #Apply calculations to biases only
   summarise(across(reference:rel_change_mean00_ssp585, 
                    #Listing statistics to be calculated
-                   list(mean = mean), 
+                   list(mean = ~mean(.x, na.rm = T)), 
                    #Setting column names
                    .names = "{.col}_{.fn}")) |> 
   #Apply mask - We will use GFDL because it includes a few extra rows in the
