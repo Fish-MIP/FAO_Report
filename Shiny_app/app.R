@@ -243,14 +243,17 @@ server <- function(input, output) {
                         labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
       guides(color = guide_legend(nrow = 1, title.position = "left"))+
       theme_classic()+
-      labs(y = "Change in exploitable\nfish biomass (%)")+
+      scale_x_continuous(breaks = seq(1950, 2100, 10))+
+      labs(y = "Change in exploitable fish biomass (%)")+
       theme(legend.position = "top", legend.justification = "center", 
-            legend.text = element_text(size = 12),
+            legend.text = element_text(size = 14), 
+            legend.title = element_text(size = 14),
             panel.grid.minor.y = element_blank(), 
             axis.title.x = element_blank(),
-            axis.title.y = element_text(size = 12),
+            axis.title.y = element_text(size = 14),
             axis.text.x = element_text(angle = 45, vjust = 0.765, 
-                                       hjust = 0.65))
+                                       hjust = 0.65, size = 12),
+            axis.text.y = element_text(size = 12))
     p
   })
 }
