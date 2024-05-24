@@ -329,14 +329,15 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
         label = c("0", "±50%", "±100%"),
         color = "darkgray", angle = -4, size = 5) +
        #  geom_image(x = 0, y = -unique(rank_rgn_adj$end_point)/4, image = here("fishmip/images/FishMIP_logo.png"), size = 0.15) + # for fishmip logo if you want
-      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
+      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
       coord_polar(clip = "off") +
       scale_pattern_manual(values = c("circle", "none")) +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F,
                         guide = guide_legend(override.aes = list(pattern = "none") # might be redundant (see below)
                                              )) +  # Assign fill colors manually
     circle_theme +
-    labs(caption = glue("{scen_plot}, {decade_type}"),
+    labs(
+      #caption = glue("{scen_plot}, {decade_type}"),
          fill = "Average biomass change") +
     guides(alpha = "none",
            pattern = "none",
@@ -356,16 +357,16 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
   ggsave(glue(here("scripts/circle_figs/bar_{scen}_{decade_type}_{spatial_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
 
 
- g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) + 
-   geom_bar(stat = "identity", show.legend = TRUE) + 
+ g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
+   geom_bar(stat = "identity", show.legend = TRUE) +
   geom_errorbar(
-     aes(x = 1, 
+     aes(x = 1,
     ymin = -end_point/4,
     ymax = end_point,
     alpha = 0),
     color = "white"
-  ) + 
-    geom_text( 
+  ) +
+    geom_text(
       data = rank_rgn_adj,
        aes(x = fa_ffcl_shrt,
            label = rgn_name_short,
@@ -416,7 +417,7 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
     geom_text(
       data = rgn_shift,
       aes(y = unique(rank_rgn_adj$end_point)/1.5,
-          x = name_x, 
+          x = name_x,
           label = contnnt),
       inherit.aes=FALSE,
       size=7) +
@@ -425,26 +426,25 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
         y     = c(0, unique(rank_rgn_adj$end_point)/2, unique(rank_rgn_adj$end_point)),
         label = c("0", glue("±50"), glue("±100%")),
         color = "darkgray", angle = -4, size = 5) +
-          geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("Global Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
+      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
   coord_polar(clip = "off") +
-        scale_pattern_manual(values = c("circle", "none")) +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
   circle_theme +
-    labs(caption = glue("{scen_plot}, {decade_type}"),
+    labs(
          fill = "Average biomass change") +
     guides(alpha = "none",
 
            fill = guide_legend(
-               title.position = "bottom",  
-               title.hjust = 0.5, 
+               title.position = "bottom",
+               title.hjust = 0.5,
                title.vjust = 1,
-               nrow = 2, 
-               label.position = "bottom",  
+               nrow = 2,
+               label.position = "bottom",
                label.hjust = 0.5,
                label.vjust = 1
     ))
-  
-  
+
+
 
   ggsave(glue(here("scripts/circle_figs/bar_{scen}_{decade_type}_{spatial_type}.png")), height=20, width=20, units=c("in"), bg = "white")
 
@@ -453,14 +453,45 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
 
 }
 
+```
+
+Save a legend separately... 
+
+```{r}
 ## save legend separately in case we need it post-processing
   
-  
-g_legend <- cowplot::get_plot_component(g, "guide-box-bottom", return_all = TRUE)
+  rank_rgn_adj_new <- rank_rgn_adj %>% filter(!is.na(mean))
+
+# order categories
+all_categories <- c("Decrease >30%",  "Decrease 20 to 30%", "Decrease 10 to 20%",  "Decrease <10%", "Increase <10%", "Increase 10 to 20%", "Increase 20 to 30%",  "Increase >30%")
+rank_rgn_adj_new$fill_category <- factor(rank_rgn_adj_new$fill_category, levels = all_categories)
+
+# this is probably redundant but i dont feel like fixing it
+all_categories_new <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%",  "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",  "Increase >30%")
+
+ g <- ggplot(data = rank_rgn_adj_new, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
+   geom_bar(stat = "identity", show.legend = TRUE) +
+      scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
+  circle_theme +
+    labs(
+         fill = "Average biomass change") +
+    guides(alpha = "none",
+
+           fill = guide_legend(
+               title.position = "bottom",
+               title.hjust = 0.5,
+               title.vjust = 1,
+               nrow = 1,
+               label.position = "bottom",
+               label.hjust = 0.5,
+               label.vjust = 1
+    ))
+
+g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)
 
 ggdraw(g_legend)
 
-ggsave(plot = g_legend, here("scripts/circle_figs/legend.png"), dpi = 300, height = 8, width =8)
+ggsave(plot = g_legend, here("scripts/circle_figs/legend.png"), dpi = 300, height = 8, width =10)
 
 ```
 
