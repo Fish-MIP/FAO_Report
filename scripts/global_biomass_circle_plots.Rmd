@@ -37,6 +37,9 @@ cmip_data <- read.csv(here("data/table_stats_with_continent.csv")) %>%
   )) %>%
   filter(!is.na(mean))
 
+# %>%
+#  filter(!(fa_ffcl_shrt %in% c("Türkiye", "Georgia", "Romania", "Bulgaria", "Ukraine"))) # filter out black sea countries due to uncertainty  
+
 
 ```
 
@@ -52,9 +55,10 @@ decades <- c("2091-2100", "2041-2050")
 scenarios <- c("ssp585", "ssp126")
 spatial_scales <- c("countries_high_seas", "countries")
 
+
 for(spatial_type in spatial_scales){ # specify what spatial scales you want to include in plot
 
-  # spatial_type = "countries"
+  # spatial_type = "countries_high_seas"
   
   if(spatial_type == "countries_high_seas"){
   
@@ -68,11 +72,26 @@ cmip_data_plot <- cmip_data %>%
 }
 
 
+cmip_data_plot <- cmip_data_plot %>% 
+  mutate(mean_outlier = case_when(
+    mean >= 50 ~ 50,
+    mean <= -50 ~ -50,
+    TRUE ~ mean
+  ))
+  
+  
+  max_value <- max(abs(cmip_data_plot$mean_outlier), na.rm = TRUE)
+  mid_value = max_value/2
+
+  max_value_label <- round(max_value)
+  mid_value_label <- round(mid_value)
+
+  
 for(decade_type in decades){ # specify the decade for the plot
   for(scen in scenarios){ # specify the scenario for the plot
 
-  # scen = "ssp126"
-  # decade_type = "2041-2050"
+# scen = "ssp126"
+# decade_type = "2041-2050"
     
     scen_plot <- data.frame(scenario = scen) %>%
       mutate(scen_clean = case_when(
@@ -98,11 +117,11 @@ plot_df <- cmip_data_plot %>% ## filter for scenario and decade
          scenario == scen) %>%
   data.frame() %>%
   mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>%
-  arrange(contnnt, pos_neg, abs(mean)) # order by continent, increase/decrease, and mean
+  arrange(contnnt, pos_neg, abs(mean_outlier)) # order by continent, increase/decrease, and mean
 
 get_pos_neg_ranks <- plot_df %>%
   group_by(contnnt, pos_neg, fa_ffcl_shrt) %>%
-  summarise(index = sum(mean, na.rm = TRUE),
+  summarise(index = sum(mean_outlier, na.rm = TRUE),
             sd = sum(sd, na.rm = TRUE)) %>% # these are just distinct numbers, so group by is unnecessary i think?
     mutate(new_index = abs(index)) %>%
   arrange(contnnt, pos_neg, -new_index)
@@ -151,7 +170,7 @@ rank_rgn <- get_pos_neg_ranks %>%
  to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
  rank_rgn_adj  <- rbind(to_add, rank_rgn)
 
-rank_rgn_adj$end_point <- 100 # point where we will want to place the country labels.. for this we'll just use 100.
+rank_rgn_adj$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
 
  # some code to orient the country labels
 sequence_length = length(unique(rank_rgn_adj$fa_ffcl_shrt))
@@ -377,6 +396,333 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
        inherit.aes = FALSE,
        fontface = "bold",
        alpha = 0.9,
+       size = 7) +
+   geom_segment(
+        x = 0,
+         y = 0,
+         xend = dim(rank_rgn_adj)[1]+1,
+         yend = 0,
+        alpha = 1,
+        color = "white",
+        size = 0.1) +
+           geom_segment(
+        x = 0,
+         y = 10,
+         xend = dim(rank_rgn_adj)[1]+1,
+         yend = 10,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+               geom_segment(
+        x = 0,
+         y = 20,
+         xend = dim(rank_rgn_adj)[1]+1,
+         yend = 20,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+                   geom_segment(
+        x = 0,
+         y = 30, # incase the scenario doesnt have any values > 30
+         xend = dim(rank_rgn_adj)[1]+1,
+         yend = 30,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+           # georegion names
+    geom_text(
+      data = rgn_shift,
+      aes(y = unique(rank_rgn_adj$end_point)/1.5,
+          x = name_x,
+          label = contnnt),
+      inherit.aes=FALSE,
+      size=7) +
+    annotate("text",
+        x     = c(3, 3, 3),
+        y     = c(0, unique(rank_rgn_adj$end_point)/2, unique(rank_rgn_adj$end_point)),
+        label = c("0", glue("±{mid_value_label}%"), glue("±{max_value_label}%")),
+        color = "darkgray", angle = -4, size = 5) +
+      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
+  coord_polar(clip = "off") +
+      scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
+  circle_theme +
+    labs(
+         fill = "Average biomass change") +
+    guides(alpha = "none",
+
+           fill = guide_legend(
+               title.position = "bottom",
+               title.hjust = 0.5,
+               title.vjust = 1,
+               nrow = 2,
+               label.position = "bottom",
+               label.hjust = 0.5,
+               label.vjust = 1
+    ))
+
+
+
+  ggsave(glue(here("scripts/circle_figs/bar_{scen}_{decade_type}_{spatial_type}_font7.png")), height=20, width=20, units=c("in"), bg = "white")
+
+    }
+  }
+}
+
+```
+
+Try doing a stacked bar chart?
+
+```{r}
+scenarios <- c("ssp585", "ssp126")
+spatial_scales <- c("countries_high_seas", "countries")
+
+
+for(spatial_type in spatial_scales){ # specify what spatial scales you want to include in plot
+
+  # spatial_type = "countries_high_seas"
+  
+  if(spatial_type == "countries_high_seas"){
+  
+cmip_data_plot <- cmip_data %>% 
+  filter(spatial_scale %in% c("countries", "FAO_area"))
+
+  }else{
+  cmip_data_plot <- cmip_data %>% 
+  filter(spatial_scale %in% c("countries"))
+    
+}
+
+
+cmip_data_plot <- cmip_data_plot %>% 
+  mutate(mean_outlier = case_when(
+    mean >= 50 ~ 50,
+    mean <= -50 ~ -50,
+    TRUE ~ mean
+  )) %>%
+  mutate(new_index = abs(mean)) %>%
+  group_by(fa_ffcl_shrt, scenario) %>%
+  mutate(stacked_mean_total = sum(new_index)) %>%
+  ungroup()
+  
+  
+  max_value <- max(abs(cmip_data_plot$new_index), na.rm = TRUE)
+  mid_value = max_value/2
+
+  max_value_label <- round(max_value)
+  mid_value_label <- round(mid_value)
+
+  
+# for(decade_type in decades){ # specify the decade for the plot
+  for(scen in scenarios){ # specify the scenario for the plot
+
+# scen = "ssp585"
+
+    scen_plot <- data.frame(scenario = scen) %>%
+      mutate(scen_clean = case_when(
+        scenario == "ssp126" ~ "SSP1-2.6",
+        scenario == "ssp585" ~ "SSP5-8.5"
+      )) %>%
+      pull(scen_clean) %>% 
+      unique() # pull a cleaned up version to label the plot
+    
+    ## pull values for the global average mean and sd 
+# scen_decade_global_vals <- cmip_data %>%
+#   filter(spatial_scale %in% c("global")) %>%
+#   filter(decade == decade_type,
+#          scenario == scen) 
+# 
+# scen_decade_global_sd <- scen_decade_global_vals %>%
+#   pull(sd) %>% unique() %>% round
+# scen_decade_global_mean <- scen_decade_global_vals %>%
+#   pull(mean) %>% unique() %>% round()
+    
+plot_df <- cmip_data_plot %>% ## filter for scenario and decade
+  filter(
+    # decade == decade_type,
+         scenario == scen) %>%
+  data.frame() %>%
+  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>%
+  arrange(contnnt, pos_neg, stacked_mean_total) # order by continent, increase/decrease, and mean
+
+get_pos_neg_ranks <- plot_df %>%
+  arrange(contnnt, pos_neg, -stacked_mean_total)
+
+rank_pos_neg <- get_pos_neg_ranks %>%
+  group_by(contnnt) %>% 
+  summarise(sum_mean = sum(stacked_mean_total),
+            count = length(stacked_mean_total)) %>%
+  ungroup()
+
+rank_pos_neg$contnnt <- factor(rank_pos_neg$contnnt, 
+                                         levels=unique(rank_pos_neg$contnnt))
+get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt, 
+                                         levels=unique(rank_pos_neg$contnnt))
+
+## change some names for plot so that they will fit...
+rank_rgn <- get_pos_neg_ranks %>%
+  arrange(contnnt, pos_neg, -stacked_mean_total) %>%
+     mutate(rgn_name_short = fa_ffcl_shrt, 
+         rgn_name_short = gsub("Islands|islands", "Isl", rgn_name_short),
+         rgn_name_short = gsub("Island", "Isl", rgn_name_short),
+         rgn_name_short = gsub("Democratic", "Dem", rgn_name_short),
+         rgn_name_short = gsub("Republic", "Rep", rgn_name_short),
+         rgn_name_short = gsub("South", "S", rgn_name_short),
+         rgn_name_short = gsub("American", "Am", rgn_name_short),
+         rgn_name_short = gsub("the United States", "US", rgn_name_short),
+         rgn_name_short = gsub("Territory", "Terr", rgn_name_short),
+         rgn_name_short = gsub("Saint", "St", rgn_name_short),
+         rgn_name_short = gsub(" and ", " & ", rgn_name_short),
+         rgn_name_short = gsub("Republique", "Rep", rgn_name_short),
+         rgn_name_short = gsub("Dem Rep of the", "Dem Rep of", rgn_name_short),
+         rgn_name_short = gsub("Georgia and the", "Georgia and", rgn_name_short),
+         rgn_name_short = gsub("St Vincent and the", "St Vincent and", rgn_name_short),
+         rgn_name_short = gsub("Howland Isl & Baker Isl", "Howland & Baker Isl", rgn_name_short),
+         rgn_name_short = gsub("Northern", "N", rgn_name_short), 
+         rgn_name_short = gsub("Alaska", "AK", rgn_name_short),
+         rgn_name_short = gsub("Hawaii", "HI", rgn_name_short),
+         rgn_name_short = gsub("United Kingdom", "UK", rgn_name_short))
+
+rank_rgn_label <- rank_rgn %>% 
+  distinct(fa_ffcl_shrt, rgn_name_short, stacked_mean_total)
+
+
+# add empty space to create space in the circleplot for axes
+ empty_bar <- 5
+ to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn_label)) )
+ colnames(to_add) = colnames(rank_rgn_label)
+ to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
+ rank_rgn_label  <- rbind(to_add, rank_rgn_label)
+ 
+empty_bar <- 5
+ to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn)) )
+ colnames(to_add) = colnames(rank_rgn)
+ to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
+ rank_rgn_adj  <- rbind(to_add, rank_rgn)
+ 
+
+rank_rgn_adj$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
+rank_rgn_label$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
+
+ # some code to orient the country labels
+sequence_length = length(unique(rank_rgn_label$fa_ffcl_shrt))
+first_sequence = c(1:(sequence_length%/%2)) 
+second_sequence = c((sequence_length%/%2+1):sequence_length) 
+first_angles = c(90 - 180/length(first_sequence) * first_sequence)
+second_angles = c(-90 - 180/length(second_sequence) * second_sequence)
+rank_rgn_label$angle <- c(first_angles, second_angles)
+rank_rgn_label$hjust <- c(rep(0, length(first_sequence)), 
+                    rep(1, length(second_sequence)))
+
+
+# color for region labels and breaks
+rank_rgn_adj <- rank_rgn_adj %>%
+  rename(index = mean) %>%
+  mutate(fa_ffcl_shrt = factor(fa_ffcl_shrt, unique(fa_ffcl_shrt))) %>%
+  mutate(pos_neg = factor(pos_neg, unique(pos_neg))) %>%
+  mutate(color = "black") %>%
+  mutate(color = ifelse(is.na(index), "white", color)) %>%
+  mutate(fill_category = case_when(
+    index < -30 ~ "Decrease >30%",
+    index <= -20 & index >= -30 ~ "Decrease 20 to 30%",
+    index <= -10 & index > -20 ~ "Decrease 10 to 20%",
+    index <= 0 & index > -10 ~ "Decrease <10%",
+    index >= 0 & index < 10 ~ "Increase <10%",
+    index >= 10 & index < 20 ~ "Increase 10 to 20%", 
+    index >= 20 & index <= 30 ~ "Increase 20 to 30%",
+    index > 30 ~ "Increase >30%"
+  )) %>%
+  arrange(contnnt, pos_neg, -stacked_mean_total, new_index)
+
+
+# make dataframe for continent text locations
+
+if(spatial_type == "countries_high_seas"){
+rgn_shift <- data.frame(
+                         contnnt = rank_pos_neg$contnnt,
+                         name_x = c(20, 75, 125, 165, 190, 215),
+                         name_y = c(70, 70, 70, 70, 70, 70))
+rgn_shift <- rgn_shift %>%
+   mutate(contnnt = as.character(contnnt))
+}else{
+  rgn_shift <- data.frame(
+                         contnnt = rank_pos_neg$contnnt,
+                         name_x = c(20, 75, 125, 165, 200),
+                         name_y = c(70, 70, 70, 70, 70))
+rgn_shift <- rgn_shift %>%
+   mutate(contnnt = as.character(contnnt))
+  
+}
+
+# specify theme
+circle_theme <- theme(axis.line=element_blank(),
+                      axis.text.y=element_blank(),
+                      axis.ticks=element_blank(),
+                      axis.title.x=element_blank(),
+                      axis.title.y=element_blank(),
+                     # legend.position="none", # do we want legend?  
+                      legend.position='bottom', 
+                      legend.justification = "left",
+                      panel.background=element_blank(),
+                      panel.border=element_blank(),
+                      panel.grid.major=element_blank(),
+                      panel.grid.minor=element_blank(),
+                      plot.background=element_blank(),
+                      axis.text.x = element_blank(),
+                      legend.key.width = unit(26, "mm"),
+                      legend.key.height = unit(0.3, "cm"),
+                      plot.title = element_text(hjust = 1),
+                     plot.caption = element_text(hjust = 1, size = 16),
+                    plot.margin = margin(30, 40, 10, 30, unit = "pt"), # don't think this is doing anything to help with margins
+                      legend.spacing.y = unit(0, "pt"))
+
+
+# rank_rgn_adj$uncertain <- factor(rank_rgn_adj$uncertain, c("yes", "no")) # order the sd uncertainty factors
+
+# Define colors for each fill category
+fill_colors <- c(
+  "Decrease >30%" = "#AC390E",
+  "Increase <10%" = "honeydew3",
+    "Decrease 20 to 30%" = "#C4603E",
+  "Increase 10 to 20%" = "lightblue2",
+      "Decrease 10 to 20%" = "darksalmon",
+  "Increase 20 to 30%" = "#4297D3",
+    "Decrease <10%" = "wheat",
+  "Increase >30%" = "#1B194B"
+)
+
+# order categories
+all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", "Decrease <10%",  "Increase >30%")
+rank_rgn_adj$fill_category <- factor(rank_rgn_adj$fill_category, levels = all_categories)
+
+# this is probably redundant but i dont feel like fixing it
+all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "Increase 10-20%", "Decrease 10-20%", "Increase 20-30%", "Decrease <10%",  "Increase >30%")
+
+
+
+ g <- ggplot() + # ok so this works but losing order of data in plots for some reason
+   geom_bar(data = rank_rgn_adj %>% filter(decade == "2091-2100"), aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", stat = "identity", show.legend = TRUE) +
+      geom_bar(data = rank_rgn_adj %>% filter(decade == "2041-2050"), aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), stat = "identity", position = "stack", show.legend = TRUE) +
+  geom_errorbar( data = rank_rgn_adj,
+     aes(x = 1,
+    ymin = -end_point/4,
+    ymax = end_point,
+    alpha = 0),
+    color = "white"
+  ) +
+    geom_text(
+      data = rank_rgn_label,
+       aes(x = fa_ffcl_shrt,
+           label = rgn_name_short,
+           angle = angle,
+           y = end_point,
+           hjust = hjust,
+               ),
+       inherit.aes = FALSE,
+       fontface = "bold",
+       alpha = 0.9,
        size = 4) +
    geom_segment(
         x = 0,
@@ -424,9 +770,8 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
     annotate("text",
         x     = c(3, 3, 3),
         y     = c(0, unique(rank_rgn_adj$end_point)/2, unique(rank_rgn_adj$end_point)),
-        label = c("0", glue("±50"), glue("±100%")),
+        label = c("0", glue("±{mid_value_label}%"), glue("±{max_value_label}%")),
         color = "darkgray", angle = -4, size = 5) +
-      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
   coord_polar(clip = "off") +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
   circle_theme +
@@ -446,14 +791,40 @@ all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "I
 
 
 
-  ggsave(glue(here("scripts/circle_figs/bar_{scen}_{decade_type}_{spatial_type}.png")), height=20, width=20, units=c("in"), bg = "white")
+  ggsave(glue(here("scripts/circle_figs/bar_{scen}_{spatial_type}_stacked.png")), height=20, width=20, units=c("in"), bg = "white")
 
     }
   }
+# }
 
-}
+
+# Sample dataframe
+test <- rank_rgn_adj %>% 
+  filter(fa_ffcl_shrt == "Arctic Sea") %>%
+  dplyr::select(fa_ffcl_shrt, scenario, decade, index, fill_category, index ,new_index)
+
+ggplot() + # ok grouping by scenario works for some reason
+   geom_bar(data = test %>% filter(decade == "2091-2100"), aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, group = decade, color = decade), position = "stack", stat = "identity", show.legend = TRUE) +
+     geom_bar(data = test %>% filter(decade == "2041-2050"), aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, group = decade, color = decade), position = "stack", stat = "identity", show.legend = TRUE) +
+      scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
+  #circle_theme +
+    labs(
+         fill = "Average biomass change") +
+    guides(alpha = "none",
+
+           fill = guide_legend(
+               title.position = "bottom",
+               title.hjust = 0.5,
+               title.vjust = 1,
+               nrow = 2,
+               label.position = "bottom",
+               label.hjust = 0.5,
+               label.vjust = 1
+    ))
+ 
 
 ```
+
 
 Save a legend separately... 
 
