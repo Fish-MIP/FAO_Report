@@ -2,6 +2,7 @@
 # Loading R libraries -----------------------------------------------------
 library(shiny)
 library(shinyWidgets)
+library(shinydashboard)
 library(tidyverse)
 library(bslib)
 library(cowplot)
@@ -59,7 +60,9 @@ scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
                    na.value = na.value, guide = guide, ...)
 }
 
-world <- ne_countries(returnclass = "sf")
+table_stats <- read_csv("../data/table_stats_country_admin.csv")
+
+world <- ne_countries(returnclass = "sf", scale = "medium")
 
 #Define base steps for maps
 base_map <- list(geom_tile(),
@@ -77,148 +80,339 @@ base_map <- list(geom_tile(),
                        legend.position = "none"))
 
 scaler <- function(x, type, ratio = F){
-  if((x > 0 & type == "min") | (x < 0 & type == "max")){
-    x <- ifelse(ratio == T, x*.95, x*.75)
-  }else if((x < 0 & type == "min") | (x > 0 & type == "max")){
-    x <- ifelse(ratio == T, x*1.05, x*1.25)
+  if((x > 0 & type == "min") | (x < 0 & type == "min")){
+    x <- ifelse(ratio == T, x-3, x-6)
+  }else if((x < 0 & type == "max") | (x > 0 & type == "max")){
+    x <- ifelse(ratio == T, x+2, x+5)
   }else if(x == 0 & type == "min"){
-    x <- ifelse(ratio == T, x-.05, x-.15)
+    x <- ifelse(ratio == T, x-1, x-2)
   }else{
-    x <- ifelse(ratio == T, x+.05, x+.15)
+    x <- ifelse(ratio == T, x+1, x+2)
   }
   return(x)
 }
 
 # Defining user interface -------------------------------------------------
-ui <- fluidPage(
-  theme = bs_theme(bootswatch = "yeti"),
-  #Title panel including FishMIP logo and title
-  titlePanel(title = div(img(src = "FishMIP_logo.png", height = 150, 
-                             width = 450, style = "display: block; 
-                                                  margin-left: auto; 
-                                                  margin-right: auto;"),
-                 h1("(BETA version) Percentage change in fish biomass from FishMIP model ensemble",
-                    style = "background-color:#f3f3f3;
-                            border:1.5px solid #c9d5ea;
-                            padding-left: 15px;
-                            padding-bottom: 10px;
-                            padding-top: 10px;
-                            text-align: center;
-                            font-weight: bold")),
-             windowTitle = "(BETA version) FishMIP Ensemble biomass change"),
-  #Side panel
-  sidebarLayout(
-    sidebarPanel(
-      radioButtons("sectors", "Choose group you would like to visualise",
-                   choiceNames = c("Exclusive Economic Zones (EEZs)",
-                                   "High seas per FAO regions"),
-                   choiceValues = c("EEZ", "FAO"),
-                   selected = NULL),
-      selectInput(inputId = "region", label = "Choose your area of interest",
-                  choices = NULL)),
-    mainPanel(
-      plotOutput(outputId = "plot1"), br(),
-      plotOutput(outputId = "plot2"), br(),
-      em("Lines show mean percentage change for model ensemble and shaded areas show model ensemble standard deviation in relation to historical reference period (mean 2005-2014)"),
-      br(), br(), br(),
-      dataTableOutput(outputId = "table")
-    )
-  )
-)
+ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
+                                "Ecological impacts of climate change"),
+                 fluid = T,
+                 tabPanel(title = "About",
+                          img(src = "FishMIP_logo.png", height = 150,
+                          width = 450, style = "display: block;
+                          margin-left: auto; margin-right: auto;"),
+                          box(title = "About this website", status = "primary",
+                              width = 18,
+                              fluidRow(column(width = 11,
+                              "This tool shows estimates of fish biomass change\
+                              under two different climate scenarios: low
+                              emissions (SSP1-2.6) and high emissions\
+                              (SSP5-8.5). Results shown are the mean percentage\
+                              across 10 ecosystem models making up the FishMIP\
+                              ensemble.",
+                              br(),
+                              "This tool was developed by FishMIP and supports \
+                              the 'xxxxx' report for the FAO and published in \
+                              July 2024 and it can be accessed ",
+                              tags$a(href="https://fishmip.org/publications.html",
+                                     "here."),
+                              br(),
+                              br(),
+                              strong("Who is FishMIP?"),
+                              br(),
+                              "The Fisheries and Marine Ecosystem Model \
+                              Intercomparison Project (FishMIP) is a network of \
+                              more than 100 marine ecosystem modellers and \
+                              researchers from around the world. Our goal is to \
+                              bring together diverse marine ecosystem models to \
+                              help better understand and project the long-term \
+                              impacts of climate change on fisheries and marine \
+                              ecosystems, and to use our findings to help inform\
+                              policy.",
+                              br(),
+                              "You can find more information about FishMIP in\
+                              our ",
+                              tags$a(href="https://fishmip.org/",
+                                     "website."),
+                              br(),
+                              br(),
+                              strong("Who is this tool directed to?"),
+                              br(),
+                              "Our target audience is xxxx.",
+                              br(),
+                              br(),
+                              strong("How should I use this tool?"),
+                              br(),
+                              "Instructions on how to use this website.",
+                              br(),
+                              br(),
+                              strong("How should I cite data from this site?"),
+                              br(),
+                              "If you use data downloaded from this site, we \
+                              suggest the following citation:",
+                              br(),
+                              "FishMIP (2024). FAO Report citation.",
+                              br(),
+                              br(),
+                              strong("Acknowledgments"),
+                              br(),
+                              "The development of this tool was supported by \
+                              the Australian Government through the Australian \
+                              Research Council (ARC) Centre of Excellence for \
+                              XXXXX (project XXXXX).",
+                              br(),
+                              br(),
+                              card(img(src = "IMAS_logo.png", height = 150,
+                                       width = 300, style = "display: block;
+                                       margin-left: auto; margin-right:auto"))
+                              )))
+                          ),
+                 tabPanel(title = "Global Overview",
+                          img(src = "FishMIP_logo.png", height = 150,
+                              width = 450, style = "display: block;
+                              margin-left: auto; margin-right: auto;"),
+                          "This tab will show circle plots from Gage and a map\
+                          of the world. Aiming at having an interactive map \
+                          here. We will also have a download button.",
+                          sidebarLayout(
+                            sidebarPanel(
+                              p("Click the 'Download' button below to get the \
+                                data used to create this map."),
+                              #Download button
+                              downloadButton(outputId = "download_world",
+                                             label = "Download"
+                              )
+                          ),
+                          mainPanel()
+                          )),
+                 tabPanel(title = "Maps",
+                          img(src = "FishMIP_logo.png", height = 150,
+                              width = 450, style = "display: block;
+                              margin-left: auto; margin-right: auto;"),
+                          titlePanel("Maps of projected fish biomass change"),
+                          br(),
+                          "Select your area of interest to see how fish biomass\
+                          is projected to change for the decades between 2041 \
+                          and 2050, and between 2091 and 2100 under two \
+                          emissions scenarios: SSP1-2.6 and SSP5-8.5.",
+                          br(),
+                          br(),
+                          sidebarLayout(
+                            sidebarPanel(
+                              radioButtons("sectors_maps",
+                                           "Choose group you would like to \
+                                           visualise",
+                                           choiceNames =
+                                             c("Continent",
+                                               "High seas within FAO regions",
+                                               "Large Marine Ecosystems (LMEs)"
+                                             ),
+                                           choiceValues = c("cont", "FAO", 
+                                                            "LME"),
+                                           selected = NULL
+                              ),
+                              selectInput(inputId = "region_maps",
+                                          label = "Choose your area of interest",
+                                          choices = NULL
+                              )
+                            ),
+                            mainPanel(
+                              plotOutput(outputId = "plot_maps")
+                            )
+                          )
+                          ),
+                 tabPanel(title = "Time series",
+                          img(src = "FishMIP_logo.png", height = 150,
+                              width = 450, style = "display: block;
+                              margin-left: auto; margin-right: auto;"),
+                          titlePanel("Time series of fish biomass change"),
+                          br(),
+                          "Select the area of your interest to see how fish \
+                          biomass is estimated to change until 2100 under two \
+                          emissions scenarios: SSP1-2.6 and SSP5-8.5.",
+                          br(),
+                          "The estimated change shown in the plot is the mean \
+                          percentage change for FishMIP model ensemble in \
+                          relation to the historical reference period (mean for \
+                          the decade between 2005 and 2014). The shaded areas \
+                          show the standard deviation across the 10 ecosystem \
+                          models that form the FishMIP ensemble.",
+                          br(),
+                          br(),
+                          sidebarLayout(
+                            sidebarPanel(
+                              radioButtons("sectors_ts",
+                                           "Choose group you would like to \
+                                           visualise",
+                                           choiceNames =
+                                             c("Exclusive Economic Zones (EEZs)",
+                                               "High seas within FAO regions",
+                                               "Large Marine Ecosystems (LMEs)"
+                                               ),
+                                           choiceValues = c("EEZ", "FAO",
+                                                            "LME"),
+                                           selected = NULL
+                                           ),
+                              selectInput(inputId = "region_ts",
+                                          label = "Choose your area of interest",
+                                          choices = NULL
+                                          ),
+                              p("Click the 'Download' button below to get the \
+                                data used to create this time series plot."),
+                              #Download button
+                              downloadButton(outputId = "download_ts",
+                                             label = "Download"
+                                             )
+                            ),
+                          mainPanel(
+                          #   fluidRow(
+                          #     column(12, plotOutput(outputId = "plot2"))
+                            # )
+                            plotOutput(outputId = "plot_ts"),
+                            br(),
+                            br(), 
+                            br(),
+                            dataTableOutput(outputId = "table_ts")
+                          ))
+                 ))
 
-server <- function(input, output) {
+
+server <- function(input, output, session) {
+  ########## Global overview tab
+  output$download_world <- downloadHandler(
+    filename = function(){
+      "table_stats_country_admin.csv"
+    },
+    #Creating name of download file based on original file name
+    content = function(file){
+      write_csv(table_stats, file)
+    }
+  )
+  
+  
+  ########## Maps tab
+  region_list_maps <- reactive({
+    if(input$sectors_maps == "FAO"){
+      data <- fao_list
+    }
+    # else if(input$sectors_maps == "FAO"){
+    #   data <- fao_list
+    # }
+  })
+  
+  observeEvent(region_list_maps(), {
+    choices <- region_list_maps()$name
+    updateSelectInput(inputId = "region_maps",
+                      choices = choices)})
+  
+  maps_df <- reactive({
+    df <- maps_data |>
+      filter(name == input$region_maps)
+    return(df)
+    })
+  
+  output$plot_maps <- renderPlot({
+      minx <- min(maps_df()$x)
+      maxx <- max(maps_df()$x)
+      miny <- min(maps_df()$y)
+      maxy <- max(maps_df()$y)
+      rangex <- abs(abs(maxx)-abs(minx))
+      rangey <- abs(abs(maxy)-abs(miny))
+      if(rangex >= 1.15*rangey){
+        ylims <- c(scaler(miny, "min"),
+                   scaler(maxy, "max"))
+        xlims <- c(scaler(minx, "min", ratio = T),
+                   scaler(maxx, "max", ratio = T))
+      }else if(rangey >= 1.15*rangex){
+        xlims <- c(scaler(minx, "min"),
+                   scaler(maxx, "max"))
+        ylims <- c(scaler(miny, "min", ratio = T),
+                   scaler(maxy, "max", ratio = T))
+      }else{
+        xlims <- c(scaler(minx, "min"),
+                   scaler(maxx, "max"))
+        ylims <- c(scaler(miny, "min"),
+                   scaler(maxy, "max"))
+      }
+
+      p1 <- ggplot(maps_df(), aes(x = x, y = y,
+                                  fill = rel_change_mean50_ssp126_mean))+
+        base_map+
+        labs(title = "SSP1-2.6: 2041-2050")+
+        guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
+                                     barwidth = 15))+
+        theme(legend.position = "bottom")
+      #Get legend for fish biomass
+      leg_fish <- get_legend(p1)
+      p1 <- p1+
+        theme(legend.position = "none")+
+        coord_sf(xlims, ylims)
+      p2 <- ggplot(maps_df(), aes(x = x, y = y,
+                                  fill = rel_change_mean50_ssp585_mean))+
+        base_map+
+        labs(title = "SSP5-8.5: 2041-2050")+
+        coord_sf(xlims, ylims)
+      p3 <- ggplot(maps_df(), aes(x = x, y = y,
+                                  fill = rel_change_mean00_ssp126_mean))+
+        base_map+
+        labs(title = "SSP1-2.6: 2091-2100")+
+        coord_sf(xlims, ylims)
+      p4 <- ggplot(maps_df(), aes(x = x, y = y,
+                                  fill = rel_change_mean00_ssp585_mean))+
+        base_map+
+        labs(title = "SSP5-8.5: 2091-2100")+
+        coord_sf(xlims, ylims)
+
+      #Plotting everything together
+      p <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1, label_x = 0.1),
+                     plot_grid(p3, p4, ncol = 2, nrow = 1, label_x = 0.1),
+                     leg_fish, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
+      p
+    })
+  
+  ########## Time series tab
   region_list <- reactive({
-    if(input$sectors == "EEZ"){
+    if(input$sectors_ts == "EEZ"){
       data <- country_list
-      }else if(input$sectors == "FAO"){
+      }else if(input$sectors_ts == "FAO"){
         data <- fao_list
         }
   })
    
   observeEvent(region_list(), {
     choices <- region_list()$name
-    updateSelectInput(inputId = "region",
+    updateSelectInput(inputId = "region_ts",
                       choices = choices)})
   
-    maps_df <- reactive({
-      df <- maps_data |> 
-        filter(name == input$region)
-      return(df)
-      })
+  down_name <- reactive({
+    region_name <- input$region_ts |> 
+      #changing to lower case
+      str_to_lower() |> 
+      #removing accents
+      iconv(from = 'UTF-8', to = 'ASCII//TRANSLIT') |> 
+      #Removing parentheses
+      str_remove_all("\\(|\\)") |> 
+      #Replaces spaces " " with dashes "-"
+      str_replace_all(" ", "-") |> 
+      #Remove apostrophes in names
+      str_replace("'", "")
+    region_name <- str_c("mean_ensemble_perc_change_fish_bio_", 
+                         region_name, "_1950-2100.csv")
+    return(region_name)
+  })
+
     
-    ts_df <- reactive({
-      if(input$sectors == "EEZ"){
-        df <- count_bio |> 
-          filter(figure_name == input$region)
-      }else if(input$sectors == "FAO"){
-        df <- fao_bio |> 
-          filter(NAME_EN == input$region)
-      }
-      return(df)
+  ts_df <- reactive({
+    if(input$sectors_ts == "EEZ"){
+      df <- count_bio |> 
+        filter(figure_name == input$region_ts)
+    }else if(input$sectors_ts == "FAO"){
+      df <- fao_bio |> 
+        filter(NAME_EN == input$region_ts)
+    }
+    return(df)
     })
   
-  output$plot1 <- renderPlot({
-    minx <- min(maps_df()$x)
-    maxx <- max(maps_df()$x)
-    miny <- min(maps_df()$y)
-    maxy <- max(maps_df()$y)
-    rangex <- abs(abs(maxx)-abs(minx))
-    rangey <- abs(abs(maxy)-abs(miny))
-    if(rangex >= 1.15*rangey){
-      ylims <- c(scaler(miny, "min"),
-                 scaler(maxy, "max"))
-      xlims <- c(scaler(minx, "min", ratio = T),
-                 scaler(maxx, "max", ratio = T))
-    }else if(rangey >= 1.15*rangex){
-      xlims <- c(scaler(minx, "min"),
-                 scaler(maxx, "max"))
-      ylims <- c(scaler(miny, "min", ratio = T),
-                 scaler(maxy, "max", ratio = T))
-    }else{
-      xlims <- c(scaler(minx, "min"),
-                 scaler(maxx, "max"))
-      ylims <- c(scaler(miny, "min"),
-                 scaler(maxy, "max"))
-    }
-    
-    p1 <- ggplot(maps_df(), aes(x = x, y = y, 
-                                fill = rel_change_mean50_ssp126_mean))+
-      base_map+
-      labs(title = "SSP1-2.6: 2041-2050")+
-      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, 
-                                   barwidth = 15))+
-      theme(legend.position = "bottom")
-    #Get legend for fish biomass
-    leg_fish <- get_legend(p1)
-    p1 <- p1+
-      theme(legend.position = "none")+
-      coord_sf(xlims, ylims)
-    p2 <- ggplot(maps_df(), aes(x = x, y = y, 
-                                fill = rel_change_mean50_ssp585_mean))+
-      base_map+
-      labs(title = "SSP5-8.5: 2041-2050")+
-      coord_sf(xlims, ylims)
-    p3 <- ggplot(maps_df(), aes(x = x, y = y, 
-                                fill = rel_change_mean00_ssp126_mean))+
-      base_map+
-      labs(title = "SSP1-2.6: 2091-2100")+
-      coord_sf(xlims, ylims)
-    p4 <- ggplot(maps_df(), aes(x = x, y = y, 
-                                fill = rel_change_mean00_ssp585_mean))+
-      base_map+
-      labs(title = "SSP5-8.5: 2091-2100")+
-      coord_sf(xlims, ylims)
-    
-    #Plotting everything together
-    p <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1, 
-                             labels = c("a", "b"), label_x = 0.1),
-                   plot_grid(p3, p4, ncol = 2, nrow = 1, 
-                             labels = c("c", "d"), label_x = 0.1),
-                   leg_fish, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
-    p
-  })
-  
-  output$plot2 <- renderPlot({
+  output$plot_ts <- renderPlot({
     p <- ggplot(ts_df(), aes(x = year, y = mean_change, colour = scenario))+
       geom_line(linewidth = 0.5)+
       #Adding no change line at 0 for reference 
@@ -256,6 +450,18 @@ server <- function(input, output) {
             axis.text.y = element_text(size = 12))
     p
   })
+  
+  output$table_ts <- renderDataTable(ts_df())
+  
+  output$download_ts <- downloadHandler(
+    filename = function(){
+      down_name()
+    },
+    #Creating name of download file based on original file name
+    content = function(file){
+      write_csv(ts_df(), file)
+    }
+  )
 }
 
 shinyApp(ui = ui, server = server)
