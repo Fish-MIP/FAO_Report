@@ -20,6 +20,7 @@ library(readxl)
 library(tidyverse)
 library(data.table)
 library(janitor)
+library(sf)
 ```
 
 ## Getting FAO-EEZ information
@@ -43,6 +44,11 @@ area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
+
+#Shapefile containing EEZ and FAO boundaries
+fao_eez <- list.files(out_folder, "FAO_MajorAreas_200NM.shp", recursive = T, 
+                      full.names = T) |> 
+  read_sf()
 ```
   
 ## Getting a list of FishMIP biomass outputs
@@ -127,6 +133,27 @@ maps_data |>
   write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
+## Calculated weighted percentage change for FishMIP ensemble 
+  
+```{r}
+choro_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv") |> 
+  #Group by ID to link to shapefile
+  group_by(ID_mrgd) |> 
+  #Calculate weighted means across all columns starting with "rel_change"
+  summarise(across(starts_with("rel_change"), 
+                   list(weighted_mean = ~weighted.mean(.x, cell_area, 
+                                                       na.rm = T)), 
+                   .names = "{.col}"))
+
+#Joining weighted means to FAO-EEZ shapefile
+choro_data <- fao_eez |> 
+  left_join(choro_data, join_by(ID_mrgd))
+
+#Save shapefile
+choro_data |> 
+  write_sf("data/fao_eez_bio_change_choro.shp")
+```
+  
 ## Calculating annual fisheries catch
 We will calculate the yearly mean capture fisheries production per country (2012-2021). Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity).  
   
