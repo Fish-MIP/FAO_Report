@@ -1,3 +1,9 @@
+########TO DO
+#- Weighted means to be saved as df - shp takes too long to plot
+#- Change global map to use tiles instead of shapefile
+
+
+
 
 # Loading R libraries -----------------------------------------------------
 library(shiny)
@@ -19,17 +25,6 @@ maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv",
   mutate(name = case_when(!is.na(figure_name) ~ figure_name, 
                           !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
 
-country_list <- maps_data |> 
-  distinct(figure_name) |> 
-  drop_na() |> 
-  rename("name"= "figure_name") |> 
-  arrange(name)
-
-fao_list <- maps_data |>
-  distinct(NAME_EN) |> 
-  drop_na() |> 
-  rename("name"= "NAME_EN") |> 
-  arrange(name)
 
 #Ensemble percentage change in biomass by countries
 count_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
@@ -44,6 +39,34 @@ fao_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/",
                       recursive = T, full.names = T) |> 
   read_csv()
 
+
+#Table of summary statistics
+table_stats <- read_csv("../data/table_stats_country_admin.csv")
+
+#List of countries
+country_list <- maps_data |> 
+  distinct(figure_name) |> 
+  drop_na() |> 
+  rename("name"= "figure_name") |> 
+  arrange(name)
+
+fao_list <- maps_data |>
+  distinct(NAME_EN) |> 
+  drop_na() |> 
+  rename("name"= "NAME_EN") |> 
+  arrange(name)
+
+#Loading choropleth shapefile
+choro_data <- read_sf("../data/fao_eez_bio_change_choro.shp") |> 
+  #Apply Mollweide projection
+  st_transform(st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0"))
+
+#Map of the world
+world <- ne_countries(returnclass = "sf", scale = "medium")
+world_360 <- read_sf("../data/world_360deg.shp")
+
+
+# Supporting information --------------------------------------------------
 #Create custom-made color palette
 scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
                               option = "D", values = NULL, space = "Lab", 
@@ -60,11 +83,6 @@ scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
                                             space), 
                    na.value = na.value, guide = guide, ...)
 }
-
-table_stats <- read_csv("../data/table_stats_country_admin.csv")
-
-world <- ne_countries(returnclass = "sf", scale = "medium")
-world_360 <- read_sf("../data/world_360deg.shp")
 
 #Define base steps for maps
 base_map <- list(geom_tile(),
@@ -83,6 +101,18 @@ base_map <- list(geom_tile(),
                        title = element_text(size = 14, face = "bold"),
                        axis.text = element_text(size = 12)))
 
+#Define base steps for choropleth maps
+base_choro <- list(geom_sf(),
+                   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                                     type = scale_fill_custom, oob = oob_squish,
+                                     name = "% change in fish biomass"),
+                   theme_bw(),
+                   theme(panel.border = element_rect(colour = NA),
+                         plot.title = element_text(hjust = 0.5),
+                         legend.position = "none", 
+                         title = element_text(size = 14, face = "bold")))
+
+#Function to improve map ratios for plotting
 scaler <- function(x, type, ratio = F){
   if((x > 0 & type == "min") | (x < 0 & type == "min")){
     x <- ifelse(ratio == T, x-3, x-6)
@@ -186,7 +216,12 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                                              label = "Download"
                               )
                           ),
-                          mainPanel()
+                          mainPanel(
+                            fluidRow(
+                              column(6, plotOutput(outputId = "plot_choro1")),
+                              column(6, plotOutput(outputId = "plot_choro2"))
+                            )
+                          )
                           )),
                  tabPanel(title = "Maps",
                           img(src = "FishMIP_logo.png", height = 150,
@@ -287,6 +322,7 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
 
 
 server <- function(input, output, session) {
+  
   ########## Global overview tab
   output$download_world <- downloadHandler(
     filename = function(){
@@ -297,6 +333,13 @@ server <- function(input, output, session) {
       write_csv(table_stats, file)
     }
   )
+  
+  output$plot_choro1 <- renderPlot({
+    p1 <- choro_data |> ggplot(aes(fill = r__50_1))+
+      base_choro+
+      labs(title = "SSP1-2.6: 2041-2050")
+    p1
+  })
   
   
   ########## Maps tab
@@ -364,7 +407,6 @@ server <- function(input, output, session) {
       p1 <- ggplot(maps_df()$df, aes(x = x, y = y,
                                   fill = rel_change_mean50_ssp126_mean))+
         maps_df()$base_map+
-        # base_map+
         labs(title = "SSP1-2.6: 2041-2050")+
         coord_sf(maps_df()$xlims, maps_df()$ylims)
       p1
@@ -374,7 +416,6 @@ server <- function(input, output, session) {
     p2 <- ggplot(maps_df()$df, aes(x = x, y = y,
                                 fill = rel_change_mean50_ssp585_mean))+
       maps_df()$base_map+
-      # base_map+
       labs(title = "SSP5-8.5: 2041-2050")+
       coord_sf(maps_df()$xlims, maps_df()$ylims)
     p2
@@ -384,7 +425,6 @@ server <- function(input, output, session) {
     p3 <- ggplot(maps_df()$df, aes(x = x, y = y,
                                 fill = rel_change_mean00_ssp126_mean))+
       maps_df()$base_map+
-      # base_map+
       labs(title = "SSP1-2.6: 2091-2100")+
       coord_sf(maps_df()$xlims, maps_df()$ylims)
     p3
@@ -393,8 +433,7 @@ server <- function(input, output, session) {
   output$plot_maps4 <- renderPlot({
     p4 <- ggplot(maps_df()$df, aes(x = x, y = y,
                                 fill = rel_change_mean00_ssp585_mean))+
-      # maps_df()$base_map+
-      base_map+
+      maps_df()$base_map+
       labs(title = "SSP5-8.5: 2091-2100")+
       coord_sf(maps_df()$xlims, maps_df()$ylims)
     p4
@@ -423,18 +462,6 @@ server <- function(input, output, session) {
     p1
   })
       
-       
-    #   p1 <- p1+
-    #     theme(legend.position = "none")+
-    #     coord_sf(xlims, ylims)
- 
-    #   #Plotting everything together
-    #   # p <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1, label_x = 0.1),
-    #   #                plot_grid(p3, p4, ncol = 2, nrow = 1, label_x = 0.1),
-    #   #                leg_fish, ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
-    #   return(p1, p2, p3, p4)
-    # })
-    # 
   ########## Time series tab
   region_list <- reactive({
     if(input$sectors_ts == "EEZ"){
