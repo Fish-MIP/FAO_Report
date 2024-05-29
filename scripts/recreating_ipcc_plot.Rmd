@@ -7,10 +7,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
 ## Load libraries 
 
 ```{r}
@@ -18,18 +14,17 @@ rm(list = ls())
 library(reshape2)
 library(ggplot2)
 library(patchwork)
+library(cowplot)
 ```
 
 ## Get data from IPCC figure S4 Summary for policy makers
 
-Figure SPM.4 in IPCC, 2021: Summary for Policymakers. In: Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani, S.L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press, Cambridge, UK and New York, NY,USA, pp. 3−32, doi: 10.1017/9781009157896.001 .]
+Figure SPM.4 in IPCC, 2021: Summary for Policymakers. In: Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani, S.L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press, Cambridge, UK and New York, NY,USA, pp. 3−32, doi: 10.1017/9781009157896.001.]
 
 ```{r}
-
-co2<-read.csv("data/Carbon_dioxide_Gt_CO2_yr.csv") 
-co2<-melt(co2,id=c("years"))
-names(co2)<-c("year","scenario","Co2")
-
+co2 <- read.csv("data/Carbon_dioxide_Gt_CO2_yr.csv") 
+co2 <- melt(co2, id = c("years"))
+names(co2) <- c("year", "scenario", "Co2")
 ```
 
 ## Define style and plot panel a
@@ -40,46 +35,44 @@ base_gg <- list(geom_line(),
                 geom_hline(yintercept = 0, color = "grey", linewidth = 0.5, 
                            linetype = 1),
                 #Manually setting colours to be used in plots
-                 scale_color_manual(values = c(
-                                               "ssp119" = "#00ADCF",
-                                               "ssp126" = "#173C66",
-                                               "ssp245"="#F79420",
-                                               "ssp370"="#E71D25",
-                                               "ssp585" = "#951B1E"
-                                               ),
+                scale_color_manual(values = c("ssp119" = "#00ADCF",
+                                              "ssp126" = "#173C66",
+                                              "ssp245" = "#F79420",
+                                              "ssp370" = "#E71D25",
+                                              "ssp585" = "#951B1E"),
                                    name = "Scenarios",
-                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
-                scale_linetype_manual(values = c(
-                                               "ssp119" = 2,
-                                               "ssp126" = 1,
-                                               "ssp245"=2,
-                                               "ssp370"=2,
-                                               "ssp585" = 1
-                                               ),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
+                scale_linetype_manual(values = c("ssp119" = 2, "ssp126" = 1,
+                                                 "ssp245" = 2, "ssp370" = 2,
+                                                 "ssp585" = 1),
                                    name = "Scenarios",
-                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
-                                scale_size_manual(values = c(
-                                               "ssp119" = 0.5,
-                                               "ssp126" = 1,
-                                               "ssp245"=0.5,
-                                               "ssp370"=0.5,
-                                               "ssp585" = 1
-                                               ),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
+                                scale_size_manual(values = c("ssp119" = 0.5,
+                                                             "ssp126" = 1,
+                                                             "ssp245" = 0.5,
+                                                             "ssp370" = 0.5,
+                                                             "ssp585" = 1),
                                    name = "Scenarios",
-                                   labels = c("SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
                  guides(color = guide_legend(nrow = 1, title.position = "left")),
                 theme_classic(),
-                labs(y = bquote(CO[2]~"emissions Gt/year"),
-                      x = "Year"),
+                labs(y = bquote(CO[2]~"emissions Gt/year"), x = "Year"),
                  theme(legend.position = "none", 
                        panel.grid.minor.y = element_blank(), 
                        axis.title.x = element_text(size = 13),
                        axis.title.y = element_text(size = 13),
                        axis.text.y = element_text(size = 11),
-                       axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, 
-                                                  hjust = 0.65)))
+                       axis.text.x = element_text(size = 11, angle = 45, 
+                                                  vjust = 0.765, hjust = 0.65)))
 
-a<-ggplot(data = co2, aes(x = year, y = Co2, color = scenario,linetype=scenario,size=scenario)) +
+a <- ggplot(data = co2, aes(x = year, y = Co2, color = scenario, 
+                            linetype = scenario, size = scenario)) +
   base_gg +
   ggtitle("a") + 
   theme(plot.title = element_text(face = "bold", size = 13))
@@ -92,15 +85,14 @@ Citation:
 Figure SPM.8 in IPCC, 2021: Summary for Policymakers. In: Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report of the Intergovernmental Panel on Climate Change [Masson-Delmotte, V., P. Zhai, A. Pirani, S.L. Connors, C. Péan, S. Berger, N. Caud, Y. Chen, L. Goldfarb, M.I. Gomis, M. Huang, K. Leitzell, E. Lonnoy, J.B.R. Matthews, T.K. Maycock, T. Waterfield, O. Yelekçi, R. Yu, and B. Zhou (eds.)]. Cambridge University Press, Cambridge, UK and New York, NY,USA, pp. 3−32, doi: 10.1017/9781009157896.001 .]
 
 ```{r}
-
-#historical Global mean surface air temperature (GSAT) anomalies relative to 1850-1900
-
-hist<-read.csv("data/tas_global_Historical.csv") 
-ssp119<-read.csv("data/tas_global_SSP1_1_9.csv")
-ssp126<-read.csv("data/tas_global_SSP1_2_6.csv") 
-ssp245<-read.csv("data/tas_global_SSP2_4_5.csv")
-ssp370<-read.csv("data/tas_global_SSP3_7_0.csv") 
-ssp585<-read.csv("data/tas_global_SSP5_8_5.csv")
+#historical Global mean surface air temperature (GSAT) anomalies relative to 
+#1850-1900
+hist <- read.csv("data/tas_global_Historical.csv") 
+ssp119 <- read.csv("data/tas_global_SSP1_1_9.csv")
+ssp126 <- read.csv("data/tas_global_SSP1_2_6.csv") 
+ssp245 <- read.csv("data/tas_global_SSP2_4_5.csv")
+ssp370 <- read.csv("data/tas_global_SSP3_7_0.csv") 
+ssp585 <- read.csv("data/tas_global_SSP5_8_5.csv")
 
 hist$scenario <-"hist"
 ssp119$scenario <-"ssp119"
@@ -109,16 +101,14 @@ ssp245$scenario <-"ssp245"
 ssp370$scenario <-"ssp370"
 ssp585$scenario <-"ssp585"
 
-tas_global<-rbind(hist,ssp119,ssp126,ssp245,ssp370,ssp585)
+tas_global <- rbind(hist, ssp119, ssp126, ssp245, ssp370, ssp585)
 # summary(tas_global)
-tas_global$scenario<-as.factor(tas_global$scenario)
-
+tas_global$scenario <- as.factor(tas_global$scenario)
 ```
 
 ## Define style and plot panel b
 
 ```{r, echo=FALSE}
-
 base_gg <- list(geom_line(),
                 #Manually setting colours to be used in plots
                  scale_color_manual(values = c("hist" = "black",
@@ -129,90 +119,91 @@ base_gg <- list(geom_line(),
                                                "ssp585" = "#951B1E"
                                                ),
                                    name = "Scenarios",
-                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
-                scale_linetype_manual(values = c("hist" = 1,
-                                               "ssp119" = 2,
-                                               "ssp126" = 1,
-                                               "ssp245"=2,
-                                               "ssp370"=2,
-                                               "ssp585" = 1
-                                               ),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
+                scale_linetype_manual(values = c("hist" = 1, "ssp119" = 2,
+                                                 "ssp126" = 1, "ssp245" = 2,
+                                                 "ssp370" = 2, "ssp585" = 1),
                                    name = "Scenarios",
-                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
                                 scale_size_manual(values = c("hist" = 1,
-                                               "ssp119" = 0.5,
-                                               "ssp126" = 1,
-                                               "ssp245"=0.5,
-                                               "ssp370"=0.5,
-                                               "ssp585" = 1
-                                               ),
-                                   name = "Scenarios",
-                                   labels = c("Historical","SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                                             "ssp119" = 0.5,
+                                                             "ssp126" = 1,
+                                                             "ssp245" = 0.5, 
+                                                             "ssp370" = 0.5,
+                                                             "ssp585" = 1),
+                                                  name = "Scenarios",
+                                                  labels = c("SSP1-1.9", 
+                                                             "SSP1-2.6", 
+                                                             "SSP2-4.5", 
+                                                             "SSP3-7.0", 
+                                                             "SSP5-8.5")),
                 #Adding SD as shading, here 5% and 95% range
-                 geom_ribbon(aes(ymin = X5.,
-                                ymax = X95., fill = scenario),
-                             alpha = 0.1,color=NA),
-                 scale_fill_manual(values = c("hist" = "black",
-                                               "ssp119" = "#00ADCF",
-                                               "ssp126" = "#173C66",
-                                               "ssp245"="#F79420",
-                                               "ssp370"="#E71D25",
-                                               "ssp585" = "#951B1E"
-                                               ),
+                geom_ribbon(aes(ymin = X5., ymax = X95., fill = scenario),
+                             alpha = 0.1, color = NA),
+                 scale_fill_manual(values = c("hist" = "black", 
+                                              "ssp119" = "#00ADCF",
+                                              "ssp126" = "#173C66",
+                                              "ssp245"="#F79420",
+                                              "ssp370"="#E71D25",
+                                              "ssp585" = "#951B1E"),
                                    name = "Scenarios",
-                                  labels = c("Historical", "SSP1-1.9","SSP1-2.6","SSP2-4.5","SSP3-7.0","SSP5-8.5")),
+                                   labels = c("SSP1-1.9", "SSP1-2.6", 
+                                              "SSP2-4.5", "SSP3-7.0", 
+                                              "SSP5-8.5")),
                 guides(color = guide_legend(nrow = 1, title.position = "left")),
                 theme_classic(),
-                labs(y = "Global surface temperature change", 
-                     x = "Year"),
+                labs(y = "Global surface temperature change", x = "Year"),
                 theme(legend.position = "top", legend.justification = "center", 
                       legend.title = element_text(size = 12),
-                       legend.text = element_text(size = 12),
-                       panel.grid.minor.y = element_blank(), 
-                       axis.title.x = element_text(size = 13),
-                       axis.title.y = element_text(size = 13),
+                      legend.text = element_text(size = 12),
+                      panel.grid.minor.y = element_blank(), 
+                      axis.title.x = element_text(size = 13),
+                      axis.title.y = element_text(size = 13),
                       axis.text.y = element_text(size = 11),
-                       axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, 
-                                                  hjust = 0.65)))
+                      axis.text.x = element_text(size = 11, angle = 45,
+                                                 vjust = 0.765, hjust = 0.65)))
 
-b<-ggplot(data = tas_global, aes(x = Year, y = Mean, color = scenario,linetype=scenario,size=scenario))+
+b <- ggplot(data = tas_global, aes(x = Year, y = Mean, color = scenario, 
+                                 linetype = scenario, size = scenario))+
   base_gg + 
   scale_y_continuous(labels = ~ paste0(.x, "\u00B0"))+
   ggtitle("b")+ 
   theme(plot.title = element_text(face = "bold", size = 13))
-
 ```
 
 ## Combine panels into a single plot 
 
 ```{r}
-
 # # problems with patchwork
 # combined <- a + b +
 #   plot_layout(guides = "collect") & theme(legend.position = 'top') 
 
 # # work around with cowplot 
-library(cowplot)
 
 # extract legend from b
-leg = cowplot::get_plot_component(b, 'guide-box-top', return_all = TRUE)
+leg <- cowplot::get_plot_component(b, 'guide-box-top', return_all = TRUE)
 # cowplot::ggdraw(leg) 
 
 # remove legend from b
-b<-b+theme(legend.position = "none")
+b <- b+
+  theme(legend.position = "none")
 
 # combine all in one figure
 fig_scen <- plot_grid(plot_grid(a, b, ncol = 2, nrow = 1), 
-                      plot_grid(NULL, leg, NULL, nrow = 1, rel_widths = c(0.5, 1, 0.5)),
+                      plot_grid(NULL, leg, NULL, nrow = 1, 
+                                rel_widths = c(0.5, 1, 0.5)),
                       ncol = 1, nrow = 2, rel_heights = c(1, 0.1))
 
 # save file
 # ggsave(fig_scen,filename="/Users/juliab6/Dropbox/FishMIP MAIN/FishMIP Repos/FAO_Report/figures/fig_scen.png")
 
-pdf("figures/fig_scen.pdf", width=9, height= 5)
+pdf("figures/fig_scen.pdf", width = 9, height = 5)
 fig_scen
 dev.off()
-
 ```
 
 # Cascading Uncertainty Plot
