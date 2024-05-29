@@ -375,12 +375,15 @@ circle_theme <- theme(axis.line=element_blank(),
                       #legend.key.height = unit(0.3, "cm"),
                       legend.key.height = unit(30, "mm"), # for vertical
                       legend.key.width = unit(0.5, "cm"), # for vertical
+                   #  legend.spacing.y = unit(10, "mm"),
                      legend.text = element_text(size = 16),
                      legend.title = element_text(size = 16),
                       plot.title = element_text(hjust = 1),
                      plot.caption = element_text(hjust = 1, size = 16),
-                    plot.margin = plot_margin, # don't think this is doing anything to help with margins
-                      legend.spacing.y = unit(0, "pt"))
+                    plot.margin = plot_margin,
+                     legend.margin = margin(0, 0, 0, 0),
+      legend.spacing.x = unit(0, "mm"),
+      legend.spacing.y = unit(0, "mm"))
 
 
 rank_rgn_adj$uncertain <- factor(rank_rgn_adj$uncertain, c("yes", "no")) # order the sd uncertainty factors
@@ -428,28 +431,28 @@ rank_rgn_label <- rank_rgn_label %>%
   mutate(rgn_name_short = ifelse(arrange_mean >= 69, glue("{rgn_name_short}*"), rgn_name_short))
 
  g <- ggplot() + # ok so this works but losing order of data in plots for some reason
-   geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
-   #    geom_col_pattern(position = "stack", 
-   #                  data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain), 
-   #  pattern_density = .5,
-   # pattern_spacing = 0.004,
-   # pattern_frequency = 5,
-   #  pattern_fill = "white",
-   #  pattern_size = 0.05,
-   #  pattern_color = "white",
-   # show.legend = TRUE
-   #  ) +
-  geom_col(data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
-   # geom_col_pattern(position = "stack", 
-   #                  data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain), 
-   #  pattern_density = .5,
-   # pattern_spacing = 0.004,
-   # pattern_frequency = 5,
-   #  pattern_fill = "white",
-   #  pattern_size = 0.05,
-   #  pattern_color = "white",
-   # show.legend = FALSE
-   #  ) + 
+  # geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
+      geom_col_pattern(position = "stack",
+                    data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain),
+    pattern_density = .5,
+   pattern_spacing = 0.004,
+   pattern_frequency = 5,
+    pattern_fill = "white",
+    pattern_size = 0.05,
+    pattern_color = "white",
+   show.legend = TRUE
+    ) +
+  #geom_col(data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
+   geom_col_pattern(position = "stack",
+                    data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain),
+    pattern_density = .5,
+   pattern_spacing = 0.004,
+   pattern_frequency = 5,
+    pattern_fill = "white",
+    pattern_size = 0.05,
+    pattern_color = "white",
+   show.legend = FALSE
+    ) +
    geom_errorbar(data = data_2041,
                  aes(x = fa_ffcl_shrt,
                      ymax = new_index,
@@ -470,7 +473,7 @@ rank_rgn_label <- rank_rgn_label %>%
            hjust = hjust,
                ),
        inherit.aes = FALSE,
-       fontface = "bold",
+       # fontface = "bold",
        alpha = 0.9,
        size = label_size) +
    geom_segment(data = data_2091,
@@ -524,6 +527,144 @@ rank_rgn_label <- rank_rgn_label %>%
     geom_text(data =data_2091 , x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot_name} \n{scen_plot}"), size = 7) +
   coord_polar(clip = "off") +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
+    labs(fill = "Change in fish biomass (%)") +
+         scale_pattern_manual(values = c("circle", "none")) +
+    guides(alpha = "none",
+            pattern = "none",
+           # fill = guide_legend( 
+           #     title.position = "bottom",
+           #     title.hjust = 0.5,
+           #     title.vjust = 1,
+           #     nrow = 1,
+           #     label.position = "bottom",
+           #     label.hjust = 0.5,
+           #     label.vjust = 1)
+           fill = guide_legend( # for vertical legend
+               title.position = "top",
+               title.hjust = 1,
+               title.vjust = 1,
+               # ncol = 1,
+               label.position = "right",
+               label.hjust = 0,
+               label.vjust = 0.5)
+           ) +
+   circle_theme
+
+ ## only saved this once
+
+# g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[3]]
+# g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[1]] # for vertical
+# 
+# ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
+#   # ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
+
+  
+g <- g + 
+  guides(alpha = "none",
+            pattern = "none",
+           fill = "none")
+
+# full_plot <- plot_grid(g, g_legend, ncol = 1, rel_heights = c(1, 0.1))
+
+if(spatial_type %in% c("countries", "countries_high_seas")){
+  
+  spatial_type = glue("{spatial_type}_eez")
+  
+}
+
+  ggsave(plot = g, glue(here("scripts/circle_figs/{spatial_type}/bar_{scen}_{label_type}_stacked.png")), height=20, width=20, units=c("in"), bg = "white")
+
+    }
+  }
+}
+
+
+
+
+```
+
+
+test out regular bar plot 
+
+```{r}
+
+ g <- ggplot() + # ok so this works but losing order of data in plots for some reason
+   geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
+
+  geom_col(data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
+
+   geom_errorbar(data = data_2041,
+                 aes(x = fa_ffcl_shrt,
+                     ymax = new_index,
+                     ymin = new_index), color = "white", size = 0.4) + 
+  geom_errorbar(data = data_2091,
+     aes(x = 1,
+    ymin = -end_point/4,
+    ymax = end_point,
+    alpha = 0),
+    color = "white"
+  ) +
+    geom_text(
+      data = rank_rgn_label,
+       aes(x = fa_ffcl_shrt,
+           label = rgn_name_short,
+           y = 0,
+               ),
+       inherit.aes = FALSE,
+     #  fontface = "bold",
+       alpha = 0.9,
+     hjust = 1,
+       size = label_size) +
+   geom_segment(data = data_2091,
+        x = 0,
+         y = 0,
+         xend = dim(data_2091)[1]+1,
+         yend = 0,
+        alpha = 1,
+        color = "white",
+        size = 0.1) +
+    geom_segment(data = data_2091, 
+        x = 0,
+         y = 10,
+         xend = dim(data_2091)[1]+1,
+         yend = 10,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+    geom_segment(data = data_2091, 
+        x = 0,
+         y = 20,
+         xend = dim(data_2091)[1]+1,
+         yend = 20,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+                   geom_segment(data = data_2091, 
+        x = 0,
+         y = 30, # incase the scenario doesnt have any values > 30
+         xend = dim(data_2091)[1]+1,
+         yend = 30,
+        alpha = 1,
+        color = "grey30",
+        size = 0.1,
+        linetype = "dashed") +
+           # georegion names
+    geom_text(
+      data = rgn_shift,
+      aes(y = unique(rank_rgn_adj$end_point)/1.5,
+          x = name_x,
+          label = contnnt),
+      inherit.aes=FALSE,
+      size=label_size+1) +
+    annotate("text",
+        x     = c(3, 3, 3),
+        y     = c(0, 30, unique(rank_rgn_adj$end_point)),
+        label = c("0", glue("±30%"), glue("±{max_value_label}%")),
+        color = "darkgray", angle = -4, size = label_size+1) +
+    geom_text(data =data_2091 , x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot_name} \n{scen_plot}"), size = 7) +
+      scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
   circle_theme +
     labs(fill = "Average biomass change") +
          scale_pattern_manual(values = c("circle", "none")) +
@@ -545,41 +686,13 @@ rank_rgn_label <- rank_rgn_label %>%
                label.position = "right",
                label.hjust = 0,
                label.vjust = 0.5)
-           ) 
+           ) +
+  coord_flip()
+# +
+  # facet_wrap(~scenario)
 
- ## only saved this once
-
-# g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[3]]
-g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[1]] # for vertical 
-  ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
-  # ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
-
-  
-g <- g + 
-  guides(alpha = "none",
-            pattern = "none",
-           fill = "none")
-
-# full_plot <- plot_grid(g, g_legend, ncol = 1, rel_heights = c(1, 0.1))
-
-if(spatial_type %in% c("countries", "countries_high_seas")){
-  
-  spatial_type = glue("{spatial_type}_eez")
-  
-}
-
-  ggsave(plot = g, glue(here("scripts/circle_figs/{spatial_type}/bar_{scen}_{label_type}_stacked.png")), height=20, width=20, units=c("in"), bg = "white")
-  ggsave(plot = g, glue(here("scripts/circle_figs/{spatial_type}/test.png")), height=20, width=20, units=c("in"), bg = "white")
-
-    }
-  }
-}
-
-
-
-
+ggsave(plot = g, here("scripts/circle_figs/test.png"), bg = "white", height=20, width=20, units=c("in"))
 ```
-
 
  
 Make map of mean change 
