@@ -107,9 +107,8 @@ label_types <- c("iso3c", "country_name")
 for(label_type in label_types){
 for(spatial_type in spatial_scales){ # specify what spatial scales you want to include in plot
 
-  # label_type = "iso3c"
- # label_type = "country_name"
-  # spatial_type = "countries"
+ # label_type = "iso3c"
+ # spatial_type = "countries_admin"
   
   if(spatial_type == "countries_admin_high_seas"){
   
@@ -157,7 +156,7 @@ cmip_data_plot <- cmip_data_plot %>%
 # for(decade_type in decades){ # specify the decade for the plot
   for(scen in scenarios){ # specify the scenario for the plot
 
-# scen = "ssp585"
+# scen = "ssp126"
 
     scen_plot <- data.frame(scenario = scen) %>%
       mutate(scen_clean = case_when(
@@ -227,6 +226,9 @@ rank_rgn <- get_pos_neg_ranks %>%
          rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short)) %>%
   mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) # not sure why gsub wasn't working
 
+# rgn_labels_iso3c <- rank_rgn %>% distinct(ISO3_country, Country_name_short = rgn_name_short, Country_name = fa_ffcl_shrt) %>% arrange(ISO3_country)
+# write.csv(rgn_labels_iso3c, here("scripts/circle_figs/iso3c_table_names.csv"), row.names = FALSE)
+
 rank_rgn_label <- rank_rgn %>% 
     arrange(contnnt, -arrange_mean) %>%
   distinct(fa_ffcl_shrt, rgn_name_short, arrange_mean, ISO3_country) 
@@ -278,7 +280,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
   ))
 
 
-# make dataframe for continent text locations
+# make dataframe for continent text locations. Also specify margins for the plots, as the country names don't always fit on the standard margins (5.5pt)
 if(spatial_type == "countries_high_seas"){
 
   rgn_shift <- data.frame(
@@ -290,7 +292,7 @@ rgn_shift <- rgn_shift %>%
 
 label_size = 5.5
 
-plot_margin = margin(120, 120, 90, 50, unit = "pt")
+plot_margin = margin(120, 120, 180, 70, unit = "pt")
 
 
 }else if(spatial_type == "countries"){
@@ -304,7 +306,7 @@ rgn_shift <- rgn_shift %>%
   
 label_size = 5.5
 
-plot_margin = margin(120, 120, 90, 50, unit = "pt")
+plot_margin = margin(110, 120, 200, 50, unit = "pt")
 
 
 }else if(spatial_type == "countries_admin"){
@@ -318,7 +320,7 @@ rgn_shift <- rgn_shift %>%
 
 label_size = 7
 
-plot_margin = margin(160, 100, 110, 120, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
+plot_margin = margin(140, 10, 160, 10, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
 
 
 }else if(spatial_type == "countries_admin_high_seas"){
@@ -333,7 +335,7 @@ rgn_shift <- rgn_shift %>%
 
 label_size = 7
 
-plot_margin = margin(170, 105, 175, 120, unit = "pt")   # need to make sure names fit on plot... 
+plot_margin = margin(165, 105, 200, 90, unit = "pt")   # need to make sure names fit on plot... 
 }
 
 if(label_type == "iso3c" & spatial_type %in% c("countries_admin", "countries_admin_high_seas")){
