@@ -232,7 +232,7 @@ rank_rgn <- get_pos_neg_ranks %>%
   mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) # not sure why gsub wasn't working
 
 # rgn_labels_iso3c <- rank_rgn %>% distinct(ISO3_country, Country_name_short = rgn_name_short, Country_name = fa_ffcl_shrt) %>% arrange(ISO3_country)
-# write.csv(rgn_labels_iso3c, here("scripts/circle_figs/iso3c_table_names.csv"), row.names = FALSE)
+# write.csv(rgn_labels_iso3c, here("scripts/outputs/iso3c_table_names.csv"), row.names = FALSE)
 
 rank_rgn_label <- rank_rgn %>% 
     arrange(contnnt, -arrange_mean) %>%
@@ -555,8 +555,8 @@ rank_rgn_label <- rank_rgn_label %>%
 # g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[3]]
 # g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[1]] # for vertical
 # 
-# ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
-#   # ggsave(plot = g_legend, glue(here("scripts/circle_figs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
+# ggsave(plot = g_legend, glue(here("scripts/outputs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
+#   # ggsave(plot = g_legend, glue(here("scripts/outputs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
 
   
 g <- g + 
@@ -572,7 +572,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   
 }
 
-  ggsave(plot = g, glue(here("scripts/circle_figs/{spatial_type}/bar_{scen}_{label_type}_stacked.png")), height=20, width=20, units=c("in"), bg = "white")
+  ggsave(plot = g, glue(here("scripts/outputs/{spatial_type}/bar_{scen}_{label_type}_stacked.png")), height=20, width=20, units=c("in"), bg = "white")
 
     }
   }
@@ -588,41 +588,214 @@ test out regular bar plot
 
 ```{r}
 
+ # label_type = "country_name"
+ # spatial_type = "countries_admin"
+  
+  if(spatial_type == "countries_admin_high_seas"){
+  
+cmip_data_plot <- cmip_data_all %>% 
+  filter(spatial_scale %in% c("countries_admin", "FAO_area"))
+
+  }else if(spatial_type == "countries_admin"){
+    
+  cmip_data_plot <- cmip_data_all %>% 
+  filter(spatial_scale %in% c("countries_admin"))
+    
+  }else if(spatial_type == "countries"){
+    
+    cmip_data_plot <- cmip_data_all %>% 
+  filter(spatial_scale %in% c("countries"))
+    
+  }else if(spatial_type %in% c("countries_high_seas")){
+  
+      cmip_data_plot <- cmip_data_all %>% 
+  filter(spatial_scale %in% c("countries", "FAO_area"))
+}
+
+
+
+cmip_data_plot <- cmip_data_plot %>% 
+  mutate(mean_outlier = case_when(
+    mean >= 69 ~ 69,
+    mean <= -69 ~ -69, # limit to max positive or negative change
+    TRUE ~ mean
+  )) %>%
+  mutate(new_index = abs(mean)) %>%
+  group_by(fa_ffcl_shrt, scenario) %>%
+  mutate(stacked_mean_total = sum(new_index),
+         arrange_mean = max(new_index)) %>%
+  ungroup()
+  
+  
+  max_value <- max(abs(cmip_data_plot$mean_outlier), na.rm = TRUE)
+  mid_value = max_value/2
+
+  max_value_label <- round(max_value)
+  mid_value_label <- round(mid_value)
+
+  
+# for(decade_type in decades){ # specify the decade for the plot
+# scen = "ssp585"
+
+    scen_plot <- data.frame(scenario = c("ssp126", "ssp585")) %>%
+      mutate(scen_clean = case_when(
+        scenario == "ssp126" ~ "SSP1-2.6",
+        scenario == "ssp585" ~ "SSP5-8.5"
+      )) %>%
+      pull(scen_clean) %>% 
+      unique() # pull a cleaned up version to label the plot
+  
+    
+    
+plot_df <- cmip_data_plot %>% ## filter for scenario and decade
+  data.frame() %>%
+  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>%
+  arrange(contnnt, -arrange_mean) # order by continent, increase/decrease, and mean 
+
+get_pos_neg_ranks <- plot_df %>% # these are just distinct numbers, so group by is unnecessary i think?
+    mutate(new_index = abs(mean_outlier)) %>%
+  arrange(contnnt, -arrange_mean)
+
+rank_pos_neg <- get_pos_neg_ranks %>%
+  group_by(contnnt) %>% 
+  summarise(sum_mean = sum(stacked_mean_total),
+            count = length(stacked_mean_total)) %>%
+  ungroup()
+
+rank_pos_neg$contnnt <- factor(rank_pos_neg$contnnt, 
+                                         levels=unique(rank_pos_neg$contnnt))
+get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt, 
+                                         levels=unique(rank_pos_neg$contnnt))
+
+## change some names for plot so that they will fit...
+rank_rgn <- get_pos_neg_ranks %>%
+  arrange(contnnt, -arrange_mean) %>%
+  rename(index = mean) %>%
+     mutate(rgn_name_short = fa_ffcl_shrt, 
+         rgn_name_short = gsub("United Kingdom of Great Britain and Northern Ireland", "United Kingdom", rgn_name_short),
+         rgn_name_short = gsub("Islands|islands", "Isl", rgn_name_short),
+         rgn_name_short = gsub("Island", "Isl", rgn_name_short),
+         rgn_name_short = gsub("Democratic", "Dem", rgn_name_short),
+         rgn_name_short = gsub("Republic", "Rep", rgn_name_short),
+         rgn_name_short = gsub("South", "S", rgn_name_short),
+         rgn_name_short = gsub("American", "Am", rgn_name_short),
+         rgn_name_short = gsub("the United States", "US", rgn_name_short),
+         rgn_name_short = gsub("Territory", "Terr", rgn_name_short),
+         rgn_name_short = gsub("Saint", "St", rgn_name_short),
+         rgn_name_short = gsub(" and ", " & ", rgn_name_short),
+         rgn_name_short = gsub("Republique", "Rep", rgn_name_short),
+         rgn_name_short = gsub("Dem Rep of the", "Dem Rep of", rgn_name_short),
+         rgn_name_short = gsub("Georgia and the", "Georgia and", rgn_name_short),
+         rgn_name_short = gsub("St Vincent and the", "St Vincent and", rgn_name_short),
+         rgn_name_short = gsub("Howland Isl & Baker Isl", "Howland & Baker Isl", rgn_name_short),
+         rgn_name_short = gsub("Northern", "N", rgn_name_short), 
+         rgn_name_short = gsub("Alaska", "AK", rgn_name_short),
+         rgn_name_short = gsub("Hawaii", "HI", rgn_name_short),
+         rgn_name_short = gsub("\\(the\\)", "", rgn_name_short),
+         rgn_name_short = gsub("Kingdom of the Netherlands", "Netherlands", rgn_name_short),
+         rgn_name_short = gsub("Russian Federation", "Russia", rgn_name_short),
+         rgn_name_short = gsub("Federated States", "Fed. States", rgn_name_short),
+         rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short)) %>%
+  mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) %>%
+    mutate(fill_category = case_when(
+    index < -30 ~ "Decrease >30%",
+    index <= -20 & index >= -30 ~ "Decrease 20 to 30%",
+    index <= -10 & index > -20 ~ "Decrease 10 to 20%",
+    index <= 0 & index > -10 ~ "Decrease <10%",
+    index >= 0 & index < 10 ~ "Increase <10%",
+    index >= 10 & index < 20 ~ "Increase 10 to 20%", 
+    index >= 20 & index <= 30 ~ "Increase 20 to 30%",
+    index > 30 ~ "Increase >30%"
+  ))
+
+
+rank_rgn$uncertain <- factor(rank_rgn$uncertain, c("yes", "no")) # order the sd uncertainty factors
+
+# Define colors for each fill category
+fill_colors <- c(
+  "Decrease >30%" = "#AC390E",
+  "Increase <10%" = "honeydew3",
+    "Decrease 20 to 30%" = "#C4603E",
+  "Increase 10 to 20%" = "lightblue2",
+      "Decrease 10 to 20%" = "darksalmon",
+  "Increase 20 to 30%" = "#4297D3",
+    "Decrease <10%" = "wheat",
+  "Increase >30%" = "#1B194B"
+)
+
+# order categories
+all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", "Decrease <10%",  "Increase >30%")
+
+all_categories <- c("Decrease >30%",  "Decrease 20 to 30%", "Decrease 10 to 20%", "Decrease <10%", "Increase <10%", "Increase 10 to 20%", "Increase 20 to 30%",   "Increase >30%")
+rank_rgn$fill_category <- factor(rank_rgn$fill_category, levels = all_categories)
+
+all_categories_labels <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",   "Increase >30%")
+
+if(label_type == "iso3c"){
+  
+  rank_rgn <- rank_rgn %>%
+    dplyr::select(-rgn_name_short) %>%
+    rename(rgn_name_short = ISO3_country)
+  
+}
+
+rank_rgn <- rank_rgn %>%
+  mutate(scen_clean = 
+           case_when(scenario == "ssp585" ~ "High Emissions: SSP5-8.5",
+                     scenario == "ssp126" ~ "Low Emissions: SSP1-2.6"))
+
+
+data_2041 <- rank_rgn %>%
+  filter(decade %in% c("2041-2050"))
+
+data_2091 <- rank_rgn %>% 
+  filter(decade %in% c("2091-2100")) %>%
+  arrange(contnnt, -arrange_mean)
+
+rgn_arrange <- data_2091 %>%
+  distinct(rgn_name_short)
+
+data_2091$rgn_name_short <- factor(data_2091$rgn_name_short, levels = c(rgn_arrange$rgn_name_short))
+
+data_2091$scen_clean <- factor(data_2091$scen_clean, levels = c("High Emissions: SSP5-8.5", "Low Emissions: SSP1-2.6"))
+data_2041$scen_clean <- factor(data_2041$scen_clean, levels = c("High Emissions: SSP5-8.5", "Low Emissions: SSP1-2.6"))
+
+  rgn_shift <- data.frame(
+                         contnnt = rank_pos_neg$contnnt,
+                         name_x = c(25, 55, 90, 125, 145),
+                         name_y = c(50, 50, 50, 50, 50))
+  
+rgn_shift <- rgn_shift %>%
+   mutate(contnnt = as.character(contnnt))
+
+
+# specify theme
+circle_theme <- theme(axis.text.x = element_text(size = 16),
+                      axis.text.y = element_text(size = 14),
+                      axis.ticks=element_blank(),
+                      axis.title.x=element_blank(),
+                      axis.title.y=element_blank(),
+                      legend.position='right', # for vertical
+                      panel.background=element_blank(),
+                      panel.border=element_blank(),
+                      panel.grid.major=element_blank(),
+                      panel.grid.minor=element_blank(),
+                      plot.background=element_blank(),
+                      legend.key.height = unit(30, "mm"), # for vertical
+                      legend.key.width = unit(0.5, "cm"), # for vertical
+                     legend.text = element_text(size = 16),
+                     legend.title = element_text(size = 16),
+                      plot.title = element_text(hjust = 1),
+                     plot.caption = element_text(hjust = 1, size = 16),
+                     strip.text.x = element_text(size = 16))
+
  g <- ggplot() + # ok so this works but losing order of data in plots for some reason
-   geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
-
-  geom_col(data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
-
+   geom_col(data = data_2091, aes(x = rgn_name_short, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
+  geom_col(data = data_2041, aes(x = rgn_name_short, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
    geom_errorbar(data = data_2041,
-                 aes(x = fa_ffcl_shrt,
+                 aes(x = rgn_name_short,
                      ymax = new_index,
                      ymin = new_index), color = "white", size = 0.4) + 
-  geom_errorbar(data = data_2091,
-     aes(x = 1,
-    ymin = -end_point/4,
-    ymax = end_point,
-    alpha = 0),
-    color = "white"
-  ) +
-    geom_text(
-      data = rank_rgn_label,
-       aes(x = fa_ffcl_shrt,
-           label = rgn_name_short,
-           y = 0,
-               ),
-       inherit.aes = FALSE,
-     #  fontface = "bold",
-       alpha = 0.9,
-     hjust = 1,
-       size = label_size) +
-   geom_segment(data = data_2091,
-        x = 0,
-         y = 0,
-         xend = dim(data_2091)[1]+1,
-         yend = 0,
-        alpha = 1,
-        color = "white",
-        size = 0.1) +
     geom_segment(data = data_2091, 
         x = 0,
          y = 10,
@@ -651,33 +824,14 @@ test out regular bar plot
         size = 0.1,
         linetype = "dashed") +
            # georegion names
-    geom_text(
-      data = rgn_shift,
-      aes(y = unique(rank_rgn_adj$end_point)/1.5,
-          x = name_x,
-          label = contnnt),
-      inherit.aes=FALSE,
-      size=label_size+1) +
-    annotate("text",
-        x     = c(3, 3, 3),
-        y     = c(0, 30, unique(rank_rgn_adj$end_point)),
-        label = c("0", glue("±30%"), glue("±{max_value_label}%")),
-        color = "darkgray", angle = -4, size = label_size+1) +
-    geom_text(data =data_2091 , x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot_name} \n{scen_plot}"), size = 7) +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
-  circle_theme +
-    labs(fill = "Average biomass change") +
+    circle_theme +
+    labs(fill = "Average biomass change",
+         x = "", 
+         y = "") +
          scale_pattern_manual(values = c("circle", "none")) +
     guides(alpha = "none",
             pattern = "none",
-           # fill = guide_legend( 
-           #     title.position = "bottom",
-           #     title.hjust = 0.5,
-           #     title.vjust = 1,
-           #     nrow = 1,
-           #     label.position = "bottom",
-           #     label.hjust = 0.5,
-           #     label.vjust = 1)
            fill = guide_legend( # for vertical legend
                title.position = "top",
                title.hjust = 1,
@@ -687,11 +841,20 @@ test out regular bar plot
                label.hjust = 0,
                label.vjust = 0.5)
            ) +
-  coord_flip()
-# +
-  # facet_wrap(~scenario)
+  coord_flip() +
+  facet_wrap(~scen_clean) +
+          geom_text(
+      data = rgn_shift,
+      aes(y = name_y,
+          x = name_x,
+          label = contnnt),
+      inherit.aes=FALSE,
+      size=8) + 
+    scale_y_continuous(expand = c(0,0))
 
-ggsave(plot = g, here("scripts/circle_figs/test.png"), bg = "white", height=20, width=20, units=c("in"))
+
+ggsave(plot = g, here("scripts/test/test.png"), bg = "white", height=22, width=20, units=c("in"))
+
 ```
 
  
@@ -807,7 +970,7 @@ eez_df <- eez_df %>%
 #           coord_sf(crs = "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs
 # +type=crs")
         
-ggsave(plot = p1, glue(here("scripts/circle_figs/maps/map_{scen}_{decade_type}.png")), bg = "white")
+ggsave(plot = p1, glue(here("scripts/outputs/maps/map_{scen}_{decade_type}.png")), bg = "white")
   
 }
 }
@@ -1200,7 +1363,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   
 }
 
-  ggsave(glue(here("scripts/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
+  ggsave(glue(here("scripts/outputs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
 
 
  g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
@@ -1293,7 +1456,7 @@ geom_text(
 
 
 
-  ggsave(glue(here("scripts/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.png")), height=20, width=20, units=c("in"), bg = "white")
+  ggsave(glue(here("scripts/outputs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.png")), height=20, width=20, units=c("in"), bg = "white")
 
     }
   }
