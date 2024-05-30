@@ -362,28 +362,15 @@ circle_theme <- theme(axis.line=element_blank(),
                       axis.ticks=element_blank(),
                       axis.title.x=element_blank(),
                       axis.title.y=element_blank(),
-                      legend.position='right', # for vertical
-                     # legend.position='bottom', # for horizontal
-                     # legend.justification = "center",
                       panel.background=element_blank(),
                       panel.border=element_blank(),
                       panel.grid.major=element_blank(),
                       panel.grid.minor=element_blank(),
                       plot.background=element_blank(),
                       axis.text.x = element_blank(),
-                      #legend.key.width = unit(60, "mm"),
-                      #legend.key.height = unit(0.3, "cm"),
-                      legend.key.height = unit(30, "mm"), # for vertical
-                      legend.key.width = unit(0.5, "cm"), # for vertical
-                   #  legend.spacing.y = unit(10, "mm"),
-                     legend.text = element_text(size = 16),
-                     legend.title = element_text(size = 16),
                       plot.title = element_text(hjust = 1),
                      plot.caption = element_text(hjust = 1, size = 16),
-                    plot.margin = plot_margin,
-                     legend.margin = margin(0, 0, 0, 0),
-      legend.spacing.x = unit(0, "mm"),
-      legend.spacing.y = unit(0, "mm"))
+                    plot.margin = plot_margin)
 
 
 rank_rgn_adj$uncertain <- factor(rank_rgn_adj$uncertain, c("yes", "no")) # order the sd uncertainty factors
@@ -531,40 +518,8 @@ rank_rgn_label <- rank_rgn_label %>%
          scale_pattern_manual(values = c("circle", "none")) +
     guides(alpha = "none",
             pattern = "none",
-           # fill = guide_legend( 
-           #     title.position = "bottom",
-           #     title.hjust = 0.5,
-           #     title.vjust = 1,
-           #     nrow = 1,
-           #     label.position = "bottom",
-           #     label.hjust = 0.5,
-           #     label.vjust = 1)
-           fill = guide_legend( # for vertical legend
-               title.position = "top",
-               title.hjust = 1,
-               title.vjust = 1,
-               # ncol = 1,
-               label.position = "right",
-               label.hjust = 0,
-               label.vjust = 0.5)
-           ) +
+            fill = "none") +
    circle_theme
-
- ## only saved this once
-
-# g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[3]]
-# g_legend <- cowplot::get_plot_component(g, "guide-box", return_all = TRUE)[[1]] # for vertical
-# 
-# ggsave(plot = g_legend, glue(here("scripts/outputs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
-#   # ggsave(plot = g_legend, glue(here("scripts/outputs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
-
-  
-g <- g + 
-  guides(alpha = "none",
-            pattern = "none",
-           fill = "none")
-
-# full_plot <- plot_grid(g, g_legend, ncol = 1, rel_heights = c(1, 0.1))
 
 if(spatial_type %in% c("countries", "countries_high_seas")){
   
@@ -582,6 +537,147 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
 
 
 ```
+
+ 
+Make map of mean change and save legend 
+
+```{r}
+
+# Define colors for each fill category
+fill_colors <- c(
+  "Decrease >30%" = "#AC390E",
+  "Increase <10%" = "honeydew3",
+    "Decrease 20 to 30%" = "#C4603E",
+  "Increase 10 to 20%" = "lightblue2",
+      "Decrease 10 to 20%" = "darksalmon",
+  "Increase 20 to 30%" = "#4297D3",
+    "Decrease <10%" = "wheat",
+  "Increase >30%" = "#1B194B"
+)
+
+# order categories
+
+all_categories <- c("Decrease >30%",  "Decrease 20 to 30%", "Decrease 10 to 20%", "Decrease <10%", "Increase <10%", "Increase 10 to 20%", "Increase 20 to 30%",   "Increase >30%")
+
+all_categories_labels <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",   "Increase >30%")
+
+
+globe_bbox <- rbind(c(-180, -90), c(-180, 90), 
+                      c(180, 90), c(180, -90), c(-180, -90)) 
+
+globe_border <- st_polygon(list(globe_bbox)) %>%
+  st_sfc(crs = 4326) %>%
+  st_sf(data.frame(rgn = 'globe', geom = .)) %>%
+  smoothr::densify(max_distance = 0.5) %>%
+  st_transform(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
+countries_shp <- ne_countries(scale = 110, returnclass = "sf") |> 
+  st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
+
+
+eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
+# eez_shp <- vect(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
+
+test <- eez_shp %>% st_drop_geometry()
+
+eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+# eez_shp_2 <- terra::project(eez_shp, "epsg:3035")
+
+eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
+  mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
+
+eez_shp_df <- eez_shp_2 %>% 
+  left_join(eez_key)
+
+
+      
+ ## make map 
+plot_df <- cmip_data_all %>%
+  filter(spatial_scale %in% c("countries_admin")) %>% ## you can change this if you want to plot high seas or whatever
+      mutate(fill_category = case_when(
+    mean < -30 ~ "Decrease >30%",
+    mean <= -20 & mean >= -30 ~ "Decrease 20 to 30%",
+    mean <= -10 & mean > -20 ~ "Decrease 10 to 20%",
+    mean <= 0 & mean > -10 ~ "Decrease <10%",
+    mean >= 0 & mean < 10 ~ "Increase <10%",
+    mean >= 10 & mean < 20 ~ "Increase 10 to 20%", 
+    mean >= 20 & mean <= 30 ~ "Increase 20 to 30%",
+    mean > 30 ~ "Increase >30%"
+  )) %>% 
+    mutate(scen_clean = 
+           case_when(scenario == "ssp585" ~ "High Emissions: SSP5-8.5",
+                     scenario == "ssp126" ~ "Low Emissions: SSP1-2.6"),
+           decade_clean = case_when(
+             decade == "2041-2050" ~ "Mid-century",
+             decade == "2091-2100" ~ "End of century"
+           )) 
+
+
+eez_df <- countries_shp %>%
+ right_join(plot_df, by = c("adm0_a3" = "ISO3_country")) %>%
+  rename(ISO3_country = adm0_a3) %>% 
+  dplyr::select(colnames(plot_df))
+
+
+## Let's ditch many of the unnecessary elements
+plain <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_rect(fill = "white"),
+  plot.title = element_text(hjust = 0.5),
+  legend.position = "right",
+  strip.text = element_text(size = 14),
+  legend.text = element_text(size = 14),
+  legend.key.height = unit(30, "mm"), # for vertical
+  legend.key.width = unit(0.5, "cm"), # for vertical
+  strip.background = element_rect(fill = "white"),
+  legend.title = element_text(size = 14)
+)
+
+eez_df <- eez_df %>%
+  mutate(mean = case_when(
+    mean <= -69 ~ 69,
+    mean >= 69 ~ 69, 
+    TRUE ~ mean
+  ))
+
+eez_df$scen_clean <- factor(eez_df$scen_clean, levels = c("Low Emissions: SSP1-2.6", "High Emissions: SSP5-8.5"))
+eez_df$decade_clean <- factor(eez_df$decade_clean, levels = c("Mid-century", "End of century"))
+
+
+        p1 <- ggplot(data = eez_df) +
+          geom_sf(aes(fill = fill_category), 
+                  key_glyph = "rect", color = "white") + 
+                scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
+                 plain +
+               labs(fill = "Change in fish biomass (%)")  +
+                    coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
+                           geom_sf(data = countries_shp, fill = NA, colour = "grey", alpha = 0.2)  +
+                           geom_sf(data = globe_border, fill = NA, colour = "grey") +
+          facet_grid(decade_clean~scen_clean, switch = "y") +
+          guides(fill = guide_legend(byrow = TRUE,
+                              title.position = "top",
+               title.hjust = 1,
+               title.vjust = 1))
+
+        
+        ggsave(plot = p1, glue(here("scripts/test/map_all.png")), bg = "white", height = 20, width = 20, units = "in")
+
+
+ ## only saved this once
+
+g_legend <- cowplot::get_plot_component(p1, "guide-box", return_all = TRUE)[[1]] # for vertical
+
+ggsave(plot = g_legend, glue(here("scripts/test/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
+  # ggsave(plot = g_legend, glue(here("scripts/outputs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
+
+  
+```
+
 
 
 test out regular bar plot 
@@ -856,126 +952,6 @@ circle_theme <- theme(axis.text.x = element_text(size = 16),
 ggsave(plot = g, here("scripts/test/test.png"), bg = "white", height=22, width=20, units=c("in"))
 
 ```
-
- 
-Make map of mean change 
-
-```{r}
-globe_bbox <- rbind(c(-180, -90), c(-180, 90), 
-                      c(180, 90), c(180, -90), c(-180, -90)) 
-
-globe_border <- st_polygon(list(globe_bbox)) %>%
-  st_sfc(crs = 4326) %>%
-  st_sf(data.frame(rgn = 'globe', geom = .)) %>%
-  smoothr::densify(max_distance = 0.5) %>%
-  st_transform(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-
-countries_shp <- ne_countries(scale = 110, returnclass = "sf") |> 
-  st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
-
-
-decades <- c("2091-2100", "2041-2050")
-scenarios <- c("ssp585", "ssp126")
-eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-# eez_shp <- vect(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-
-test <- eez_shp %>% st_drop_geometry()
-
-eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-# eez_shp_2 <- terra::project(eez_shp, "epsg:3035")
-
-eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
-  mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
-
-eez_shp_df <- eez_shp_2 %>% 
-  left_join(eez_key)
-#  merge(eez_key)
-
-test <- eez_shp_2 %>% st_drop_geometry()
-
-
-for(decade_type in decades){
-  for(scen in scenarios){
-
-    # scen = "ssp585"
-    # decade_type = "2091-2100"
-
-    scen_plot <- data.frame(scenario = scen) %>%
-      mutate(scen_clean = case_when(
-        scenario == "ssp126" ~ "SSP1-2.6",
-        scenario == "ssp585" ~ "SSP5-8.5"
-      )) %>%
-      pull(scen_clean) %>% 
-      unique() # pull a cleaned up version to label the plot
-        
- ## make map 
-plot_df <- cmip_data_all %>%
-  filter(spatial_scale %in% c("countries_admin"),
-         decade == decade_type,
-         scenario == scen)
-
-
-eez_df <- countries_shp %>%
-  # eez_shp_df %>% 
- #   merge(., plot_df, by.x = c("figure_name", "fa_ffcl_shrt")) 
- right_join(plot_df, by = c("adm0_a3" = "ISO3_country")) %>%
-  rename(ISO3_country = adm0_a3) %>% 
-  dplyr::select(colnames(plot_df))
-# %>%
-  #vect() # make into spatvector for plotting
-
-# high_seas_df <-  cmip_data_all %>%
-#   filter(spatial_scale %in% c("FAO_area"),
-#          decade == decade_type,
-#          scenario == scen) %>%
-#   left_join(eez_shp_df, by = c("fa_ffcl_shrt" = "nm_mrgd")) %>%
-#   dplyr::select(colnames(eez_df)) %>%
-#   st_as_sf()
-
-
-# all_df <- rbind(eez_df, high_seas_df)
-# test <- eez_df %>% st_drop_geometry()
-
-## Let's ditch many of the unnecessary elements
-plain <- theme(
-  axis.text = element_blank(),
-  axis.line = element_blank(),
-  axis.ticks = element_blank(),
-  panel.border = element_blank(),
-  panel.grid = element_blank(),
-  axis.title = element_blank(),
-  panel.background = element_rect(fill = "white"),
-  plot.title = element_text(hjust = 0.5),
-  legend.position = "right"
-)
-
-eez_df <- eez_df %>%
-  mutate(mean = case_when(
-    mean <= -69 ~ 69,
-    mean >= 69 ~ 69, 
-    TRUE ~ mean
-  ))
-
-        p1 <- ggplot(data = eez_df) +
-               # tidyterra::geom_spatvector(aes(fill = mean)) +
-          geom_sf(aes(fill = mean)) + 
-                 scale_fill_distiller(palette = "RdBu", direction = 1, limits = c(-69, 69), breaks = c(-60, -30, 0, 30, 60), labels = c("-60%", "-30%", "0%", "30%", "60%")) +
-                 plain +
-                labs(title = glue("Biomass change: {scen_plot}, {decade_type}"),
-                     fill = "")  +
-                    coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
-                           geom_sf(data = countries_shp, fill = NA, colour = "grey", alpha = 0.2)  +
-                           geom_sf(data = globe_border, fill = NA, colour = "grey")
-
-#           coord_sf(crs = "+proj=robin +lon_0=0 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs
-# +type=crs")
-        
-ggsave(plot = p1, glue(here("scripts/outputs/maps/map_{scen}_{decade_type}.png")), bg = "white")
-  
-}
-}
-```
-
 
 ARCHIVE: 
 ```{r}
