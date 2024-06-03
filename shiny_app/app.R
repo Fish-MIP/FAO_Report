@@ -19,7 +19,8 @@ library(tidyterra)
 #Loading ensemble biomass change
 maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
                       col_select = c(x, y, starts_with("rel_change"), 
-                                     NAME_EN, continent, figure_name)) |> 
+                                     NAME_EN, continent, name_merge,
+                                     figure_name)) |> 
   mutate(name = case_when(!is.na(continent) ~ continent, 
                           !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
 
@@ -37,6 +38,11 @@ fao_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/",
                       recursive = T, full.names = T) |> 
   read_csv()
 
+#Ensemble percentage change in biomass by FAO regions
+lme_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
+                      "ensemble_perc_bio_change_lme.csv",
+                      recursive = T, full.names = T) |> 
+  read_csv()
 
 #Table of summary statistics
 table_stats <- read_csv("../data/table_stats_country_admin.csv")
@@ -53,6 +59,13 @@ continent_list <- maps_data |>
   distinct(continent) |> 
   drop_na() |> 
   rename("name"= "continent") |> 
+  arrange(name)
+
+#List of LMEs
+lme_list <- maps_data |>
+  distinct(name_merge) |>
+  drop_na() |>
+  rename("name"= "name_merge") |> 
   arrange(name)
 
 #List of FAO regions
@@ -134,8 +147,7 @@ scaler <- function(x, type, ratio = F){
 }
 
 # Defining user interface -------------------------------------------------
-ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
-                                "Ecological impacts of climate change"),
+ui <- navbarPage(title = "Interactive Tool",
                  fluid = T,
                  tabPanel(title = "About",
                           img(src = "FishMIP_logo.png", height = 150,
@@ -261,7 +273,7 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                                            choiceNames =
                                              c("Exclusive Economic Zone (EEZ) \
                                                by continent",
-                                               "High seas within FAO regions",
+                                               "FAO regions (Outside EEZs)",
                                                "Large Marine Ecosystems (LMEs)"
                                              ),
                                            choiceValues = c("cont", "FAO", 
@@ -414,6 +426,8 @@ server <- function(input, output, session) {
       data <- fao_list
     }else if(input$sectors_maps == "cont"){
       data <- continent_list
+    }else if(input$sectors_maps == "LME"){
+      data <- lme_list
     }
   })
   
@@ -423,8 +437,14 @@ server <- function(input, output, session) {
                       choices = choices)})
   
   maps_df <- reactive({
-    df <- maps_data |>
-      filter(name == input$region_maps)
+    if(input$sectors_maps != "LME"){
+      df <- maps_data |>
+        filter(name == input$region_maps)
+    }else{
+      df <- maps_data |>
+        filter(name_merge == input$region_maps)
+    }
+    
     
     #Adjusting map proportions
     minx <- min(df$x)
@@ -433,7 +453,8 @@ server <- function(input, output, session) {
     maxy <- max(df$y)
     rangex <- abs(abs(maxx)-abs(minx))
     rangey <- abs(abs(maxy)-abs(miny))
-    if(rangex == 0 & str_detect(input$region_maps, "Arctic|Americas|Europe", 
+    if(rangex == 0 & str_detect(input$region_maps, 
+                                "Arctic|Americas|Europe|Antarct", 
                                 negate = T)){
       df <- df |>
         mutate(x = x%%360)
@@ -531,9 +552,11 @@ server <- function(input, output, session) {
   region_list <- reactive({
     if(input$sectors_ts == "EEZ"){
       data <- country_list
-      }else if(input$sectors_ts == "FAO"){
-        data <- fao_list
-        }
+    }else if(input$sectors_ts == "FAO"){
+      data <- fao_list
+    }else if(input$sectors_ts == "LME"){
+      data <- lme_list
+    }
   })
    
   observeEvent(region_list(), {
@@ -566,6 +589,9 @@ server <- function(input, output, session) {
     }else if(input$sectors_ts == "FAO"){
       df <- fao_bio |> 
         filter(NAME_EN == input$region_ts)
+    }else if(input$sectors_ts == "LME"){
+      df <- lme_bio |> 
+        filter(name_merge == input$region_ts)
     }
     return(df)
     })
