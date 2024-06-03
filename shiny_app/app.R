@@ -1,9 +1,5 @@
-########TO DO
-#- Weighted means to be saved as df - shp takes too long to plot
-#- Change global map to use tiles instead of shapefile
-
-
-
+#Code deveoped for shiny app supporting FAO report
+#Author: Denisse Fierro Arcos
 
 # Loading R libraries -----------------------------------------------------
 library(shiny)
@@ -23,8 +19,8 @@ library(tidyterra)
 #Loading ensemble biomass change
 maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
                       col_select = c(x, y, starts_with("rel_change"), 
-                                     NAME_EN, figure_name)) |> 
-  mutate(name = case_when(!is.na(figure_name) ~ figure_name, 
+                                     NAME_EN, continent, figure_name)) |> 
+  mutate(name = case_when(!is.na(continent) ~ continent, 
                           !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
 
 
@@ -52,6 +48,14 @@ country_list <- maps_data |>
   rename("name"= "figure_name") |> 
   arrange(name)
 
+#List of continents
+continent_list <- maps_data |> 
+  distinct(continent) |> 
+  drop_na() |> 
+  rename("name"= "continent") |> 
+  arrange(name)
+
+#List of FAO regions
 fao_list <- maps_data |>
   distinct(NAME_EN) |> 
   drop_na() |> 
@@ -207,6 +211,11 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                           img(src = "FishMIP_logo.png", height = 150,
                               width = 450, style = "display: block;
                               margin-left: auto; margin-right: auto;"),
+                          "Map showing fish biomass change under four different \
+                          scenarios will show here. Please allow up to two \
+                          minutes for the maps to appear on your screen.",
+                          br(),
+                          br(),
                           "This tab will show circle plots from Gage and a map\
                           of the world. Aiming at having an interactive map \
                           here. We will also have a download button.",
@@ -227,7 +236,9 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                             fluidRow(
                               column(6, plotOutput(outputId = "plot_choro3")),
                               column(6, plotOutput(outputId = "plot_choro4"))
-                            )
+                            ),
+                            fluidRow(plotOutput(outputId = "legend_choro", 
+                                                height = "90px"))
                           )
                           )),
                  tabPanel(title = "Maps",
@@ -248,7 +259,8 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                                            "Choose group you would like to \
                                            visualise",
                                            choiceNames =
-                                             c("Continent",
+                                             c("Exclusive Economic Zone (EEZ) \
+                                               by continent",
                                                "High seas within FAO regions",
                                                "Large Marine Ecosystems (LMEs)"
                                              ),
@@ -373,15 +385,36 @@ server <- function(input, output, session) {
     p1
   })
   
+  output$legend_choro <- renderPlot({
+    p1 <- ggplot()+
+      geom_spatraster(data = choro_data$rel_change_mean00_ssp585_mean)+
+      base_choro+
+      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
+                                   barwidth = 40, barheight = 2.5, 
+                                   ticks.linewidth = 1, frame.linewidth = 0.5,
+                                   ticks.colour = "#444444", 
+                                   frame.colour = "#444444",
+                                   title.theme = element_text(face = "plain",
+                                                              size = 14), 
+                                   label.theme = element_text(size = 14)))+
+      theme(legend.position = "bottom")
+    
+    #Get legend for fish biomass
+    leg_fish <- get_legend(p1)
+    
+    p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
+    
+    p1
+  })
+  
   
   ########## Maps tab
   region_list_maps <- reactive({
     if(input$sectors_maps == "FAO"){
       data <- fao_list
+    }else if(input$sectors_maps == "cont"){
+      data <- continent_list
     }
-    # else if(input$sectors_maps == "FAO"){
-    #   data <- fao_list
-    # }
   })
   
   observeEvent(region_list_maps(), {
@@ -400,7 +433,8 @@ server <- function(input, output, session) {
     maxy <- max(df$y)
     rangex <- abs(abs(maxx)-abs(minx))
     rangey <- abs(abs(maxy)-abs(miny))
-    if(rangex == 0 & str_detect(input$region_maps, "Arctic", negate = T)){
+    if(rangex == 0 & str_detect(input$region_maps, "Arctic|Americas|Europe", 
+                                negate = T)){
       df <- df |>
         mutate(x = x%%360)
       minx <- min(df$x)
@@ -475,7 +509,6 @@ server <- function(input, output, session) {
     p1 <- ggplot(maps_df()$df, aes(x = x, y = y,
                                    fill = rel_change_mean50_ssp126_mean))+
       maps_df()$base_map+
-      # base_map+
       guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
                                    barwidth = 40, barheight = 2.5, 
                                    ticks.linewidth = 1, frame.linewidth = 0.5,
