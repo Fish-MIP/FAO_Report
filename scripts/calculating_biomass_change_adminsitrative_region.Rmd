@@ -11,7 +11,7 @@ In this notebook, we will calculate the mean percentage change in fish biomass b
   
 Note that outputs from all [global FishMIP models](https://fishmip.org/modellingteams.html) were used to calculate the mean percentage change for the entire ensemble.  
 
- - We do this at the administrative/sovereign country level, rather than EEZ. For example, Macquarie Island is calculated as part of Australia. Norfolk Island is part of Australia. 
+ - We do this at the administrative/sovereign country level, rather than EEZ. E.g., Macquarie Island is calculated as part of Australia. Norfolk Island is part of Australia. 
   
 ## Loading libraries
   
@@ -133,7 +133,7 @@ for(m in members){
 ```
   
 ## Calculating mean for reference period
-Plots created here will show percentage change in biomass over time under two emissions scenarios: `SSP1-2.6` and `SSP5-8.5`. Our reference period is 2005-2014.  
+Data created here will show percentage change in biomass over time under two emissions scenarios: `SSP1-2.6` and `SSP5-8.5`. Our reference period is 2005-2014.  
   
 ```{r eval = F}
 #Listing all relevant files to calculate biomass projections
@@ -267,7 +267,7 @@ table <- stats %>%
   full_join(w_test)
 
 
-fwrite(table, paste0(country_level_folder,"/table_stats.csv"))
+fwrite(table, paste0(country_level_folder,"/table_stats_country_admin.csv"))
 fwrite(table, here("data/table_stats_country_admin.csv"))
 
 test <- read_csv(file.path(out_folder, "table_stats.csv"))
