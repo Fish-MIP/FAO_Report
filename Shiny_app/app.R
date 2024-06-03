@@ -16,6 +16,8 @@ library(cmocean)
 library(scales)
 library(sf)
 library(rnaturalearth)
+library(terra)
+library(tidyterra)
 
 # Loading data ------------------------------------------------------------
 #Loading ensemble biomass change
@@ -57,14 +59,13 @@ fao_list <- maps_data |>
   arrange(name)
 
 #Loading choropleth shapefile
-choro_data <- read_sf("../data/fao_eez_bio_change_choro.shp") |> 
-  #Apply Mollweide projection
-  st_transform(st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0"))
+choro_data <- rast(list.files("../data/", "global_choro", full.names = T))
 
 #Map of the world
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
-
+world_proj <- world |>
+  st_transform(crs(choro_data))
 
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
@@ -102,14 +103,16 @@ base_map <- list(geom_tile(),
                        axis.text = element_text(size = 12)))
 
 #Define base steps for choropleth maps
-base_choro <- list(geom_sf(),
-                   scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+base_choro <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                      type = scale_fill_custom, oob = oob_squish,
                                      name = "% change in fish biomass"),
+                   #Adding world
+                   geom_sf(inherit.aes = F, data = world_proj, lwd = 0.25,
+                           color = "black", show.legend = F),
                    theme_bw(),
                    theme(panel.border = element_rect(colour = NA),
                          plot.title = element_text(hjust = 0.5),
-                         legend.position = "none", 
+                         legend.position = "none",
                          title = element_text(size = 14, face = "bold")))
 
 #Function to improve map ratios for plotting
@@ -220,6 +223,10 @@ ui <- navbarPage(title = paste0("(BETA version) FishMIP model ensemble: ",
                             fluidRow(
                               column(6, plotOutput(outputId = "plot_choro1")),
                               column(6, plotOutput(outputId = "plot_choro2"))
+                            ),
+                            fluidRow(
+                              column(6, plotOutput(outputId = "plot_choro3")),
+                              column(6, plotOutput(outputId = "plot_choro4"))
                             )
                           )
                           )),
@@ -335,9 +342,34 @@ server <- function(input, output, session) {
   )
   
   output$plot_choro1 <- renderPlot({
-    p1 <- choro_data |> ggplot(aes(fill = r__50_1))+
+  p1 <- ggplot()+
+    geom_spatraster(data = choro_data$rel_change_mean50_ssp126_mean)+
+    base_choro+
+    labs(title = "SSP1-2.6: 2041-2050")
+  p1
+  })
+  
+  output$plot_choro2 <- renderPlot({
+    p1 <- ggplot()+
+      geom_spatraster(data = choro_data$rel_change_mean50_ssp585_mean)+
       base_choro+
-      labs(title = "SSP1-2.6: 2041-2050")
+      labs(title = "SSP5-8.5: 2041-2050")
+    p1
+  })
+  
+  output$plot_choro3 <- renderPlot({
+    p1 <- ggplot()+
+      geom_spatraster(data = choro_data$rel_change_mean00_ssp126_mean)+
+      base_choro+
+      labs(title = "SSP1-2.6: 2091-2100")
+    p1
+  })
+  
+  output$plot_choro4 <- renderPlot({
+    p1 <- ggplot()+
+      geom_spatraster(data = choro_data$rel_change_mean00_ssp585_mean)+
+      base_choro+
+      labs(title = "SSP5-8.5: 2091-2100")
     p1
   })
   
