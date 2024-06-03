@@ -123,8 +123,16 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   left_join(area_gfdl_df, by = join_by(x, y)) |> 
   ungroup()
 
+#Adding LME metadata
+lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |> 
+  #Keeping LMEs only - Removing FAO regions
+  filter(ID_mrgd > 100) |> 
+  select(x, y, name_merge)
+
 #Save ensemble data
 maps_data |> 
+  #Adding LME information
+  left_join(lme, join_by(x, y)) |> 
   write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
