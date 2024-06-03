@@ -20,7 +20,7 @@ library(readxl)
 library(tidyverse)
 library(data.table)
 library(janitor)
-library(sf)
+library(terra)
 ```
 
 ## Getting FAO-EEZ information
@@ -44,11 +44,6 @@ area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
   read_csv()
-
-#Shapefile containing EEZ and FAO boundaries
-fao_eez <- list.files(out_folder, "FAO_MajorAreas_200NM.shp", recursive = T, 
-                      full.names = T) |> 
-  read_sf()
 ```
   
 ## Getting a list of FishMIP biomass outputs
@@ -140,18 +135,32 @@ choro_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv") |>
   #Group by ID to link to shapefile
   group_by(ID_mrgd) |> 
   #Calculate weighted means across all columns starting with "rel_change"
-  summarise(across(starts_with("rel_change"), 
+  mutate(across(starts_with("rel_change"), 
                    list(weighted_mean = ~weighted.mean(.x, cell_area, 
                                                        na.rm = T)), 
-                   .names = "{.col}"))
+                   .names = "{.col}")) |> 
+  ungroup()
 
-#Joining weighted means to FAO-EEZ shapefile
-choro_data <- fao_eez |> 
-  left_join(choro_data, join_by(ID_mrgd))
+#Transform from data array to raster
+choro_data <- choro_data |> 
+  #Select coordinates and columns with information about relative change
+  select(x, y, starts_with("rel_change")) |>
+  #Transform to raster and include CRS
+  rast(type = "xyz", crs = "epsg:4326") |> 
+  #Reproject to Mollweide for plotting in shiny app
+  project(y = "+proj=moll +x_0=0 +y_0=0 +lat_0=0")
 
-#Save shapefile
-choro_data |> 
-  write_sf("data/fao_eez_bio_change_choro.shp")
+#Shorten layer names before saving to disk
+lyr_names <- names(choro_data) |> 
+  str_remove("rel_change_") |> 
+  str_remove("_mean$")
+
+#Saving each layer separately to record layer names correctly
+for(i in 1:nlyr(choro_data)){
+  writeRaster(choro_data[[i]], 
+              file.path("data", str_c("global_choro_", lyr_names[i], ".tif")),
+              overwrite = T)
+}
 ```
   
 ## Calculating annual fisheries catch
