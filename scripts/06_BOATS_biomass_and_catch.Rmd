@@ -107,7 +107,7 @@ extract<-function(netcdf){
   # print(paste("Start time from file name ",t[1], sep = ""))
   # print(paste("End time from file name ",t[length(t)], sep = ""))
   
-  # IF TCB DO MEAN ACROSS MONTHS, IF TC DO SUM ACROSS MONTHS?  
+  # IF TCB DO MEAN ACROSS MONTHS, IF TC DO SUM ACROSS MONTHS 
   indices<-as.Date(t)
   indices2<-format(indices, format = "%Y")
   indices2<-as.numeric(indices2)
@@ -118,7 +118,7 @@ extract<-function(netcdf){
     brick_data_annual<-stackApply(brick_data, indices=indices2, fun=sum)
   }
   
-  # GLOBAL SUMS OF TCB AND TC OR WEIGHTED MEANS? HERE GLOBAL SUMS
+  # GLOBAL SUMS OF TCB AND TC
   # grid cell area in m
   w2 <- raster::area(brick_data_annual[[1]], na.rm = TRUE)*1e6 # could do the IPSL file provided by Matthis but here it is the same
   # value (tcb or tc) * area
@@ -148,7 +148,7 @@ global_sum<-do.call("rbind", all_bricks)
 rownames(global_sum)<-NULL
 
 library(data.table)
-fwrite(global_sum, "data/BOATS_data.csv")
+fwrite(global_sum, "/rd/gem/private/users/camillan/FAO_Report/BOATS_Data_for_catch_plot/BOATS_data.csv")
 
 ```
 
@@ -159,8 +159,9 @@ fwrite(global_sum, "data/BOATS_data.csv")
 library(data.table)
 library(ggplot2)
 library(tidyr)
+library(patchwork)
 
-global_sum<-fread("data/BOATS_data.csv") %>% 
+global_sum<-fread("/rd/gem/private/users/camillan/FAO_Report/BOATS_Data_for_catch_plot/BOATS_data.csv") %>% 
   mutate(sum = (sum/1e+6)/1000000) %>% # from g to tonnes & to million tonnes
   dplyr::select(-file)
 
@@ -174,7 +175,7 @@ global_sum<-fread("data/BOATS_data.csv") %>%
 # calculate % exploitable biomass at unfished conditions relative to the years of peak in catches
  ref_unfished<-global_sum %>% 
    filter(variable == "tcb_unfished") %>% 
-   filter(Year %in% c(2000:2009)) %>% 
+   filter(Year %in% c(2002:2009)) %>% 
    summarise(mean_tcb_unfished = mean(sum))
 
 global_sum<-global_sum %>% 
@@ -189,23 +190,30 @@ df1<-global_sum %>% filter(name %in% c("tcb_unfished","tcb_fished"))
 df2<-global_sum %>% filter(name %in% c("tc","tc_potential"))
 
 # plot catches and biomass. - biomass
-base_gg1 <- list(geom_line(linewidth = 1),
+base_gg1 <- list(geom_line(),
                 #Adding line dividing historical period and future projections
                 geom_vline(xintercept = 2015, color = "grey80",
                            linewidth = 0.65),
                 #Manually setting colours to be used in plots
-                scale_color_manual(values = c("tcb_fished" = "#a6d854",
-                                              "tcb_unfished" = "#e78ac3"),
+                scale_color_manual(values = c("tcb_fished" = "black",
+                                              "tcb_unfished" = "black"),
                                    name = "Variable",
-                                   labels = c("Biomass fished",
-                                              "Biomass unfished")),
-                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                                   labels = c("Realised fish \nbiomass",
+                                              "Exploitable fish \nBiomass")),
+                scale_linetype_manual(values = c(1,2),
+                                   name = "Variable",
+                                   labels = c("Realised fish \nbiomass",
+                                              "Exploitable fish \nBiomass")),
+                scale_linewidth_manual(values = c(0.8,0.8),
+                                   name = "Variable",
+                                   labels = c("Realised fish \nbiomass",
+                                              "Exploitable fish \nBiomass")),
                 theme_classic(),
                 labs(y = "Million tonnes",
                      x = "Year"),
-               theme(legend.position = "top", legend.justification = "center", 
-                      legend.title = element_text(size = 12),
-                       legend.text = element_text(size = 12),
+               theme(legend.position = c(0.8, 0.2), 
+                      legend.title = element_blank(),
+                       legend.text = element_text(size = 11),
                        panel.grid.minor.y = element_blank(), 
                        axis.title.x = element_text(size = 13),
                        axis.title.y = element_text(size = 13),
@@ -214,23 +222,31 @@ base_gg1 <- list(geom_line(linewidth = 1),
                                                   hjust = 0.65)))
 
 # plot catches and biomass. - catches 
-base_gg2 <- list(geom_line(linewidth = 1),
+base_gg2 <- list(geom_line(),
                 #Adding line dividing historical period and future projections
                 geom_vline(xintercept = 2015, color = "grey80",
                            linewidth = 0.65),
                 #Manually setting colours to be used in plots
-                scale_color_manual(values = c("tc" = "#fc8d62",
-                                              "tc_potential" = "#8da0cb"),
+                scale_color_manual(values = c("tc" = "black",
+                                              "tc_potential" = "black"),
                                    name = "Variable",
-                                   labels = c("Catches",
-                                              "Maximum Potential Catches")),
-                guides(color = guide_legend(nrow = 1, title.position = "left")),
+                                   labels = c("Realised catch",
+                                              "Maximum catch \npotential")),
+                scale_linetype_manual(values = c("tc" ="solid",
+                                                 "tc_potential" ="dashed"),
+                                   name = "Variable",
+                                   labels = c("Realised catch",
+                                              "Maximum catch \npotential")),
+                scale_linewidth_manual(values = c(0.8,0.8),
+                                   name = "Variable",
+                                   labels = c("Realised catch",
+                                              "Maximum catch \npotential")),
                 theme_classic(),
                 labs(y = "Million tonnes per year",
                      x = "Year"),
-               theme(legend.position = "top", legend.justification = "center", 
-                      legend.title = element_text(size = 12),
-                       legend.text = element_text(size = 12),
+               theme(legend.position = c(0.8, 0.2), 
+                      legend.title = element_blank(),
+                      legend.text = element_text(size = 11),
                        panel.grid.minor.y = element_blank(), 
                        axis.title.x = element_text(size = 13),
                        axis.title.y = element_text(size = 13),
@@ -238,64 +254,62 @@ base_gg2 <- list(geom_line(linewidth = 1),
                        axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, 
                                                   hjust = 0.65)))
 
-# plot catches and biomass - legend
-base_gg3 <- list(geom_line(linewidth = 1),
-                #Adding line dividing historical period and future projections
-                geom_vline(xintercept = 2015, color = "grey80",
-                           linewidth = 0.65),
-                #Manually setting colours to be used in plots
-                scale_color_manual(values = c("tcb_fished" = "#a6d854",
-                                              "tcb_unfished" = "#e78ac3",
-                                              "tc" = "#fc8d62",
-                                              "tc_potential" = "#8da0cb"),
-                                   name = "Variable",
-                                   labels = c("Biomass fished",
-                                              "Biomass unfished",
-                                              "Catches",
-                                              "Maximum Potential Catches")),
-                guides(color = guide_legend(nrow = 1, title.position = "left")),
-                theme_classic(),
-                labs(y = "Million tonnes per year",
-                     x = "Year"),
-                theme(legend.position = "top", legend.justification = "center", 
-                      legend.title = element_text(size = 12),
-                       legend.text = element_text(size = 12),
-                       panel.grid.minor.y = element_blank(), 
-                       axis.title.x = element_text(size = 13),
-                       axis.title.y = element_text(size = 13),
-                      axis.text.y = element_text(size = 11),
-                       axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, 
-                                                  hjust = 0.65)))
+# # plot catches and biomass - legend
+# base_gg3 <- list(geom_line(linewidth = 1),
+#                 #Adding line dividing historical period and future projections
+#                 geom_vline(xintercept = 2015, color = "grey80",
+#                            linewidth = 0.65),
+#                 #Manually setting colours to be used in plots
+#                 scale_color_manual(values = c("tcb_fished" = "#a6d854",
+#                                               "tcb_unfished" = "#e78ac3",
+#                                               "tc" = "#fc8d62",
+#                                               "tc_potential" = "#8da0cb"),
+#                                    name = "Variable",
+#                                    labels = c("Biomass fished",
+#                                               "Biomass unfished",
+#                                               "Catches",
+#                                               "Maximum Potential Catches")),
+#                 guides(color = guide_legend(nrow = 1, title.position = "left")),
+#                 theme_classic(),
+#                 labs(y = "Million tonnes per year",
+#                      x = "Year"),
+#                 theme(legend.position = "top", legend.justification = "center", 
+#                       legend.title = element_text(size = 12),
+#                        legend.text = element_text(size = 12),
+#                        panel.grid.minor.y = element_blank(), 
+#                        axis.title.x = element_text(size = 13),
+#                        axis.title.y = element_text(size = 13),
+#                       axis.text.y = element_text(size = 11),
+#                        axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, 
+#                                                   hjust = 0.65)))
 
 
-p1<-ggplot(df1, aes(x = Year, y = value, group = name, color = name))+
+p1<-ggplot(df1, aes(x = Year, y = value, group = name, color = name, linetype = name))+
   geom_line()+
   base_gg1+ 
-  ggtitle("a") + 
-  theme(legend.position = "none")
+  ggtitle("a") 
 
-p2<-ggplot(df2, aes(x = Year, y = value, group = name, color = name))+
+p2<-ggplot(df2, aes(x = Year, y = value, group = name, color = name, linetype = name))+
   geom_line()+
   base_gg2 + 
-  ggtitle("b") + 
-  theme(legend.position = "none")
+  ggtitle("b") 
 
-legend<-ggplot(global_sum, aes(x = Year, y = value, group = name, color = name))+
-  geom_line()+
-  base_gg3
+# legend<-ggplot(global_sum, aes(x = Year, y = value, group = name, color = name))+
+#   geom_line()+
+#   base_gg3
+#
+# library(cowplot)
+# legend = cowplot::get_plot_component(legend, 'guide-box-top', return_all = TRUE)
+# 
+# # combine all in one figure
+# fig_boats <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1),
+#                       plot_grid(NULL, legend, NULL, nrow = 1, rel_widths = c(0.5, 1, 0.5)),
+#                       ncol = 1, nrow = 2, rel_heights = c(1, 0.1))
 
-library(cowplot)
-legend = cowplot::get_plot_component(legend, 'guide-box-top', return_all = TRUE)
+fig_boats<-p1+p2
 
-# combine all in one figure
-fig_boats <- plot_grid(plot_grid(p1, p2, ncol = 2, nrow = 1),
-                      plot_grid(NULL, legend, NULL, nrow = 1, rel_widths = c(0.5, 1, 0.5)),
-                      ncol = 1, nrow = 2, rel_heights = c(1, 0.1))
-
-pdf("data/data_products/BOATS_trends.pdf", width=9, height= 5)
+pdf("data/data_products/BOATS_trends.pdf", width=9, height= 4.5)
 fig_boats
 dev.off()
-
-
 
 ```
