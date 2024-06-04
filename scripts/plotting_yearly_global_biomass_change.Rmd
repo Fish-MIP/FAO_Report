@@ -182,7 +182,7 @@ top_7_data_by_model<-top_7_data_by_model %>%
                                   figure_name == "the Republic of India" ~ "India",
                                   figure_name == "the Republic of Indonesia" ~ "Indonesia",
                                   figure_name == "the Republic of Peru" ~ "Peru",
-                                  figure_name == "the Russian Federation" ~ "Russia",
+                                  figure_name == "the Russian Federation" ~ "Russian Federation",
                                   figure_name == "the Socialist Republic of Viet Nam" ~ "Viet Nam",
                                   figure_name == "the United States of America" ~ "United States of America", 
                                   .default = as.character(figure_name)))
@@ -335,9 +335,49 @@ table<-stats %>%
 filter(table, figure_name == "Albania")
 filter(table, spatial_scale == "top_7_countries")
 
-# print tables 
-fwrite(table, paste0(base_folder,"table_stats.csv"))
-fwrite(table, "data/data_products/table_stats.csv")
+# # print tables 
+# fwrite(table, paste0(base_folder,"table_stats.csv"))
+# fwrite(table, "data/data_products/table_stats.csv")
+
+# format table for report 
+
+colnames(table)
+unique(table$spatial_scale)
+str(table)
+sort(table$figure_name)
+
+# do not remove column
+table_formatted<-table %>% 
+  mutate(id = paste(scenario, decade, sep = "_")) %>% 
+  select(!c(scenario, decade, median)) %>% 
+  mutate(mean = round(mean, 1), 
+         sd = round(sd, 1),
+         min = round(min, 1),
+         max = round(max, 1),
+         agreement = round(agreement),
+         wilcox_p = ifelse(wilcox_p < 0.05, "*", NA)) %>% 
+  pivot_wider(names_from = id, values_from = c(mean, sd, min, max, n_model, agreement, wilcox_p)) %>%
+  relocate(spatial_scale, continent, figure_name,
+           `mean_ssp126_2041-2050`,`sd_ssp126_2041-2050`,`min_ssp126_2041-2050`,`max_ssp126_2041-2050`,`n_model_ssp126_2041-2050`,`agreement_ssp126_2041-2050`,`wilcox_p_ssp126_2041-2050`,
+           `mean_ssp585_2041-2050`,`sd_ssp585_2041-2050`,`min_ssp585_2041-2050`,`max_ssp585_2041-2050`,`n_model_ssp585_2041-2050`,`agreement_ssp585_2041-2050`,`wilcox_p_ssp585_2041-2050`,
+           `mean_ssp126_2091-2100`,`sd_ssp126_2091-2100`,`min_ssp126_2091-2100`,`max_ssp126_2091-2100`,`n_model_ssp126_2091-2100`,`agreement_ssp126_2091-2100`,`wilcox_p_ssp126_2091-2100`,
+           `mean_ssp585_2091-2100`,`sd_ssp585_2091-2100`,`min_ssp585_2091-2100`,`max_ssp585_2091-2100`,`n_model_ssp585_2091-2100`,`agreement_ssp585_2091-2100`,`wilcox_p_ssp585_2091-2100`)  %>% 
+  select(!c(`n_model_ssp126_2041-2050`,`n_model_ssp585_2041-2050`,`n_model_ssp126_2091-2100`,`n_model_ssp585_2091-2100`, `wilcox_p_ssp126_2041-2050`,`wilcox_p_ssp126_2091-2100`)) %>% # n_model is the same across scenario and decade (but remove), wilcox is the same across scenarios but different across decades. 
+  rename(`wolcox_2041-2050` = `wilcox_p_ssp585_2041-2050`, `wolcox_2091-2100` =`wilcox_p_ssp585_2091-2100`) %>% 
+  mutate(continent = case_when(spatial_scale == "top_7_countries" & figure_name == "China" ~ "Asia",
+                               spatial_scale == "top_7_countries" & figure_name == "India" ~ "Asia",
+                               spatial_scale == "top_7_countries" & figure_name == "Indonesia" ~ "Asia",
+                               spatial_scale == "top_7_countries" & figure_name == "Peru" ~ "Americas",
+                               spatial_scale == "top_7_countries" & figure_name == "Russian Federation" ~ "Europe",
+                               spatial_scale == "top_7_countries" & figure_name == "United States of America" ~ "Americas",
+                               spatial_scale == "top_7_countries" & figure_name == "Viet Nam" ~ "Asia",
+                               .default = as.character(continent))) %>% 
+  mutate(spatial_scale = factor(spatial_scale, levels = c("global", "top_7_countries", "countries", "FAO_area"))) %>% 
+  arrange(spatial_scale, continent, figure_name) 
+
+View(table_formatted)
+
+fwrite(table_formatted, "data/data_products/table_stats_formatted.csv")
 
 ```
 
@@ -390,7 +430,7 @@ top_7_data<-top_7_data |>
                              Country_FAO == "the Republic of India" ~ "India",
                              Country_FAO == "the Republic of Indonesia" ~ "Indonesia",
                              Country_FAO == "the Republic of Peru" ~ "Peru",
-                             Country_FAO == "the Russian Federation" ~ "Russia",
+                             Country_FAO == "the Russian Federation" ~ "Russian Federation",
                              Country_FAO == "the Socialist Republic of Viet Nam" ~ "Viet Nam",
                              Country_FAO == "the United States of America" ~ "United States of America",
                              .default = as.character(Country_FAO)))
@@ -422,7 +462,7 @@ top_7<-global_bio |>
 # ggsave(filename = file.path(base_folder, "top_7_global_trends.pdf"), 
 #        device = "pdf", width = 6, height = 12)
 
-pdf("figures/top_7_perc_change.pdf", width=9, height= 10)
+pdf("data/data_products/top_7_perc_change.pdf", width=9, height= 10)
 top_7
 dev.off()
 
@@ -440,7 +480,7 @@ plot_country <- count_bio |>
   base_gg
 
 #Saving output
-png("figures/Au_trends.png", width = 5, height = 3.5, units = "in", res = 1200)
+png("data/data_products/Au_trends.png", width = 5, height = 3.5, units = "in", res = 1200)
 #Check country plot
 plot_country
 #Remove figure from memory
@@ -474,7 +514,7 @@ asia<-count_bio |>
 # ggsave(filename = file.path(base_folder, "asia_perc_change.pdf"), 
 #        device = "pdf", width = 10, height = 14.35)
 
-pdf("figures/asia_perc_change.pdf", width=9, height= 10)
+pdf("data/data_products/asia_perc_change.pdf", width=9, height= 10)
 asia
 dev.off()
 
@@ -506,7 +546,7 @@ africa<-count_bio |>
 # ggsave(filename = file.path(base_folder, "africa_perc_change.pdf"), 
 #        device = "pdf", width = 10, height = 14.35)
 
-pdf("figures/africa_perc_change.pdf", width=9, height= 12)
+pdf("data/data_products/africa_perc_change.pdf", width=9, height= 12)
 africa
 dev.off()
 ```
@@ -543,7 +583,7 @@ europe<-count_bio_europe |>
 # ggsave(filename = file.path(base_folder, "europe_perc_change.pdf"),
 #        device = "pdf", width = 12, height = 16)
 
-pdf("figures/europe_perc_change.pdf", width=9, height= 9)
+pdf("data/data_products/europe_perc_change.pdf", width=9, height= 9)
 europe
 dev.off()
 
@@ -575,7 +615,7 @@ americas<-count_bio |>
 # ggsave(filename = file.path(base_folder, "americas_perc_change.pdf"), 
 #        device = "pdf", width = 12, height = 17.22)
 
-pdf("figures/americas_perc_change.pdf", width=9, height= 13)
+pdf("data/data_products/americas_perc_change.pdf", width=9, height= 13)
 americas
 dev.off()
 ```
@@ -606,7 +646,7 @@ oceania<-count_bio |>
 # ggsave(filename = file.path(base_folder, "oceania_perc_change.pdf"),
 #        device = "pdf", width = 10, height = 9)
 
-pdf("figures/oceania_perc_change.pdf", width=9, height= 9)
+pdf("data/data_products/oceania_perc_change.pdf", width=9, height= 9)
 oceania
 dev.off()
 ```
@@ -635,7 +675,7 @@ fao_regions<-fao_bio |>
 # ggsave(filename = file.path(base_folder, "fao_regions_perc_change.pdf"), 
 #        device = "pdf", width = 10, height = 6)
 
-pdf("figures/fao_regions_perc_change.pdf", width=9, height= 6)
+pdf("data/data_products/fao_regions_perc_change.pdf", width=9, height= 6)
 fao_regions
 dev.off()
 ```
@@ -674,7 +714,7 @@ uncert_decade<-ggplot(filter(bio_dataOCD, figure_name != "Arctic Sea"), aes(x=fi
         axis.title=element_text(size=14)) + # face = "bold"
   facet_wrap(~decade)
 
-png("figures/FAOarea_uncertity.png", width=10, height=5, units="in",res=1200)
+png("data/data_products/FAOarea_uncertity.png", width=10, height=5, units="in",res=1200)
 uncert_decade
 dev.off()
 
