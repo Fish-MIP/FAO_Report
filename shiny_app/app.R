@@ -13,8 +13,6 @@ library(cmocean)
 library(scales)
 library(sf)
 library(rnaturalearth)
-library(terra)
-library(tidyterra)
 
 # Loading data ------------------------------------------------------------
 #Loading ensemble biomass change
