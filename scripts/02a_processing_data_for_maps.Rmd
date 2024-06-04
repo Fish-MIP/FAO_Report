@@ -156,19 +156,12 @@ choro_data <- choro_data |>
   #Transform to raster and include CRS
   rast(type = "xyz", crs = "epsg:4326") |> 
   #Reproject to Mollweide for plotting in shiny app
-  project(y = "+proj=moll +x_0=0 +y_0=0 +lat_0=0")
+  project(y = "+proj=moll +x_0=0 +y_0=0 +lat_0=0") |> 
+  as.data.frame(xy = T)
 
-#Shorten layer names before saving to disk
-lyr_names <- names(choro_data) |> 
-  str_remove("rel_change_") |> 
-  str_remove("_mean$")
-
-#Saving each layer separately to record layer names correctly
-for(i in 1:nlyr(choro_data)){
-  writeRaster(choro_data[[i]], 
-              file.path("data", str_c("global_choro_", lyr_names[i], ".tif")),
-              overwrite = T)
-}
+#Saving result
+choro_data |> 
+  write_csv("data/global_choro_maps_data.csv")
 ```
   
 ## Calculating annual fisheries catch
