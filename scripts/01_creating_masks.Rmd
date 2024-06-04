@@ -24,6 +24,12 @@ library(tidyr)
 #Defining base directory
 base_dir <- "/rd/gem/private/shared_resources/"
 
+#Loading FAO shapefiles
+fao_shp <- list.files(base_dir, "FAO_MajorAreas.shp", 
+                          recursive = T, full.names = T) |> 
+  read_sf() |> 
+  mutate(F_CODE = as.integer(F_CODE))
+
 #Loading FAO-EEZ shapefile
 fao_eez_shp <- list.files(base_dir, "FAO_MajorAreas_200NM.shp", 
                           recursive = T, full.names = T) |> 
@@ -127,6 +133,9 @@ gfdl_mask <- rast_save(fao_eez_shp, gfdl, "ID_mrgd",
 gfdl_lme <- rast_save(fao_lme_shp, gfdl, "ID_merged", 
                       out_file = "../data/gfdl-esm4_60arcmin_global_FAO-LME.nc")
 
+gfdl_fao <- rast_save(fao_shp, gfdl, "F_CODE",
+                      out_file = "../data/gfdl-esm4_60arcmin_global_FAO.nc")
+
 #Creating IPSL mask
 ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
                        out_file = file.path(fao_dir, 
@@ -134,6 +143,9 @@ ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
 
 ipsl_lme <- rast_save(fao_lme_shp, ipsl, "ID_merged", 
                       out_file = "../data/ipsl-cm6a_60arcmin_global_FAO-LME.nc")
+
+ipsl_fao <- rast_save(fao_shp, ipsl, "F_CODE",
+                      out_file = "../data/ipsl-cm6a_60arcmin_global_FAO.nc")
 ```
   
 ## Applying function to save raster as data frame
@@ -149,11 +161,18 @@ meta_lme <- list.files(base_dir, "FAO_LME_keys.csv", recursive = T,
   read_csv() |> 
   rename("ID_mrgd" = "ID_merged")
 
+meta_fao <- list.files(base_dir, "FAO-regions_keys.csv", recursive = T, 
+                       full.names = T) |> 
+  read_csv() |> 
+  rename("ID_mrgd" = "F_CODE")
+ 
 #Changing the name of layer to match metadata file
 names(gfdl_mask) <- "ID_mrgd"
 names(ipsl_mask) <- "ID_mrgd"
 names(gfdl_lme) <- "ID_mrgd"
 names(ipsl_lme) <- "ID_mrgd"
+names(gfdl_fao) <- "ID_mrgd"
+names(ipsl_fao) <- "ID_mrgd"
 
 #Saving GFDL raster as data frame
 gfdl_df <- rast_df(gfdl_mask, gfdl, meta, 
@@ -162,12 +181,18 @@ gfdl_df <- rast_df(gfdl_mask, gfdl, meta,
 gfdl_lme_df <- rast_df(gfdl_lme, gfdl, meta_lme, 
                        "../data/gfdl-esm4_60arcmin_global_FAO-LME.csv")
 
+gfdl_fao_df <- rast_df(gfdl_fao, gfdl, meta_fao, 
+                       "../data/gfdl-esm4_60arcmin_global_FAO.csv")
+
 #Saving IPSL raster as data frame
 ipsl_df <- rast_df(ipsl_mask, ipsl, meta, 
                    file.path(fao_dir, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv"))
 
 ipsl_lme_df <- rast_df(ipsl_lme, ipsl, meta_lme, 
                        "../data/ipsl-cm6a_60arcmin_global_FAO-LME.csv")
+
+ipsl_fao_df <- rast_df(ipsl_fao, ipsl, meta_fao, 
+                       "../data/ipsl-cm6a_60arcmin_global_FAO.csv")
 ```
   
 ## Saving shapefile with updated continent names
