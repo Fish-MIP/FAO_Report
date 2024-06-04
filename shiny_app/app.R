@@ -18,9 +18,8 @@ library(rnaturalearth)
 #Loading ensemble biomass change
 maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
                       col_select = c(x, y, starts_with("rel_change"), 
-                                     NAME_EN, continent, name_merge,
-                                     figure_name)) |> 
-  mutate(name = case_when(!is.na(continent) ~ continent, 
+                                     NAME_EN, name_merge, figure_name)) |> 
+  mutate(name = case_when(!is.na(figure_name) ~ figure_name, 
                           !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
 
 
@@ -51,13 +50,6 @@ country_list <- maps_data |>
   distinct(figure_name) |> 
   drop_na() |> 
   rename("name"= "figure_name") |> 
-  arrange(name)
-
-#List of continents
-continent_list <- maps_data |> 
-  distinct(continent) |> 
-  drop_na() |> 
-  rename("name"= "continent") |> 
   arrange(name)
 
 #List of LMEs
@@ -110,28 +102,23 @@ base_map <- list(geom_tile(),
                  geom_sf(inherit.aes = F, data = world, lwd = 0.25,
                          color = "black", show.legend = F),
                  theme_bw(),
+                 guides(fill = guide_colorbar(title.position = "top", 
+                                              title.hjust = 0.5, barwidth = 40, 
+                                              barheight = 2, 
+                                              ticks.linewidth = 1, 
+                                              frame.linewidth = 0.5,
+                                              ticks.colour = "#444444",
+                                              frame.colour = "#444444",
+                                              title.theme = element_text(
+                                                face = "plain",size = 14),
+                                              label.theme = element_text(
+                                                size = 14))),
                  theme(axis.title = element_blank(), 
                        panel.border = element_rect(colour = NA),
                        plot.title = element_text(hjust = 0.5),
-                       legend.position = "none", 
+                       legend.position = "bottom", 
                        title = element_text(size = 14, face = "bold"),
                        axis.text = element_text(size = 12)))
-
-#Define base steps for choropleth maps
-base_choro <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                                     type = scale_fill_custom, oob = oob_squish,
-                                     name = "% change in fish biomass"),
-                   #Adding world
-                   geom_sf(inherit.aes = F, data = world, lwd = 0.25,
-                           color = "black", show.legend = F),
-                   #Projecting to Mollweide
-                   coord_sf(crs = st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0")),
-                   theme_bw(),
-                   theme(panel.border = element_rect(colour = NA),
-                         plot.title = element_text(hjust = 0.5),
-                         legend.position = "none",
-                         title = element_text(size = 14, face = "bold"),
-                         axis.title = element_blank()))
 
 #Function to improve map ratios for plotting
 scaler <- function(x, type, ratio = F){
@@ -256,17 +243,9 @@ ui <- navbarPage(title = "Interactive Tool",
                               )
                           ),
                           mainPanel(
-                            # fluidRow(
-                            #   column(6, plotOutput(outputId = "plot_choro1")),
-                            #   column(6, plotOutput(outputId = "plot_choro2"))
-                            # ),
-                            # fluidRow(
-                            #   column(6, plotOutput(outputId = "plot_choro3")),
-                            #   column(6, plotOutput(outputId = "plot_choro4"))
-                            # ),
-                            # fluidRow(plotOutput(outputId = "legend_choro", 
-                            #                     height = "90px"))
-                            fluidRow(plotOutput(outputId = "plot_world"))
+                            fluidRow(
+                              plotOutput(outputId = "plot_world")
+                                     )
                           )
                           )),
                  tabPanel(title = "Maps",
@@ -287,31 +266,44 @@ ui <- navbarPage(title = "Interactive Tool",
                                            "Choose group you would like to \
                                            visualise",
                                            choiceNames =
-                                             c("Exclusive Economic Zone (EEZ) \
-                                               by continent",
-                                               "FAO regions (Outside EEZs)",
+                                             c("Exclusive Economic Zones (EEZs)",
+                                               "FAO Major Fishing Areas",
                                                "Large Marine Ecosystems (LMEs)"
                                              ),
-                                           choiceValues = c("cont", "FAO", 
+                                           choiceValues = c("EEZ", "FAO", 
                                                             "LME"),
                                            selected = NULL
                               ),
                               selectInput(inputId = "region_maps",
                                           label = "Choose your area of interest",
                                           choices = NULL
+                              ),
+                              radioButtons(inputId = "region_scenario",
+                                           label = "Choose emissions scenario",
+                                           choiceNames = 
+                                             c("SSP1-2.6 (low emissions)",
+                                               "SSP5-8.5 (high emissions)"),
+                                           choiceValues = c("ssp126", "ssp585"),
+                                           selected = NULL
+                              ),
+                              radioButtons(inputId = "region_decade",
+                                           "Choose decade of projected change",
+                                           choiceNames = 
+                                             c("2041-2050 (medium term)",
+                                               "2091-2100 (long term)"),
+                                           choiceValues = c("mean50", "mean00"),
+                                           selected = NULL
+                              ),
+                              p("Click the 'Download' button below to get the \
+                                data used to create the map shown on the \
+                                right."),
+                              #Download button
+                              downloadButton(outputId = "download_map",
+                                             label = "Download"
                               )
                             ),
                             mainPanel(
-                              fluidRow(
-                                column(6, plotOutput(outputId = "plot_maps1")),
-                                column(6, plotOutput(outputId = "plot_maps2"))
-                              ),
-                              fluidRow(
-                                column(6, plotOutput(outputId = "plot_maps3")),
-                                column(6, plotOutput(outputId = "plot_maps4"))
-                              ),
-                              fluidRow(plotOutput(outputId = "legend", 
-                                                  height = "90px"))
+                              fluidRow(plotOutput(outputId = "plot_maps1"))
                               )
                           )
                           ),
@@ -348,7 +340,7 @@ ui <- navbarPage(title = "Interactive Tool",
                                            visualise",
                                            choiceNames =
                                              c("Exclusive Economic Zones (EEZs)",
-                                               "FAO regions (Outside EEZs)",
+                                               "FAO Major Fishing Areas",
                                                "Large Marine Ecosystems (LMEs)"
                                                ),
                                            choiceValues = c("EEZ", "FAO",
@@ -378,7 +370,7 @@ ui <- navbarPage(title = "Interactive Tool",
 
 server <- function(input, output, session) {
   
-  ########## Global overview tab
+  ########## Global overview tab ----
   output$download_world <- downloadHandler(
     filename = function(){
       "table_stats_country_admin.csv"
@@ -389,104 +381,66 @@ server <- function(input, output, session) {
     }
   )
   
+  #Select correct data 
   world_map_data <- reactive({
     if(str_detect(input$world_scenario, "low") & 
        str_detect(input$world_decade, "medium")){
          data <- choro_data |> 
            select(x, y, rel_change_mean50_ssp126_mean) |> 
            rename(values = rel_change_mean50_ssp126_mean)
-       }
-    # }else if(input$sectors_maps == "cont"){
-    #   data <- continent_list
-    # }else if(input$sectors_maps == "LME"){
-    #   data <- lme_list
+    }else if(str_detect(input$world_scenario, "low") & 
+             str_detect(input$world_decade, "long")){
+      data <- choro_data |> 
+        select(x, y, rel_change_mean00_ssp126_mean) |> 
+        rename(values = rel_change_mean00_ssp126_mean)
+    }else if(str_detect(input$world_scenario, "high") & 
+             str_detect(input$world_decade, "medium")){
+      data <- choro_data |> 
+        select(x, y, rel_change_mean50_ssp585_mean) |> 
+        rename(values = rel_change_mean50_ssp585_mean)
+    }else if(str_detect(input$world_scenario, "high") & 
+             str_detect(input$world_decade, "long")){
+      data <- choro_data |> 
+        select(x, y, rel_change_mean00_ssp585_mean) |> 
+        rename(values = rel_change_mean00_ssp585_mean)
+    }
   })
   
-  
+  #Plot data
   output$plot_world <- renderPlot({
       p1 <- ggplot()+
         geom_tile(data = world_map_data(),
                   aes(x, y, fill = values))+
-        base_choro+
+        scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
+                          type = scale_fill_custom, oob = oob_squish,
+                          name = "% change in fish biomass")+
+        #Adding world
+        geom_sf(inherit.aes = F, data = world, lwd = 0.25, color = "black", 
+                show.legend = F)+
+        #Projecting to Mollweide
+        coord_sf(crs = st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0"))+
+        theme_bw()+
         guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-                                     barwidth = 40, barheight = 2.5,
+                                     barwidth = 40, barheight = 2,
                                      ticks.linewidth = 1, frame.linewidth = 0.5,
                                      ticks.colour = "#444444",
                                      frame.colour = "#444444",
                                      title.theme = element_text(face = "plain",
                                                                 size = 14),
                                      label.theme = element_text(size = 14)))+
-        theme(legend.position = "bottom")
+        theme(panel.border = element_rect(colour = NA),
+              legend.position = "bottom",
+              axis.title = element_blank())
       
       p1
     })
   
-  # output$plot_choro1 <- renderPlot({
-  # p1 <- ggplot()+
-  #   geom_tile(data = choro_data,
-  #             aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  #   base_choro+
-  #   labs(title = "SSP1-2.6: 2041-2050")
-  # p1
-  # })
-  # 
-  # output$plot_choro2 <- renderPlot({
-  #   p1 <- ggplot()+
-  #     geom_tile(data = choro_data, 
-  #               aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-  #     base_choro+
-  #     labs(title = "SSP5-8.5: 2041-2050")
-  #   p1
-  # })
-  # 
-  # output$plot_choro3 <- renderPlot({
-  #   p1 <- ggplot()+
-  #     geom_tile(data = choro_data, 
-  #               aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-  #     base_choro+
-  #     labs(title = "SSP1-2.6: 2091-2100")
-  #   p1
-  # })
-  # 
-  # output$plot_choro4 <- renderPlot({
-  #   p1 <- ggplot()+
-  #     geom_tile(data = choro_data,
-  #               aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  #     base_choro+
-  #     labs(title = "SSP5-8.5: 2091-2100")
-  #   p1
-  # })
-  # 
-  # output$legend_choro <- renderPlot({
-  #   p1 <- ggplot()+
-  #     geom_tile(data = choro_data,
-  #               aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-  #     base_choro+
-  #     guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-  #                                  barwidth = 40, barheight = 2.5,
-  #                                  ticks.linewidth = 1, frame.linewidth = 0.5,
-  #                                  ticks.colour = "#444444",
-  #                                  frame.colour = "#444444",
-  #                                  title.theme = element_text(face = "plain",
-  #                                                             size = 14),
-  #                                  label.theme = element_text(size = 14)))+
-  #     theme(legend.position = "bottom")
-  # 
-  #   #Get legend for fish biomass
-  #   leg_fish <- get_legend(p1)
-  # 
-  #   p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
-  # 
-  #   p1
-  # })
-  
-  
-  ########## Maps tab
+  ########## Maps tab ----
   region_list_maps <- reactive({
     if(input$sectors_maps == "FAO"){
       data <- fao_list
-    }else if(input$sectors_maps == "cont"){
-      data <- continent_list
+    }else if(input$sectors_maps == "EEZ"){
+      data <- country_list
     }else if(input$sectors_maps == "LME"){
       data <- lme_list
     }
@@ -505,6 +459,11 @@ server <- function(input, output, session) {
       df <- maps_data |>
         filter(name_merge == input$region_maps)
     }
+    
+    df <- df |> 
+      select(x, y, contains(input$region_scenario) & 
+               contains(input$region_decade)) |> 
+      rename_with(~ "change", starts_with("rel_change"))
     
     
     #Adjusting map proportions
@@ -552,64 +511,13 @@ server <- function(input, output, session) {
     })
   
   output$plot_maps1 <- renderPlot({
-      p1 <- ggplot(maps_df()$df, aes(x = x, y = y,
-                                  fill = rel_change_mean50_ssp126_mean))+
+      p1 <- ggplot(maps_df()$df, aes(x = x, y = y, fill = change))+
         maps_df()$base_map+
-        labs(title = "SSP1-2.6: 2041-2050")+
         coord_sf(maps_df()$xlims, maps_df()$ylims)
       p1
   })
-  
-  output$plot_maps2 <- renderPlot({
-    p2 <- ggplot(maps_df()$df, aes(x = x, y = y,
-                                fill = rel_change_mean50_ssp585_mean))+
-      maps_df()$base_map+
-      labs(title = "SSP5-8.5: 2041-2050")+
-      coord_sf(maps_df()$xlims, maps_df()$ylims)
-    p2
-  })
-  
-  output$plot_maps3 <- renderPlot({
-    p3 <- ggplot(maps_df()$df, aes(x = x, y = y,
-                                fill = rel_change_mean00_ssp126_mean))+
-      maps_df()$base_map+
-      labs(title = "SSP1-2.6: 2091-2100")+
-      coord_sf(maps_df()$xlims, maps_df()$ylims)
-    p3
-  })
-  
-  output$plot_maps4 <- renderPlot({
-    p4 <- ggplot(maps_df()$df, aes(x = x, y = y,
-                                fill = rel_change_mean00_ssp585_mean))+
-      maps_df()$base_map+
-      labs(title = "SSP5-8.5: 2091-2100")+
-      coord_sf(maps_df()$xlims, maps_df()$ylims)
-    p4
-  })
-    
-  output$legend <- renderPlot({
-    p1 <- ggplot(maps_df()$df, aes(x = x, y = y,
-                                   fill = rel_change_mean50_ssp126_mean))+
-      maps_df()$base_map+
-      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-                                   barwidth = 40, barheight = 2.5, 
-                                   ticks.linewidth = 1, frame.linewidth = 0.5,
-                                   ticks.colour = "#444444", 
-                                   frame.colour = "#444444",
-                                   title.theme = element_text(face = "plain",
-                                                              size = 14), 
-                                   label.theme = element_text(size = 14)))+
-      theme(legend.position = "bottom")
-    
-    #Get legend for fish biomass
-    leg_fish <- get_legend(p1)
-    
-    p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
-    
-    p1
-  })
       
-  ########## Time series tab
+  ########## Time series tab ----
   region_list <- reactive({
     if(input$sectors_ts == "EEZ"){
       data <- country_list
