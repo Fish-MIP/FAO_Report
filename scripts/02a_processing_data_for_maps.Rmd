@@ -136,7 +136,7 @@ maps_data |>
   write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
-## Calculated weighted percentage change for FishMIP ensemble 
+## Calculated spatially weighted percentage change for FishMIP ensemble 
   
 ```{r}
 choro_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv") |> 
