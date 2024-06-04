@@ -379,7 +379,7 @@ ui <- navbarPage(title = "Interactive Tool",
                             br(),
                             br(), 
                             br(),
-                            dataTableOutput(outputId = "table_ts")
+                            #dataTableOutput(outputId = "table_ts")
                           ))
                  ))
 
@@ -656,7 +656,7 @@ server <- function(input, output, session) {
     p
   })
   
-  output$table_ts <- renderDataTable(ts_df())
+  #output$table_ts <- renderDataTable(ts_df())
   
   output$download_ts <- downloadHandler(
     filename = function(){
