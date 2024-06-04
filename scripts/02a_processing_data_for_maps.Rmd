@@ -121,7 +121,8 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   #Apply mask - We will use GFDL because it includes a few extra rows in the
   #southern hemisphere. Otherwise is the same as IPSL
   left_join(area_gfdl_df, by = join_by(x, y)) |> 
-  ungroup()
+  ungroup() |> 
+  select(!NAME_EN)
 
 #Adding LME metadata
 lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |> 
@@ -129,10 +130,15 @@ lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |>
   filter(ID_mrgd > 100) |> 
   select(x, y, name_merge)
 
+#Adding FAO metadata (full regions)
+fao <- read_csv("data/gfdl-esm4_60arcmin_global_FAO.csv") |> 
+  select(!cell_area:ID_mrgd)
+
 #Save ensemble data
 maps_data |> 
   #Adding LME information
   left_join(lme, join_by(x, y)) |> 
+  left_join(fao, join_by(x, y)) |> 
   write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
