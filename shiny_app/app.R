@@ -1,4 +1,4 @@
-#Code deveoped for shiny app supporting FAO report
+#Code developed for shiny app supporting FAO report
 #Author: Denisse Fierro Arcos
 
 # Loading R libraries -----------------------------------------------------
@@ -6,6 +6,7 @@ library(shiny)
 library(shinyWidgets)
 library(shinydashboard)
 library(tidyverse)
+library(plotly)
 library(bslib)
 library(cowplot)
 library(cmocean)
@@ -76,13 +77,12 @@ fao_list <- maps_data |>
   arrange(name)
 
 #Loading choropleth shapefile
-choro_data <- rast(list.files("../data/", "global_choro", full.names = T))
+choro_data <- read_csv("../data/global_choro_maps_data.csv")
 
 #Map of the world
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
-world_proj <- world |>
-  st_transform(crs(choro_data))
+
 
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
@@ -124,13 +124,16 @@ base_choro <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                                      type = scale_fill_custom, oob = oob_squish,
                                      name = "% change in fish biomass"),
                    #Adding world
-                   geom_sf(inherit.aes = F, data = world_proj, lwd = 0.25,
+                   geom_sf(inherit.aes = F, data = world, lwd = 0.25,
                            color = "black", show.legend = F),
+                   #Projecting to Mollweide
+                   coord_sf(crs = st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0")),
                    theme_bw(),
                    theme(panel.border = element_rect(colour = NA),
                          plot.title = element_text(hjust = 0.5),
                          legend.position = "none",
-                         title = element_text(size = 14, face = "bold")))
+                         title = element_text(size = 14, face = "bold"),
+                         axis.title = element_blank()))
 
 #Function to improve map ratios for plotting
 scaler <- function(x, type, ratio = F){
@@ -309,12 +312,20 @@ ui <- navbarPage(title = "Interactive Tool",
                           biomass is estimated to change until 2100 under two \
                           emissions scenarios: SSP1-2.6 and SSP5-8.5.",
                           br(),
+                          br(),
                           "The estimated change shown in the plot is the mean \
                           percentage change for FishMIP model ensemble in \
                           relation to the historical reference period (mean for \
                           the decade between 2005 and 2014). The shaded areas \
                           show the standard deviation across the 10 ecosystem \
                           models that form the FishMIP ensemble.",
+                          br(),
+                          br(),
+                          "The horizontal grey dashed line shows no difference \
+                          between a particular year and the reference decade \
+                          (2005-2014). The vertical grey line shows the end of \
+                          the historical period and the different emissions \
+                          scenarios.",
                           br(),
                           br(),
                           sidebarLayout(
@@ -343,7 +354,7 @@ ui <- navbarPage(title = "Interactive Tool",
                                              )
                             ),
                           mainPanel(
-                            plotOutput(outputId = "plot_ts"),
+                            plotlyOutput(outputId = "plot_ts"),
                             br(),
                             br(), 
                             br(),
@@ -367,7 +378,8 @@ server <- function(input, output, session) {
   
   output$plot_choro1 <- renderPlot({
   p1 <- ggplot()+
-    geom_spatraster(data = choro_data$rel_change_mean50_ssp126_mean)+
+    geom_tile(data = choro_data,
+              aes(x, y, fill = rel_change_mean00_ssp126_mean))+
     base_choro+
     labs(title = "SSP1-2.6: 2041-2050")
   p1
@@ -375,47 +387,51 @@ server <- function(input, output, session) {
   
   output$plot_choro2 <- renderPlot({
     p1 <- ggplot()+
-      geom_spatraster(data = choro_data$rel_change_mean50_ssp585_mean)+
+      geom_tile(data = choro_data, 
+                aes(x, y, fill = rel_change_mean50_ssp585_mean))+
       base_choro+
       labs(title = "SSP5-8.5: 2041-2050")
     p1
   })
-  
+
   output$plot_choro3 <- renderPlot({
     p1 <- ggplot()+
-      geom_spatraster(data = choro_data$rel_change_mean00_ssp126_mean)+
+      geom_tile(data = choro_data, 
+                aes(x, y, fill = rel_change_mean00_ssp126_mean))+
       base_choro+
       labs(title = "SSP1-2.6: 2091-2100")
     p1
   })
-  
+
   output$plot_choro4 <- renderPlot({
     p1 <- ggplot()+
-      geom_spatraster(data = choro_data$rel_change_mean00_ssp585_mean)+
+      geom_tile(data = choro_data,
+                aes(x, y, fill = rel_change_mean00_ssp585_mean))+
       base_choro+
       labs(title = "SSP5-8.5: 2091-2100")
     p1
   })
-  
+
   output$legend_choro <- renderPlot({
     p1 <- ggplot()+
-      geom_spatraster(data = choro_data$rel_change_mean00_ssp585_mean)+
+      geom_tile(data = choro_data,
+                aes(x, y, fill = rel_change_mean00_ssp585_mean))+
       base_choro+
       guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-                                   barwidth = 40, barheight = 2.5, 
+                                   barwidth = 40, barheight = 2.5,
                                    ticks.linewidth = 1, frame.linewidth = 0.5,
-                                   ticks.colour = "#444444", 
+                                   ticks.colour = "#444444",
                                    frame.colour = "#444444",
                                    title.theme = element_text(face = "plain",
-                                                              size = 14), 
+                                                              size = 14),
                                    label.theme = element_text(size = 14)))+
       theme(legend.position = "bottom")
-    
+
     #Get legend for fish biomass
     leg_fish <- get_legend(p1)
-    
+
     p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
-    
+
     p1
   })
   
@@ -596,8 +612,9 @@ server <- function(input, output, session) {
     return(df)
     })
   
-  output$plot_ts <- renderPlot({
-    p <- ggplot(ts_df(), aes(x = year, y = mean_change, colour = scenario))+
+  output$plot_ts <- renderPlotly({
+    ggplotly({
+      p <- ggplot(ts_df(), aes(x = year, y = mean_change, colour = scenario))+
       geom_line(linewidth = 0.5)+
       #Adding no change line at 0 for reference 
       geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
@@ -628,10 +645,11 @@ server <- function(input, output, session) {
             legend.title = element_text(size = 14),
             panel.grid.minor.y = element_blank(), 
             axis.title.x = element_blank(),
-            axis.title.y = element_text(size = 14),
+            axis.title.y = element_text(size = 13),
             axis.text.x = element_text(angle = 45, vjust = 0.765, 
                                        hjust = 0.65, size = 12),
             axis.text.y = element_text(size = 12))
+    })
     p
   })
   
