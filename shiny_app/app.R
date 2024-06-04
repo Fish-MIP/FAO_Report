@@ -234,8 +234,22 @@ ui <- navbarPage(title = "Interactive Tool",
                           "This tab will show circle plots from Gage and a map\
                           of the world. Aiming at having an interactive map \
                           here. We will also have a download button.",
+                          br(),
+                          br(),
                           sidebarLayout(
                             sidebarPanel(
+                              selectInput(inputId = "world_scenario",
+                                          label = "Choose emissions scenario",
+                                          choices = c("SSP1-2.6 (low emissions)",
+                                                      "SSP5-8.5 (high emissions)"
+                                                      )
+                              ),
+                              selectInput(inputId = "world_decade",
+                                          label = "Choose decade of projected \
+                                          change",
+                                          choices = c("2041-2050 (medium term)",
+                                                      "2091-2100 (long term)"),
+                              ),
                               p("Click the 'Download' button below to get the \
                                 data used to create this map."),
                               #Download button
@@ -244,16 +258,17 @@ ui <- navbarPage(title = "Interactive Tool",
                               )
                           ),
                           mainPanel(
-                            fluidRow(
-                              column(6, plotOutput(outputId = "plot_choro1")),
-                              column(6, plotOutput(outputId = "plot_choro2"))
-                            ),
-                            fluidRow(
-                              column(6, plotOutput(outputId = "plot_choro3")),
-                              column(6, plotOutput(outputId = "plot_choro4"))
-                            ),
-                            fluidRow(plotOutput(outputId = "legend_choro", 
-                                                height = "90px"))
+                            # fluidRow(
+                            #   column(6, plotOutput(outputId = "plot_choro1")),
+                            #   column(6, plotOutput(outputId = "plot_choro2"))
+                            # ),
+                            # fluidRow(
+                            #   column(6, plotOutput(outputId = "plot_choro3")),
+                            #   column(6, plotOutput(outputId = "plot_choro4"))
+                            # ),
+                            # fluidRow(plotOutput(outputId = "legend_choro", 
+                            #                     height = "90px"))
+                            fluidRow(plotOutput(outputId = "plot_world"))
                           )
                           )),
                  tabPanel(title = "Maps",
@@ -335,7 +350,7 @@ ui <- navbarPage(title = "Interactive Tool",
                                            visualise",
                                            choiceNames =
                                              c("Exclusive Economic Zones (EEZs)",
-                                               "High seas within FAO regions",
+                                               "FAO regions (Outside EEZs)",
                                                "Large Marine Ecosystems (LMEs)"
                                                ),
                                            choiceValues = c("EEZ", "FAO",
@@ -376,64 +391,96 @@ server <- function(input, output, session) {
     }
   )
   
-  output$plot_choro1 <- renderPlot({
-  p1 <- ggplot()+
-    geom_tile(data = choro_data,
-              aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-    base_choro+
-    labs(title = "SSP1-2.6: 2041-2050")
-  p1
+  world_map_data <- reactive({
+    if(str_detect(input$world_scenario, "low") & 
+       str_detect(input$world_decade, "medium")){
+         data <- choro_data |> 
+           select(x, y, rel_change_mean50_ssp126_mean) |> 
+           rename(values = rel_change_mean50_ssp126_mean)
+       }
+    # }else if(input$sectors_maps == "cont"){
+    #   data <- continent_list
+    # }else if(input$sectors_maps == "LME"){
+    #   data <- lme_list
   })
   
-  output$plot_choro2 <- renderPlot({
-    p1 <- ggplot()+
-      geom_tile(data = choro_data, 
-                aes(x, y, fill = rel_change_mean50_ssp585_mean))+
-      base_choro+
-      labs(title = "SSP5-8.5: 2041-2050")
-    p1
-  })
-
-  output$plot_choro3 <- renderPlot({
-    p1 <- ggplot()+
-      geom_tile(data = choro_data, 
-                aes(x, y, fill = rel_change_mean00_ssp126_mean))+
-      base_choro+
-      labs(title = "SSP1-2.6: 2091-2100")
-    p1
-  })
-
-  output$plot_choro4 <- renderPlot({
-    p1 <- ggplot()+
-      geom_tile(data = choro_data,
-                aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-      base_choro+
-      labs(title = "SSP5-8.5: 2091-2100")
-    p1
-  })
-
-  output$legend_choro <- renderPlot({
-    p1 <- ggplot()+
-      geom_tile(data = choro_data,
-                aes(x, y, fill = rel_change_mean00_ssp585_mean))+
-      base_choro+
-      guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-                                   barwidth = 40, barheight = 2.5,
-                                   ticks.linewidth = 1, frame.linewidth = 0.5,
-                                   ticks.colour = "#444444",
-                                   frame.colour = "#444444",
-                                   title.theme = element_text(face = "plain",
-                                                              size = 14),
-                                   label.theme = element_text(size = 14)))+
-      theme(legend.position = "bottom")
-
-    #Get legend for fish biomass
-    leg_fish <- get_legend(p1)
-
-    p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
-
-    p1
-  })
+  
+  output$plot_world <- renderPlot({
+      p1 <- ggplot()+
+        geom_tile(data = world_map_data(),
+                  aes(x, y, fill = values))+
+        base_choro+
+        guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
+                                     barwidth = 40, barheight = 2.5,
+                                     ticks.linewidth = 1, frame.linewidth = 0.5,
+                                     ticks.colour = "#444444",
+                                     frame.colour = "#444444",
+                                     title.theme = element_text(face = "plain",
+                                                                size = 14),
+                                     label.theme = element_text(size = 14)))+
+        theme(legend.position = "bottom")
+      
+      p1
+    })
+  
+  # output$plot_choro1 <- renderPlot({
+  # p1 <- ggplot()+
+  #   geom_tile(data = choro_data,
+  #             aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  #   base_choro+
+  #   labs(title = "SSP1-2.6: 2041-2050")
+  # p1
+  # })
+  # 
+  # output$plot_choro2 <- renderPlot({
+  #   p1 <- ggplot()+
+  #     geom_tile(data = choro_data, 
+  #               aes(x, y, fill = rel_change_mean50_ssp585_mean))+
+  #     base_choro+
+  #     labs(title = "SSP5-8.5: 2041-2050")
+  #   p1
+  # })
+  # 
+  # output$plot_choro3 <- renderPlot({
+  #   p1 <- ggplot()+
+  #     geom_tile(data = choro_data, 
+  #               aes(x, y, fill = rel_change_mean00_ssp126_mean))+
+  #     base_choro+
+  #     labs(title = "SSP1-2.6: 2091-2100")
+  #   p1
+  # })
+  # 
+  # output$plot_choro4 <- renderPlot({
+  #   p1 <- ggplot()+
+  #     geom_tile(data = choro_data,
+  #               aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  #     base_choro+
+  #     labs(title = "SSP5-8.5: 2091-2100")
+  #   p1
+  # })
+  # 
+  # output$legend_choro <- renderPlot({
+  #   p1 <- ggplot()+
+  #     geom_tile(data = choro_data,
+  #               aes(x, y, fill = rel_change_mean00_ssp585_mean))+
+  #     base_choro+
+  #     guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
+  #                                  barwidth = 40, barheight = 2.5,
+  #                                  ticks.linewidth = 1, frame.linewidth = 0.5,
+  #                                  ticks.colour = "#444444",
+  #                                  frame.colour = "#444444",
+  #                                  title.theme = element_text(face = "plain",
+  #                                                             size = 14),
+  #                                  label.theme = element_text(size = 14)))+
+  #     theme(legend.position = "bottom")
+  # 
+  #   #Get legend for fish biomass
+  #   leg_fish <- get_legend(p1)
+  # 
+  #   p1 <- ggdraw(plot_grid(leg_fish, ncol = 1))
+  # 
+  #   p1
+  # })
   
   
   ########## Maps tab
