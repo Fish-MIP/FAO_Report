@@ -18,9 +18,9 @@ library(rnaturalearth)
 #Loading ensemble biomass change
 maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
                       col_select = c(x, y, starts_with("rel_change"), 
-                                     NAME_EN, name_merge, figure_name)) |> 
-  mutate(name = case_when(!is.na(figure_name) ~ figure_name, 
-                          !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
+                                     NAME_EN, name_merge, figure_name)) #|> 
+  # mutate(name = case_when(!is.na(figure_name) ~ figure_name, 
+  #                         !is.na(NAME_EN) ~ NAME_EN, T ~ NA))
 
 
 #Ensemble percentage change in biomass by countries
@@ -73,7 +73,6 @@ choro_data <- read_csv("../data/global_choro_maps_data.csv")
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
 
-
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
 scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
@@ -103,7 +102,7 @@ base_map <- list(geom_tile(),
                          color = "black", show.legend = F),
                  theme_bw(),
                  guides(fill = guide_colorbar(title.position = "top", 
-                                              title.hjust = 0.5, barwidth = 40, 
+                                              title.hjust = 0.5, barwidth = 30, 
                                               barheight = 2, 
                                               ticks.linewidth = 1, 
                                               frame.linewidth = 0.5,
@@ -452,19 +451,21 @@ server <- function(input, output, session) {
                       choices = choices)})
   
   maps_df <- reactive({
-    if(input$sectors_maps != "LME"){
-      df <- maps_data |>
-        filter(name == input$region_maps)
-    }else{
+    if(input$sectors_maps == "LME"){
       df <- maps_data |>
         filter(name_merge == input$region_maps)
+    }else if(input$sectors_maps == "FAO"){
+      df <- maps_data |>
+        filter(NAME_EN == input$region_maps)
+    }else if(input$sectors_maps == "EEZ"){
+      df <- maps_data |> 
+        filter(figure_name == input$region_maps)
     }
     
     df <- df |> 
       select(x, y, contains(input$region_scenario) & 
                contains(input$region_decade)) |> 
       rename_with(~ "change", starts_with("rel_change"))
-    
     
     #Adjusting map proportions
     minx <- min(df$x)
@@ -516,6 +517,34 @@ server <- function(input, output, session) {
         coord_sf(maps_df()$xlims, maps_df()$ylims)
       p1
   })
+  
+  down_name_map <- reactive({
+    region_name <- input$region_maps |> 
+      #changing to lower case
+      str_to_lower() |> 
+      #removing accents
+      iconv(from = 'UTF-8', to = 'ASCII//TRANSLIT') |> 
+      #Removing parentheses
+      str_remove_all("\\(|\\)") |> 
+      #Replaces spaces " " with dashes "-"
+      str_replace_all(" ", "-") |> 
+      #Remove apostrophes in names
+      str_replace("'", "")
+    region_name <- str_c("ensemble_perc_change_fish_bio_", 
+                         input$region_scenario, "_", input$region_decade, "_",
+                         region_name)
+    return(region_name)
+  })
+  
+  output$download_map <- downloadHandler(
+    filename = function(){
+      down_name_map()
+    },
+    #Creating name of download file based on original file name
+    content = function(file){
+      write_csv(maps_df()$df, file)
+    }
+  )
       
   ########## Time series tab ----
   region_list <- reactive({
@@ -545,7 +574,7 @@ server <- function(input, output, session) {
       str_replace_all(" ", "-") |> 
       #Remove apostrophes in names
       str_replace("'", "")
-    region_name <- str_c("mean_ensemble_perc_change_fish_bio_", 
+    region_name <- str_c("mean_ensemble_perc_change_fish_bio_timeseries_", 
                          region_name, "_1950-2100.csv")
     return(region_name)
   })
