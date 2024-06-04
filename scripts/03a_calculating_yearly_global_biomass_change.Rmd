@@ -461,7 +461,7 @@ for(m in members){
 }
 ```
   
-## Calculating mean ensemble percentage change in biomass per country
+## Calculating mean ensemble percentage change in biomass per LME
   
 ```{r eval = F}
 bio_data <- list.files(out_folder, 
