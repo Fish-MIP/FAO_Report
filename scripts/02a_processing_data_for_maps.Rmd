@@ -50,7 +50,8 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
   
 ```{r}
 #Getting a list of files containing biomass data
-global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
+global_files <- list.files("/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/", # needs full path as there are different/older versions that get picked up otherwise 
+                           pattern = "global_10g-100kg.rds", 
                            full.names = T, recursive = T)
 
 #Getting a list of models
@@ -123,16 +124,17 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   left_join(area_gfdl_df, by = join_by(x, y)) |> 
   ungroup()
 
-#Adding LME metadata
-lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |> 
-  #Keeping LMEs only - Removing FAO regions
-  filter(ID_mrgd > 100) |> 
-  select(x, y, name_merge)
+## Commented out as not used in FAO report adn currently re-running analysis to provide high res final plots. 
+# #Adding LME metadata
+# lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |> 
+#   #Keeping LMEs only - Removing FAO regions
+#   filter(ID_mrgd > 100) |> 
+#   select(x, y, name_merge)
 
 #Save ensemble data
 maps_data |> 
   #Adding LME information
-  left_join(lme, join_by(x, y)) |> 
+  # left_join(lme, join_by(x, y)) |> # Commented out as per reason above. 
   write_csv("data/ensemble_perc_bio_change_data_map.csv")
 ```
     
@@ -339,7 +341,7 @@ for(m in members){
   
   #Keeping information within FAO regions only
   area_grid <- area_grid |> 
-    drop_na(OCEAN) |> 
+    # drop_na(OCEAN) |> # CN not available anymore
     #Keeping relevant columns 
     select(x:ID_mrgd)
   
