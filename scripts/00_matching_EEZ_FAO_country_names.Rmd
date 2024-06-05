@@ -238,12 +238,18 @@ head(new_key)
 # filter(new_key, 
 #        fa_ffcl == "Overlapping claim Falkland / Malvinas Islands: UK / Argentina")
 
+# Check that all LMEs are included in new_key
+head(eez)
+head(new_key)
+setdiff(sort(unique(eez$nm_mrgd)),sort(unique(new_key$nm_mrgd)))
+filter(eez, nm_mrgd == "Bouvet Island") # missing as original file was updated after manually matching eez and lmes - add to very final file
+setdiff(sort(unique(new_key$nm_mrgd)),sort(unique(eez$nm_mrgd)))
+
 # consider only columns needed 
 new_key <- new_key |> 
   select(c(ID_mrgd, continent, fa_ffcl, Country_name)) |> 
   rename(fao_official = fa_ffcl, Country_FAO = Country_name)
 
-## this was printed and called eez_keys_camilla_new.csv 
 ```
 
 # Add short names as per new FAO regulation where they can be used in figs
@@ -298,22 +304,39 @@ Encoding(sort(new_key$fao_official)[18])
 Encoding(sort(new_key$figure_name)[135])
 
 # print new final file 
-# write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
+write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
+
 ```
 
 # Load **FINAL** file to check 
 
 ```{r}
+
 final <- file.path(base_folder, "EEZ_FAO_key_with_short_names_utf.csv") |> 
   read.csv(fileEncoding = "UTF-8")
+nrow(final)
 
+View(final)
 # all good
-sort(final$figure_name)[46]
 sort(final$figure_name)[53]
 sort(final$figure_name)[56]
+sort(final$figure_name)[46]
 sort(final$figure_name)[169]
+sort(final$figure_name)[156]
 sort(final$figure_name)[173]
 sort(final$figure_name)[209]
+
+# add Bouvet Island 
+head(final)
+bouv<-data.frame(ID_mrgd = 62599, continent = "Africa", fao_official = "Bouvet Island", Country_FAO = "the Kingdom of Norway", figure_name = "Bouvet Island")
+
+final<-rbind(final, bouv)
+nrow(final)
+
+sort(unique(final$figure_name))
+
+View(final)
+
 ```
 
 # Preparing file to be used in masks
