@@ -51,7 +51,7 @@ if(!dir.exists(out_folder)){
 
 #Defining location for plots
 out_plot <- file.path(base_folder, "FAO_Report/maps_global_regions")
-# out_plot <- file.path("data/data_products")
+out_plot <- file.path("data/data_products")
 if(!dir.exists(out_plot)){
   dir.create(out_plot)
 }
@@ -597,7 +597,7 @@ rm(amercent, amercent_bound, eez_amer)
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "americas_perc_change_map_50-00.pdf"), 
-       americas_plots, device = "pdf", width = 10, height = 9)
+       americas_plots, device = "pdf", width = 14, height = 9)
 ```  
   
 ## Figure 9 FAO report - Europe
@@ -732,7 +732,7 @@ rm(eez_euro, eurocent, eurocent_bound)
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "europe_perc_change_map_50-00.pdf"),
-       europe_plots, device = "pdf", width = 10, height = 6)
+       europe_plots, device = "pdf", width = 14, height = 8)
 ```
   
 ## Figure 11 FAO report - Africa
@@ -835,7 +835,7 @@ rm(africa_cent)
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "africa_perc_change_map_50-00.pdf"),
-       africa_plots, device = "pdf", width = 9, height = 9)
+       africa_plots, device = "pdf", width = 14, height = 9)
 ```
   
 ## Figure 13 FAO report - Oceania
@@ -972,7 +972,7 @@ rm(oceancent, oceancent_bound, eez_ocean)
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "oceania_perc_change_map_50-00.pdf"),
-       oceania_plots, device = "pdf", width = 13, height = 8)
+       oceania_plots, device = "pdf", width = 14, height = 8)
 ```
     
 ## Figure 15 FAO report - FAO regions
