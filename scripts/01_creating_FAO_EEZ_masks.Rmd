@@ -3,6 +3,8 @@ title: "Creating masks to extract ESM data"
 author: "Denisse Fierro Arcos"
 date: "2024-05-13"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction
@@ -134,6 +136,7 @@ ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
 
 ipsl_lme <- rast_save(fao_lme_shp, ipsl, "ID_merged", 
                       out_file = "../data/ipsl-cm6a_60arcmin_global_FAO-LME.nc")
+
 ```
   
 ## Applying function to save raster as data frame
@@ -168,6 +171,15 @@ ipsl_df <- rast_df(ipsl_mask, ipsl, meta,
 
 ipsl_lme_df <- rast_df(ipsl_lme, ipsl, meta_lme, 
                        "../data/ipsl-cm6a_60arcmin_global_FAO-LME.csv")
+
+
+# Check missing territories: 
+head(meta) # names on file printed in 00 and including all countries and territories 
+head(gfdl_df) # names on files just created
+
+setdiff(sort(unique(meta$figure_name)), sort(unique(gfdl_df$figure_name)))
+setdiff(sort(unique(meta$figure_name)), sort(unique(ipsl_df$figure_name)))
+
 ```
   
 ## Saving shapefile with updated continent names
