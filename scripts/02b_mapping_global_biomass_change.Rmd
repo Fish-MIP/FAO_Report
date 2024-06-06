@@ -1143,8 +1143,7 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                 theme_bw(),
                 theme(axis.title = element_blank(), 
                       panel.border = element_rect(colour = NA),
-                      plot.title = element_text(hjust = 0.5),
-                      legend.position = "none"))
+                      plot.title = element_text(hjust = 0.5)))
 
 # #SSP1-2.6 2041-2050
 # p50_126_SD <- ggplot()+ 
