@@ -96,6 +96,9 @@ cmip_data_all <- cmip_data_new %>%
 
 ## ok so we have 3 spatial scales: countries (eezs), countries_admins (administrative/sovereign nations), and FAO_area (high seas area)
 
+## save iso3c lookup for shinyapp 
+# write.csv(regions_df_new, here("data/iso3c_lookup_regions.csv"), row.names = FALSE)
+  
 ```
 
 
@@ -575,21 +578,6 @@ countries_shp <- ne_countries(scale = 110, returnclass = "sf") |>
   st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
 
 
-eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-# eez_shp <- vect(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-
-test <- eez_shp %>% st_drop_geometry()
-
-eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-# eez_shp_2 <- terra::project(eez_shp, "epsg:3035")
-
-eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
-  mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
-
-eez_shp_df <- eez_shp_2 %>% 
-  left_join(eez_key)
-
-
       
  ## make map 
 plot_df <- cmip_data_all %>%
@@ -677,12 +665,67 @@ ggsave(plot = g_legend, glue(here("outputs/circle_figs/legend_vertical.png")), h
   # ggsave(plot = g_legend, glue(here("scripts/outputs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
 
   
+
+## try plotting eezs instead of admin country
+
+eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
+# eez_shp <- vect(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
+
+test <- eez_shp %>% st_drop_geometry()
+
+eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+# eez_shp_2 <- terra::project(eez_shp, "epsg:3035")
+
+eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
+  mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
+
+eez_shp_df <- eez_shp_2 %>% 
+  left_join(eez_key)
+
+
+eez_data <- cmip_data_all %>% 
+  filter(spatial_scale %in% c("FAO_area", "countries"))
+
+test <- eez_shp_2 %>% 
+  left_join(eez_key) %>%
+  right_join(eez_data, by = c("figure_name" = "fa_ffcl_shrt")) %>%
+  rename(fa_ffcl_shrt = figure_name) %>%
+    dplyr::select(colnames(eez_data)) %>%
+    filter(!st_is_empty(.)) %>%
+        mutate(fill_category = case_when(
+    mean < -30 ~ "Decrease >30%",
+    mean <= -20 & mean >= -30 ~ "Decrease 20 to 30%",
+    mean <= -10 & mean > -20 ~ "Decrease 10 to 20%",
+    mean <= 0 & mean > -10 ~ "Decrease <10%",
+    mean >= 0 & mean < 10 ~ "Increase <10%",
+    mean >= 10 & mean < 20 ~ "Increase 10 to 20%", 
+    mean >= 20 & mean <= 30 ~ "Increase 20 to 30%",
+    mean > 30 ~ "Increase >30%"
+  ))
+ 
+
+p1 <- ggplot(data = test) +
+          geom_sf(aes(fill = fill_category), 
+                  key_glyph = "rect", color = "white") + 
+                scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
+                 plain +
+               labs(fill = "Change in fish biomass (%)")  +
+                    coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
+                           geom_sf(data = countries_shp, fill = NA, colour = "grey", alpha = 0.2)  +
+                           geom_sf(data = globe_border, fill = NA, colour = "grey") +
+          facet_grid(decade~scenario, switch = "y") +
+          guides(fill = guide_legend(byrow = TRUE,
+                              title.position = "top",
+               title.hjust = 1,
+               title.vjust = 1))
+
+# ggsave(here("outputs/test.png"), bg = "white", height = 30, width = 30, units = "in", dpi = 300)
+
 ```
 
 
 
-
-ARCHIVE for saving non-stacked plots: 
+Code for saving non-stacked plots: 
 
 ```{r}
 
@@ -693,7 +736,7 @@ spatial_scales <- c("countries_high_seas", "countries_admin", "countries_admin_h
 
 for(spatial_type in spatial_scales){ # specify what spatial scales you want to include in plot
 
-  # spatial_type = "countries_high_seas"
+  # spatial_type = "countries_admin"
   
   if(spatial_type == "countries_admin_high_seas"){
   
@@ -786,6 +829,7 @@ get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt,
 rank_rgn <- get_pos_neg_ranks %>%
   arrange(contnnt, pos_neg, -new_index) %>%
      mutate(rgn_name_short = fa_ffcl_shrt, 
+         rgn_name_short = gsub("United Kingdom of Great Britain and Northern Ireland", "United Kingdom", rgn_name_short),
          rgn_name_short = gsub("Islands|islands", "Isl", rgn_name_short),
          rgn_name_short = gsub("Island", "Isl", rgn_name_short),
          rgn_name_short = gsub("Democratic", "Dem", rgn_name_short),
@@ -804,12 +848,12 @@ rank_rgn <- get_pos_neg_ranks %>%
          rgn_name_short = gsub("Northern", "N", rgn_name_short), 
          rgn_name_short = gsub("Alaska", "AK", rgn_name_short),
          rgn_name_short = gsub("Hawaii", "HI", rgn_name_short),
-         rgn_name_short = gsub("United Kingdom", "UK", rgn_name_short),
          rgn_name_short = gsub("\\(the\\)", "", rgn_name_short),
          rgn_name_short = gsub("Kingdom of the Netherlands", "Netherlands", rgn_name_short),
          rgn_name_short = gsub("Russian Federation", "Russia", rgn_name_short),
          rgn_name_short = gsub("Federated States", "Fed. States", rgn_name_short),
-         rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short))
+         rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short)) %>%
+  mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) # not sure why gsub wasn't working
 
 
 
@@ -855,6 +899,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
 
 # make dataframe for continent text locations
 
+# make dataframe for continent text locations. Also specify margins for the plots, as the country names don't always fit on the standard margins (5.5pt)
 if(spatial_type == "countries_high_seas"){
 
   rgn_shift <- data.frame(
@@ -866,7 +911,7 @@ rgn_shift <- rgn_shift %>%
 
 label_size = 5.5
 
-plot_margin = margin(120, 120, 70, 50, unit = "pt")
+plot_margin = margin(120, 120, 180, 70, unit = "pt")
 
 
 }else if(spatial_type == "countries"){
@@ -880,7 +925,7 @@ rgn_shift <- rgn_shift %>%
   
 label_size = 5.5
 
-plot_margin = margin(120, 120, 70, 50, unit = "pt")
+plot_margin = margin(110, 120, 200, 50, unit = "pt")
 
 
 }else if(spatial_type == "countries_admin"){
@@ -894,7 +939,7 @@ rgn_shift <- rgn_shift %>%
 
 label_size = 7
 
-plot_margin = margin(160, 100, 90, 225, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
+plot_margin = margin(140, 10, 160, 10, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
 
 
 }else if(spatial_type == "countries_admin_high_seas"){
@@ -903,12 +948,13 @@ plot_margin = margin(160, 100, 90, 225, unit = "pt")   # need to make sure names
                          contnnt = rank_pos_neg$contnnt,
                          name_x = c(25, 55, 90, 125, 145, 165),
                          name_y = c(70, 70, 70, 70, 70, 70))
+  
 rgn_shift <- rgn_shift %>%
    mutate(contnnt = as.character(contnnt))
 
 label_size = 7
 
-plot_margin = margin(160, 105, 145, 100, unit = "pt")   # need to make sure names fit on plot... 
+plot_margin = margin(165, 105, 200, 90, unit = "pt")   # need to make sure names fit on plot... 
 }
 
 # specify theme
@@ -918,8 +964,8 @@ circle_theme <- theme(axis.line=element_blank(),
                       axis.title.x=element_blank(),
                       axis.title.y=element_blank(),
                      # legend.position="none", # do we want legend?  
-                      legend.position='bottom', 
-                      legend.justification = "left",
+                      legend.position='top', 
+                      legend.justification = "center",
                       panel.background=element_blank(),
                       panel.border=element_blank(),
                       panel.grid.major=element_blank(),
@@ -931,7 +977,8 @@ circle_theme <- theme(axis.line=element_blank(),
                       plot.title = element_text(hjust = 1),
                      plot.caption = element_text(hjust = 1, size = 16),
                     plot.margin = plot_margin,
-                      legend.spacing.y = unit(0, "pt"))
+                      legend.spacing.y = unit(0, "pt"),
+                    legend.text = element_text(size = 16))
 
 
 rank_rgn_adj$uncertain <- factor(rank_rgn_adj$uncertain, c("yes", "no")) # order the sd uncertainty factors
@@ -949,14 +996,15 @@ fill_colors <- c(
 )
 
 # order categories
-all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", "Decrease <10%",  "Increase >30%")
+all_categories <-  c("Decrease >30%", "Decrease 20 to 30%", "Decrease 10 to 20%", "Decrease <10%", "Increase <10%",  "Increase 10 to 20%", "Increase 20 to 30%", "Increase >30%")
 rank_rgn_adj$fill_category <- factor(rank_rgn_adj$fill_category, levels = all_categories)
 
 # this is probably redundant but i dont feel like fixing it
-all_categories_new <- c("Decrease >30%", "Increase <10%",  "Decrease 20-30%", "Increase 10-20%", "Decrease 10-20%", "Increase 20-30%", "Decrease <10%",  "Increase >30%")
+all_categories_new <- c("Decrease >30%", "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%",  "Increase 10-20%", "Increase 20-30%", "Increase >30%")
 
 rank_rgn_adj <- rank_rgn_adj %>% 
-  mutate(rgn_name_short = ifelse(new_index == 69, glue("{rgn_name_short}*"), rgn_name_short))
+  mutate(rgn_name_short = ifelse(new_index == 69, glue("{rgn_name_short}*"), rgn_name_short)) %>%
+  left_join(rgn_shift)
 
   
 ## categorical fill - pattern for uncertainty. Using ggpattern is REALLY finnicky, and it took me a really long time to get the pattern stuff right... so beware. 
@@ -1029,18 +1077,18 @@ rank_rgn_adj <- rank_rgn_adj %>%
         linetype = "dashed") +
            # georegion names
     geom_text(
-      data = rgn_shift,
-      aes(y = unique(rank_rgn_adj$end_point)/1.5,
+     data = rgn_shift,
+      aes(y = 69/1.5,
           x = name_x,
           label = contnnt),
       inherit.aes=FALSE,
       size=label_size + 1 ) +
     annotate("text",
         x     = c(3, 3, 3),
-        y     = c(0, unique(rank_rgn_adj$end_point)/2, unique(rank_rgn_adj$end_point)),
+        y     = c(0, 69/2, 69),
         label = c("0", "±50%", "±100%"),
         color = "darkgray", angle = -4, size = label_size + 1) +
-      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
+      geom_text(x = 0, y = -69/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
       coord_polar(clip = "off") +
       scale_pattern_manual(values = c("circle", "none")) +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F,
@@ -1056,7 +1104,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
                title.position = "bottom",
                title.hjust = 0.5,
                title.vjust = 1,
-               nrow = 2,
+               nrow = 1,
                label.position = "bottom",
                label.hjust = 0.5,
                label.vjust = 1,
@@ -1069,7 +1117,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   
 }
 
-  ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
+  # ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
 
 
  g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
@@ -1082,7 +1130,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
     color = "white"
   ) +
     geom_text(
-      data = rank_rgn_adj,
+     # data = rank_rgn_adj,
        aes(x = fa_ffcl_shrt,
            label = rgn_name_short,
            angle = angle,
@@ -1130,19 +1178,19 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
         linetype = "dashed") +
    
 geom_text(
-      data = rgn_shift,
-      aes(y = unique(rank_rgn_adj$end_point)/1.5,
+      # data = rgn_shift,
+      aes(y = 69/1.5,
           x = name_x,
           label = contnnt),
       inherit.aes=FALSE,
       size=label_size + 1) +
     annotate("text",
         x     = c(3, 3, 3),
-        y     = c(0, unique(rank_rgn_adj$end_point)/2, unique(rank_rgn_adj$end_point)),
+        y     = c(0, 69/2, 69),
         label = c("0", glue("±{mid_value_label}%"), glue("±{max_value_label}%")),
         color = "darkgray", angle = -4, size = label_size) +
            # georegion names
-      geom_text(x = 0, y = -unique(rank_rgn_adj$end_point)/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
+      geom_text(x = 0, y = -69/4, label = glue("{scen_plot} \n{decade_type} \nGlobal Average \n{scen_decade_global_mean}% ±{scen_decade_global_sd}%"), size = 7) + ## place this in the middle of the plot
   coord_polar(clip = "off") +
       scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_new, drop = F) +  # Assign fill colors manually
   circle_theme +
@@ -1154,15 +1202,17 @@ geom_text(
                title.position = "bottom",
                title.hjust = 0.5,
                title.vjust = 1,
-               nrow = 2,
+               nrow = 1,
                label.position = "bottom",
                label.hjust = 0.5,
                label.vjust = 1
-    ))
+    )
+    )
 
 
 
   ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.png")), height=20, width=20, units=c("in"), bg = "white")
+  # saveRDS(g, glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.rds"))) # save as rds, so that we can read back in the ggplot into the shiny app
 
     }
   }
