@@ -44,7 +44,8 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
   
 ```{r}
 #Getting a list of files containing biomass data
-global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
+global_files <- list.files("/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/", # needs full path as there are different/older versions that get picked up otherwise 
+                           pattern = "global_10g-100kg.rds", 
                            full.names = T, recursive = T)
 
 #Getting a list of models
