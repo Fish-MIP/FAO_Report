@@ -63,7 +63,6 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
 
 ```{r}
 #EEZ keys
-# eez_keys <- read_csv("data/eez_keys_camilla.csv")
 
 eez_keys <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/EEZ_FAO_key.csv"))
 
@@ -81,7 +80,7 @@ members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |>
   
 ## Calculating percentage change in fish biomass estimates from global FishMIP models
 We will go through each FishMIP model and calculate the mean fish biomass for the decade between 2005 and 2014 (last decade of `historical` period), and for the period between 2041 and 2050 (for the two emission scenarios), and between 2091 and 2100 (two scenarios). Finally, we will calculate the percentage change between these two decades.  
- - We do this at the country level rather than EEZ level 
+ - We do this at the administrative country level rather than EEZ level 
   
 ```{r, eval = F}
 #Looping through each FishMIP model
@@ -270,7 +269,7 @@ table <- stats %>%
 fwrite(table, paste0(country_level_folder,"/table_stats_country_admin.csv"))
 fwrite(table, here("data/table_stats_country_admin.csv"))
 
-test <- read_csv(file.path(out_folder, "table_stats.csv"))
+test <- read_csv(file.path(out_folder, "table_stats_country_admin.csv")) # check
 
 
 ```

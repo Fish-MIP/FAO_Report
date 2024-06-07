@@ -5,6 +5,15 @@ date: "2024-05-24"
 author: "Gage" 
 ---
 
+## Summary
+
+ - In this script we make circular bar charts of change in mean biomass at multiple spatial scales: 
+    - Administrative country
+    - EEZ
+    - Administrative country and FAO high seas regions
+    - EEZs and FAO high seas regions
+ - Additionally, we create maps of the mean change in those same cateogories
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -118,6 +127,7 @@ for(spatial_type in spatial_scales){ # specify what spatial scales you want to i
  # label_type = "country_name"
  # spatial_type = "countries_admin"
   
+  ## filter for spatial type
   if(spatial_type == "countries_admin_high_seas"){
   
 cmip_data_plot <- cmip_data_all %>% 
@@ -154,7 +164,7 @@ cmip_data_plot <- cmip_data_plot %>%
   ungroup()
   
   
-  max_value <- max(abs(cmip_data_plot$mean_outlier), na.rm = TRUE)
+  max_value <- max(abs(cmip_data_plot$mean_outlier), na.rm = TRUE) # set a max value for plots
   mid_value = max_value/2
 
   max_value_label <- round(max_value)
@@ -166,6 +176,7 @@ cmip_data_plot <- cmip_data_plot %>%
 
 # scen = "ssp585"
 
+    # make a cleaned up version of scenario names for plotting
     scen_plot <- data.frame(scenario = scen) %>%
       mutate(scen_clean = case_when(
         scenario == "ssp126" ~ "SSP1-2.6",
@@ -182,14 +193,14 @@ cmip_data_plot <- cmip_data_plot %>%
     }
     
     
-plot_df <- cmip_data_plot %>% ## filter for scenario and decade
+plot_df <- cmip_data_plot %>% ## filter for scenario
   filter(
          scenario == scen) %>%
   data.frame() %>%
-  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>%
+  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>% # rename to continent high seas if it is high seas
   arrange(contnnt, -arrange_mean) # order by continent, increase/decrease, and mean 
 
-get_pos_neg_ranks <- plot_df %>% # these are just distinct numbers, so group by is unnecessary i think?
+get_pos_neg_ranks <- plot_df %>% 
     mutate(new_index = abs(mean_outlier)) %>%
   arrange(contnnt, -arrange_mean)
 
@@ -204,7 +215,7 @@ rank_pos_neg$contnnt <- factor(rank_pos_neg$contnnt,
 get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt, 
                                          levels=unique(rank_pos_neg$contnnt))
 
-## change some names for plot so that they will fit...
+## change some names for plot so that they will fit... could probably move this to setup 
 rank_rgn <- get_pos_neg_ranks %>%
   arrange(contnnt, -arrange_mean) %>%
      mutate(rgn_name_short = fa_ffcl_shrt, 
@@ -255,8 +266,8 @@ empty_bar <- 5
  rank_rgn_adj  <- rbind(to_add, rank_rgn)
  
 
-rank_rgn_adj$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
-rank_rgn_label$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
+rank_rgn_adj$end_point <- max_value # point where we will want to place the country labels.
+rank_rgn_label$end_point <- max_value # point where we will want to place the country labels.
 
  # some code to orient the country labels
 sequence_length = length(unique(rank_rgn_label$fa_ffcl_shrt))
@@ -391,13 +402,12 @@ fill_colors <- c(
 )
 
 # order categories
-all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", "Decrease <10%",  "Increase >30%")
-
 all_categories <- c("Decrease >30%",  "Decrease 20 to 30%", "Decrease 10 to 20%", "Decrease <10%", "Increase <10%", "Increase 10 to 20%", "Increase 20 to 30%",   "Increase >30%")
 rank_rgn_adj$fill_category <- factor(rank_rgn_adj$fill_category, levels = all_categories)
 
 all_categories_labels <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",   "Increase >30%")
 
+# if we are plotting iso3c labels instead of country name, specify that
 if(label_type == "iso3c"){
   
   rank_rgn_adj <- rank_rgn_adj %>%
@@ -409,7 +419,7 @@ if(label_type == "iso3c"){
     rename(rgn_name_short = ISO3_country)
 }
 
-
+# we need to plot separate geoms for the decades because we are stacking the bar plots
 data_2041 <- rank_rgn_adj %>%
   filter(decade %in% c("2041-2050", NA))
 
@@ -418,10 +428,10 @@ data_2091 <- rank_rgn_adj %>%
 
 
 rank_rgn_label <- rank_rgn_label %>% 
-  mutate(rgn_name_short = ifelse(arrange_mean >= 69, glue("{rgn_name_short}*"), rgn_name_short))
+  mutate(rgn_name_short = ifelse(arrange_mean >= 69, glue("{rgn_name_short}*"), rgn_name_short)) # denote if the country mean is technically above the max
 
  g <- ggplot() + # ok so this works but losing order of data in plots for some reason
-  # geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) +
+  # geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) + # if you dont want patterns, use this geom instead
       geom_col_pattern(position = "stack",
                     data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain),
     pattern_density = .5,
@@ -542,7 +552,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
 ```
 
  
-Make map of mean change and save legend 
+Make map of mean change and also save a legend 
 
 ```{r}
 
@@ -577,6 +587,9 @@ globe_border <- st_polygon(list(globe_bbox)) %>%
 countries_shp <- ne_countries(scale = 110, returnclass = "sf") |> 
   st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
 
+world_360 <- read_sf(here("data/world_360deg.shp")) %>%
+  st_transform('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
+
 
       
  ## make map 
@@ -601,9 +614,9 @@ plot_df <- cmip_data_all %>%
            )) 
 
 
-eez_df <- countries_shp %>%
+eez_df <- world_360 %>%
  right_join(plot_df, by = c("adm0_a3" = "ISO3_country")) %>%
-  rename(ISO3_country = adm0_a3) %>% 
+  rename(ISO3_country = iso_a3) %>% 
   dplyr::select(colnames(plot_df))
 
 
@@ -644,7 +657,7 @@ eez_df$decade_clean <- factor(eez_df$decade_clean, levels = c("Mid-century", "En
                  plain +
                labs(fill = "Change in fish biomass (%)")  +
                     coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
-                           geom_sf(data = countries_shp, fill = NA, colour = "grey", alpha = 0.2)  +
+                           geom_sf(data = world_360, fill = NA, colour = "grey", alpha = 0.2)  +
                            geom_sf(data = globe_border, fill = NA, colour = "grey") +
           facet_grid(decade_clean~scen_clean, switch = "y") +
           guides(fill = guide_legend(byrow = TRUE,
@@ -669,12 +682,10 @@ ggsave(plot = g_legend, glue(here("outputs/circle_figs/legend_vertical.png")), h
 ## try plotting eezs instead of admin country
 
 eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-# eez_shp <- vect(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
 
 test <- eez_shp %>% st_drop_geometry()
 
 eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-# eez_shp_2 <- terra::project(eez_shp, "epsg:3035")
 
 eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
   mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
@@ -725,7 +736,7 @@ p1 <- ggplot(data = test) +
 
 
 
-Code for saving non-stacked plots: 
+Code for saving non-stacked bar plots: 
 
 ```{r}
 
@@ -1117,7 +1128,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   
 }
 
-  # ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
+  ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
 
 
  g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
@@ -1212,7 +1223,6 @@ geom_text(
 
 
   ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.png")), height=20, width=20, units=c("in"), bg = "white")
-  # saveRDS(g, glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}.rds"))) # save as rds, so that we can read back in the ggplot into the shiny app
 
     }
   }

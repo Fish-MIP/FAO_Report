@@ -66,7 +66,14 @@ table_stats_admin <- read_csv("../data/table_stats_country_admin.csv") %>% left_
     mean >= 10 & mean < 20 ~ "Increase 10 to 20%", 
     mean >= 20 & mean <= 30 ~ "Increase 20 to 30%",
     mean > 30 ~ "Increase >30%"
-  ))
+  )) 
+
+ws_df <- table_stats_admin %>%
+  distinct(scenario, decade) %>%
+  mutate(Country_FAO = "Western Sahara", Country_FAO_new = "Western Sahara", continent = "Africa", spatial_scale = "countries_admin", ISO3_country = "ESH", 
+         mean = NA, median = NA, sd = NA, min = NA, max = NA, n_model = NA, agreement = NA, wilcox_p = NA, fill_category = NA)
+table_stats_admin <- table_stats_admin %>%
+  rbind(., ws_df)
 
 #List of countries
 country_list <- maps_data |> 
@@ -100,18 +107,18 @@ fao_list <- maps_data |>
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
 
-# read in shapefiles with countries and eezs
-countries_shp <- ne_countries(scale = 110, returnclass = "sf") |> 
-  st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
-
-## join admin countries summary with shp file
-table_stats_admin_shp <- countries_shp %>%
-  dplyr::select(-continent) %>%
-  right_join(table_stats_admin, by = c("adm0_a3" = "ISO3_country")) %>%
-  rename(ISO3_country = adm0_a3) %>% 
-  dplyr::select(colnames(table_stats_admin)) %>%
-  filter(!st_is_empty(.))
+world_360_small <- world_360 %>% 
+  filter(type %in% c("Country", "Sovereign country") | name_long == "Western Sahara") %>%
+  filter(!st_is_empty(.)) %>%
+  st_transform(st_crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
   
+table_stats_admin_shp <- world_360_small %>% 
+  dplyr::select(-continent) %>%
+  right_join(table_stats_admin, by = c("iso_a3" = "ISO3_country")) %>%
+  rename(ISO3_country = iso_a3) %>% 
+  dplyr::select(colnames(table_stats_admin)) %>%
+  filter(!st_is_empty(.)) 
+
 
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
