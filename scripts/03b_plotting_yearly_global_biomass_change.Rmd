@@ -219,7 +219,7 @@ stats<-all_scale_data_by_model %>%
   ungroup() %>% 
   select(-c(n_positive, n_negative, same_sign))
 
-# # test on momdel agreement - OK
+# # test on model agreement - OK
 # data.frame(n_model = 10,
 #            n_positive = 5,
 #            n_negative = 5) %>%
@@ -320,60 +320,197 @@ w_test<-all_scale_data_by_model %>%
 # 
 # wilcox.test(trial_test$ssp126, trial_test$ssp585, alternative = "two.sided")$p.value # 1.967129e-20 with raw values this is highly significant although sd of values overlap in trend figure and values overlap in boxplot.
 
-# combine tables 
+### losses ----
+losses<-stats %>% 
+  select(!c(median, sd, min, max, n_model, agreement)) %>% 
+  pivot_wider(names_from = scenario, values_from = mean) %>% 
+  group_by(figure_name,decade,spatial_scale) %>% 
+  summarise(losses = (1-(ssp126/ssp585))*100,
+            losses_direction = ifelse(ssp126 > ssp585, "reduction of losses under SSP1-2.6", "increase of losses under SSP1-2.6")) %>% 
+  ungroup()
+
+# # check losses - added column on direction (i.e. reduced or increased losses under ssp1) to understand signs             
+# filter(stats, figure_name == "Algeria")  
+# (1-(-4.5/-0.722))*100
+
+# #### mitigation higher than high emission (they should all be negative) 
+# a<-7 # mitigation 7% increase
+# b<-3 # high emission 3% increase
+# (1-(a/b))*100 # -133% # high emission results in more losses 
+# 
+# a<--1 
+# b<--3 
+# (1-(a/b))*100 # 66 # this should be negative 
+# 
+# a<-3 
+# b<--1 
+# (1-(a/b))*100 # 400 # this should be negative 
+# 
+# #### mitigation lower than high emission 
+# a<-3 # mitigation 7% increase
+# b<-7 # high emission 3% increase
+# (1-(a/b))*100 # 57% # high emission results in less losses 
+# 
+# a<--3 
+# b<-1 
+# (1-(a/b))*100 # 400 
+# 
+# a<--3 
+# b<--1 
+# (1-(a/b))*100 # -200 # this should be positive 
+# 
+# # e.g global 
+# a<--7
+# b<--24
+# (1-(a/b))*100 # 70
+
+### historical sd ----
+
+historical_sd<-count_bio_by_model %>% 
+  full_join(global_bio_by_model) %>% 
+  full_join(top_7_data_by_model) %>% 
+  full_join(fao_bio_by_model) %>% 
+  filter(year %in% c(2005:2014), !is.na(perc_change)) %>% 
+  group_by(figure_name, mem, esm, continent, spatial_scale) %>% 
+  summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  # across decade to have one (mean) value of change per model and exclude temporal variability from the calculations below
+  ungroup() %>% 
+  group_by(figure_name, continent, spatial_scale) %>% 
+  summarise(
+    historical_sd = sd(mean_across_decade)) %>% 
+  ungroup() 
+
+range(historical_sd$historical_sd)
+
+
+
+
+
+
+# # Check historical sd - ARRIVATA QUI 
+# filter(historical_sd, figure_name == "Viet Nam", spatial_scale == "top_7_countries")
+# 
+# # check VietNam 
+# trial<-count_bio_by_model %>% 
+#   full_join(global_bio_by_model) %>% 
+#   full_join(top_7_data_by_model) %>% 
+#   full_join(fao_bio_by_model) %>% 
+#   filter(figure_name == "Viet Nam", spatial_scale == "top_7_countries") %>% 
+#   select(!c(continent, fao_official, figure_name, spatial_scale))
+# 
+# to_plot<-trial %>% 
+#   mutate(id = paste(mem, esm))
+# 
+# ggplot(filter(to_plot, scenario !="ssp126"), aes(x = year, y = perc_change, group = id, color = id))+
+#   geom_line()
+# 
+# # calcualte sd 
+# sd<-to_plot %>% 
+#   mutate(decade = case_when(year %in% c(2005:2014) ~ "2005-2014",
+#                             year %in% c(2041:2050) ~ "2041-2050"
+#                             year %in% c(2091:2100) ~ "2091-2100",
+#                             .default = NA)) %>% 
+#   filter(!is.na(decade)) 
+# 
+# ggplot(filter(sd, scenario == "historical"), aes(x = year, y = mean, group = scenario, color = scenario))+
+#   geom_line()+
+#   geom_ribbon(aes(ymin = mean-sd, ymax = mean+sd, fill = scenario), alpha = 0.3, color = NA)
+# 
+# 
+# sd<-sd %>% 
+#   group_by(decade, scenario, mem, esm) %>% 
+#   summarise(mean_across_decade = mean(perc_change)) %>% 
+#   ungroup() %>% 
+#   group_by(scenario) %>% 
+#   summarise(mean = mean(mean_across_decade), 
+#             sd = sd(mean_across_decade)) %>% 
+#   ungroup()
+#  
+# sd
+# 
+# ggplot(to_plot2, aes(x = year, y = mean, group = scenario, color = scenario))+
+#   geom_line()+
+#   geom_ribbon(aes(ymin = mean-sd, ymax = mean+sd, fill = scenario), alpha = 0.3, color = NA)
+# 
+# 
+# 
+# 
+# trial2<-trial %>% 
+#   mutate(decade = case_when(year %in% c(2005:2014) ~ "2005-2014", 
+#                             year %in% c(2041:2050) ~ "2041-2050",
+#                             year %in% c(2091:2100) ~ "2091-2100",
+#                             .default = NA)) %>% 
+#   filter(!is.na(decade))
+# 
+# trial3<-trial2 %>% 
+#   group_by(mem, esm, decade) %>% 
+#   summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  
+#   ungroup() %>% 
+#   group_by(figure_name, continent, spatial_scale) %>% 
+#   summarise(
+#     historical_sd = sd(mean_across_decade)) %>% 
+#   ungroup() 
+
+
+
+
+
+
+#### combine tables ----
 table<-stats %>% 
-  full_join(w_test)
+  full_join(w_test) %>% 
+  full_join(losses) %>% 
+  full_join(historical_sd)
 
 # # print tables 
-# fwrite(table, paste0(base_folder,"table_stats.csv")) 
-fwrite(table, "data/table_stats.csv") 
+fwrite(table, paste0(base_folder,"table_stats.csv")) 
+fwrite(table, "data/data_products/table_stats.csv") 
 
-##### check that tables are the same -----
-old<-read_csv("data/table_stats_with_continent.csv") # older version - saved with different name in google drive, then uploaded from Julia after she calculated some stat and worked on it in excel.
-new<-read_csv("data/table_stats.csv")
-
-old<-old %>% 
-  arrange(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale)
-new<-new %>% 
-  arrange(figure_name, scenario, decade, continent, spatial_scale)
-
-# check countries included - only difference is Bouvet Island - to add and Colombia (Serranilla) to remove. Colombia (Serranilla) not even in the formatted table below so was deleted in previous rounds. 
-setdiff(sort(unique(old$fa_ffcl_shrt)), sort(unique(new$figure_name))) # plus russia that should have been russian federation
-setdiff(sort(unique(new$figure_name)), sort(unique(old$fa_ffcl_shrt)))
-
-# difference in values 
-old<-old %>% 
-  filter(!fa_ffcl_shrt == "Colombia (Serranilla)") %>% 
-  mutate(fa_ffcl_shrt = case_when(fa_ffcl_shrt == "C√¥te d'Ivoire" ~ "Côte d'Ivoire",
-                                  fa_ffcl_shrt == "Cura√ßao" ~ "Curaçao",
-                                  fa_ffcl_shrt == "R√©union" ~ "Réunion",
-                                  fa_ffcl_shrt == "Russia" ~ "Russian Federation",
-                                  fa_ffcl_shrt == "T√ºrkiye" ~ "Türkiye",
-                                  .default = as.character(fa_ffcl_shrt)))
-new<-new %>% 
-  filter(!figure_name == "Bouvet Island")
-
-old<-old %>% 
-  arrange(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale) %>% 
-  select(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale, mean)
-
-new<-new %>% 
-  arrange(figure_name, scenario, decade, continent, spatial_scale) %>% 
-  rename(mean_new = mean, fa_ffcl_shrt = figure_name, contnnt = continent) %>% 
-  select(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale, mean_new)
-
-comapre_values<- old %>% 
-  full_join(new) %>% 
-  mutate(mean = round(mean, 1), 
-         mean_new = round(mean_new, 1)) %>% 
-  mutate(compare = ifelse(mean == mean_new, "ok", "wrong")) %>% 
-  filter(compare == "wrong") %>% 
-  mutate(diff = abs(abs(mean) - abs(mean_new))) %>% 
-  arrange(-diff)
-
-View(comapre_values)
-# very different = Canary Island, Mauritania, Puerto Rico, Romania, Turkia
-# different for some scenarios ~0.5 = Comoros, Cuba, Fiji
+# ##### check that tables are the same -----
+# old<-read_csv("data/table_stats_with_continent.csv") # older version - saved with different name in google drive, then uploaded from Julia after she calculated some stat and worked on it in excel.
+# new<-read_csv("data/data_products/table_stats.csv")
+# 
+# old<-old %>% 
+#   arrange(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale)
+# new<-new %>% 
+#   arrange(figure_name, scenario, decade, continent, spatial_scale)
+# 
+# # check countries included - only difference is Bouvet Island - to add and Colombia (Serranilla) to remove. Colombia (Serranilla) not even in the formatted table below so was deleted in previous rounds. 
+# setdiff(sort(unique(old$fa_ffcl_shrt)), sort(unique(new$figure_name))) # plus russia that should have been russian federation
+# setdiff(sort(unique(new$figure_name)), sort(unique(old$fa_ffcl_shrt)))
+# 
+# # difference in values 
+# old<-old %>% 
+#   filter(!fa_ffcl_shrt == "Colombia (Serranilla)") %>% 
+#   mutate(fa_ffcl_shrt = case_when(fa_ffcl_shrt == "C√¥te d'Ivoire" ~ "Côte d'Ivoire",
+#                                   fa_ffcl_shrt == "Cura√ßao" ~ "Curaçao",
+#                                   fa_ffcl_shrt == "R√©union" ~ "Réunion",
+#                                   fa_ffcl_shrt == "Russia" ~ "Russian Federation",
+#                                   fa_ffcl_shrt == "T√ºrkiye" ~ "Türkiye",
+#                                   .default = as.character(fa_ffcl_shrt)))
+# new<-new %>% 
+#   filter(!figure_name == "Bouvet Island")
+# 
+# old<-old %>% 
+#   arrange(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale) %>% 
+#   select(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale, mean)
+# 
+# new<-new %>% 
+#   arrange(figure_name, scenario, decade, continent, spatial_scale) %>% 
+#   rename(mean_new = mean, fa_ffcl_shrt = figure_name, contnnt = continent) %>% 
+#   select(fa_ffcl_shrt, scenario, decade, contnnt, spatial_scale, mean_new)
+# 
+# comapre_values<- old %>% 
+#   full_join(new) %>% 
+#   mutate(mean = round(mean, 1), 
+#          mean_new = round(mean_new, 1)) %>% 
+#   mutate(compare = ifelse(mean == mean_new, "ok", "wrong")) %>% 
+#   filter(compare == "wrong") %>% 
+#   mutate(diff = abs(abs(mean) - abs(mean_new))) %>% 
+#   arrange(-diff)
+# 
+# View(comapre_values)
+# # very different = Canary Island, Mauritania, Puerto Rico, Romania, Turkia
+# # different for some scenarios ~0.5 = Comoros, Cuba, Fiji
 
 # # check Romania - all models present and none showing huge changes fro ssp126 as previously done. 
 # rom<-count_bio_by_model %>% 
@@ -394,30 +531,35 @@ View(comapre_values)
 #   geom_ribbon(aes(ymin = mean-sd,
 #                   ymax = mean+sd, 
 #                   fill = scenario), alpha = 0.3)
-
-
-# print the diffences and update the report. 
-fwrite(comapre_values, "data/table_stats_differences.csv") 
+# 
+# # print the diffences and update the report. 
+# fwrite(comapre_values, "data/data_products/table_stats_differences.csv") 
 
 ##### format table for report ----
 # do not remove column
 table_formatted<-table %>% 
   mutate(id = paste(scenario, decade, sep = "_")) %>% 
-  select(!c(scenario, decade, median)) %>% 
+  select(!c(scenario, decade, median, min, max, n_model)) %>% 
   mutate(mean = round(mean, 1), 
          sd = round(sd, 1),
-         min = round(min, 1),
-         max = round(max, 1),
          agreement = round(agreement),
-         wilcox_p = ifelse(wilcox_p < 0.05, "*", NA)) %>% 
-  pivot_wider(names_from = id, values_from = c(mean, sd, min, max, n_model, agreement, wilcox_p)) %>%
+         wilcox_p = ifelse(wilcox_p < 0.05, "*", NA), 
+         losses = round(losses, 1), 
+         # historical_sd = round(historical_sd, 2) # very small values 
+         ) %>% 
+  pivot_wider(names_from = id, values_from = c(mean, sd, agreement, wilcox_p, losses, losses_direction, historical_sd)) %>%
   relocate(spatial_scale, continent, figure_name,
-           `mean_ssp126_2041-2050`,`sd_ssp126_2041-2050`,`min_ssp126_2041-2050`,`max_ssp126_2041-2050`,`n_model_ssp126_2041-2050`,`agreement_ssp126_2041-2050`,`wilcox_p_ssp126_2041-2050`,
-           `mean_ssp585_2041-2050`,`sd_ssp585_2041-2050`,`min_ssp585_2041-2050`,`max_ssp585_2041-2050`,`n_model_ssp585_2041-2050`,`agreement_ssp585_2041-2050`,`wilcox_p_ssp585_2041-2050`,
-           `mean_ssp126_2091-2100`,`sd_ssp126_2091-2100`,`min_ssp126_2091-2100`,`max_ssp126_2091-2100`,`n_model_ssp126_2091-2100`,`agreement_ssp126_2091-2100`,`wilcox_p_ssp126_2091-2100`,
-           `mean_ssp585_2091-2100`,`sd_ssp585_2091-2100`,`min_ssp585_2091-2100`,`max_ssp585_2091-2100`,`n_model_ssp585_2091-2100`,`agreement_ssp585_2091-2100`,`wilcox_p_ssp585_2091-2100`)  %>% 
-  select(!c(`n_model_ssp126_2041-2050`,`n_model_ssp585_2041-2050`,`n_model_ssp126_2091-2100`,`n_model_ssp585_2091-2100`, `wilcox_p_ssp126_2041-2050`,`wilcox_p_ssp126_2091-2100`)) %>% # n_model is the same across scenario and decade (but remove), wilcox is the same across scenarios but different across decades. 
-  rename(`wolcox_2041-2050` = `wilcox_p_ssp585_2041-2050`, `wolcox_2091-2100` =`wilcox_p_ssp585_2091-2100`) %>% 
+           `mean_ssp126_2041-2050`,`sd_ssp126_2041-2050`,`agreement_ssp126_2041-2050`,`wilcox_p_ssp126_2041-2050`,`losses_ssp126_2041-2050`,`losses_direction_ssp126_2041-2050`,`historical_sd_ssp126_2041-2050`,
+           `mean_ssp585_2041-2050`,`sd_ssp585_2041-2050`,`agreement_ssp585_2041-2050`,`wilcox_p_ssp585_2041-2050`,`losses_ssp585_2041-2050`,`losses_direction_ssp585_2041-2050`,`historical_sd_ssp126_2041-2050`,
+           `mean_ssp126_2091-2100`,`sd_ssp126_2091-2100`,`agreement_ssp126_2091-2100`,`wilcox_p_ssp126_2091-2100`,`losses_ssp126_2091-2100`,`losses_direction_ssp126_2091-2100`,`historical_sd_ssp126_2091-2100`,
+           `mean_ssp585_2091-2100`,`sd_ssp585_2091-2100`,`agreement_ssp585_2091-2100`,`wilcox_p_ssp585_2091-2100`,`losses_ssp585_2091-2100`,`losses_direction_ssp585_2091-2100`,`historical_sd_ssp126_2091-2100`)  %>% 
+  select(!c(`wilcox_p_ssp126_2041-2050`,`wilcox_p_ssp126_2091-2100`,
+            `losses_ssp126_2041-2050`,`losses_ssp126_2091-2100`,
+            `losses_direction_ssp126_2041-2050`,`losses_direction_ssp126_2091-2100`, 
+            `historical_sd_ssp126_2041-2050`,`historical_sd_ssp126_2091-2100`,`historical_sd_ssp585_2041-2050`)) %>% # wilcox and losses are the same across scenarios but different across decades so i keep only ssp585 for both decades. historical_sd is unique across scenarios and decade, so keep only one
+  rename(`wolcox_2041-2050` = `wilcox_p_ssp585_2041-2050`, `wolcox_2091-2100` =`wilcox_p_ssp585_2091-2100`,
+         `losses_2041-2050` = `losses_ssp585_2041-2050`, `losses_2091-2100` =`losses_ssp585_2091-2100`,
+         `losses_direction_2041-2050` = `losses_direction_ssp585_2041-2050`, `losses_direction_2091-2100` = `losses_direction_ssp585_2091-2100`,`historical_sd` = `historical_sd_ssp585_2091-2100`) %>% 
   mutate(continent = case_when(spatial_scale == "top_7_countries" & figure_name == "China" ~ "Asia",
                                spatial_scale == "top_7_countries" & figure_name == "India" ~ "Asia",
                                spatial_scale == "top_7_countries" & figure_name == "Indonesia" ~ "Asia",
@@ -429,7 +571,9 @@ table_formatted<-table %>%
   mutate(spatial_scale = factor(spatial_scale, levels = c("global", "top_7_countries", "countries", "FAO_area"))) %>% 
   arrange(spatial_scale, continent, figure_name) 
 
-fwrite(table_formatted, "data/table_stats_formatted.csv")
+# View(table_formatted)
+
+fwrite(table_formatted, "data/data_products/table_stats_formatted.csv")
 fwrite(table_formatted, paste0(base_folder,"table_stats_formatted.csv")) 
 
 ```
