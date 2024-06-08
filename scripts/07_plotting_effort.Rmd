@@ -1,0 +1,182 @@
+---
+title: "recreating_ipcc_plot"
+author: "Julia Blanchard"
+date: "2024-05-06"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## Load libraries 
+
+```{r}
+rm(list = ls())
+library(data.table)
+library(ggplot2)
+library(patchwork)
+library(cowplot)
+library(tidyverse)
+```
+
+## load fishing effort data
+
+```{r}
+
+effort <- fread("/rd/gem/private/users/yannickr/effort_histsoc_1841_2017_EEZ_addFAO.csv") 
+effort_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/effort_isimip3a_histsoc_1841_2010.csv") 
+
+catch <-fread("/rd/gem/private/users/yannickr/catch_histsoc_1869_2017_EEZ_addFAO.csv")
+catch_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/catch-validation_isimip3a_histsoc_1850_2004.csv")
+
+lme_names<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/LMEnames.csv")
+
+```
+
+## Data for figure 30 
+
+```{r}
+
+# figure 30
+# select two large marine ecosystems taken as case studies: A) the Patagonian Shelf and B) the Canary Current
+# aggregate catch and effort by year 
+# catch in million tonnes
+# effort nominal in KwD (/1000??)
+# define transition 1841-1960 and experiment 1961-2010
+
+filter(lme_names, LME_NAME == "Patagonian Shelf") # 14
+filter(lme_names, LME_NAME == "Canary Current") # 27
+
+effort_lme<-effort %>% 
+  filter(LME %in% c(14,27)) %>% 
+  group_by(Year, LME) %>% 
+  summarise(effort = sum(NomActive, na.rm = T)) %>% 
+  ungroup()
+
+catch_lme<-catch %>% 
+  filter(LME %in% c(14,27)) %>%
+  mutate(catch = Reported + IUU + Discards) %>% 
+  group_by(Year, LME) %>% 
+  summarise(catch = sum(catch, na.rm = T)) %>% 
+  ungroup()
+
+ggplot(effort_lme, aes(x = Year, y = effort))+
+  geom_point()+
+  facet_wrap(~LME)
+
+ggplot(catch_lme, aes(x = Year, y = catch))+
+  geom_point()+
+  facet_wrap(~LME)
+
+both<-effort_lme %>% 
+  full_join(catch_lme)
+
+# better to plot them separately
+
+patagonian<-both %>% 
+  filter(LME == 14) %>% 
+  mutate(LME = "Patagonian Shelf", 
+         catch = catch/1000000, 
+         effort = effort/1000000) %>%
+  rename(`Catch (million tonnes)` = catch, `Effort (million KwD)` = effort) %>% 
+  pivot_longer(!c(Year, LME), names_to = "variable", values_to = "value")
+
+canary<-both %>% 
+  filter(LME == 27) %>% 
+  mutate(LME = "Canary Current")%>% 
+  pivot_longer(!c(Year, LME), names_to = "variable", values_to = "value")
+
+```
+
+## Figure 30
+
+```{r}
+
+text_y <- patagonian %>% filter(variable == "Catch (million tonnes)")
+text_y<- max(text_y$value, na.rm = T)
+ann_text1 <- data.frame(Year = 1860, value = text_y, lab = "Text", variable = "Catch (million tonnes)")
+ann_text2 <- data.frame(Year = 1980, value = text_y, lab = "Text", variable = "Catch (million tonnes)")
+
+patagonian_plot <- ggplot(data = patagonian, aes(x = Year, y = value)) +
+  geom_line()+
+  annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill="red") +
+  annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.2, fill="blue") +
+  geom_text(data = ann_text1,label = "Transition")+
+  geom_text(data = ann_text2,label = "Experiment")+
+  theme_classic()+
+  labs(y = "", x = "Year")+
+  ggtitle("a") + 
+  theme(plot.title = element_text(face = "bold", size = 13),
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        axis.text.y = element_text(size = 11),
+        axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, hjust = 0.65))+
+  facet_wrap(~variable, scale ="free_y")+
+  theme(strip.background = element_blank(),
+        strip.text.x = element_text(margin = margin(0.08,0,0.08,0, "cm"), size= 11, face = "bold"))+ 
+  annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf)+
+  annotate("segment", x=-Inf, xend=-Inf, y=-Inf, yend=Inf)
+patagonian_plot
+
+```
+
+
+
+
+
+
+
+
+
+## Combine panels into a single plot 
+
+```{r}
+# # problems with patchwork
+# combined <- a + b +
+#   plot_layout(guides = "collect") & theme(legend.position = 'top') 
+
+# # work around with cowplot 
+
+# extract legend from b
+leg <- cowplot::get_plot_component(b, 'guide-box-top', return_all = TRUE)
+# cowplot::ggdraw(leg) 
+
+# remove legend from b
+b <- b+
+  theme(legend.position = "none")
+
+# combine all in one figure
+fig_scen <- plot_grid(plot_grid(a, b, ncol = 2, nrow = 1), 
+                      plot_grid(NULL, leg, NULL, nrow = 1, 
+                                rel_widths = c(0.5, 1, 0.5)),
+                      ncol = 1, nrow = 2, rel_heights = c(1, 0.1))
+
+# save file
+# ggsave(fig_scen,filename="/Users/juliab6/Dropbox/FishMIP MAIN/FishMIP Repos/FAO_Report/figures/fig_scen.png")
+
+pdf("data/data_products/fig_scen.pdf", width = 9, height = 5)
+fig_scen
+dev.off()
+```
+
+# Cascading Uncertainty Plot
+
+```{r}
+# library(devtools)
+# install_github(c("SantanderMetGroup/loadeR.java",
+#                  "SantanderMetGroup/climate4R.UDG",
+#                  "SantanderMetGroup/loadeR",
+#                  "SantanderMetGroup/transformeR",
+#                  "SantanderMetGroup/visualizeR",
+#                  "SantanderMetGroup/downscaleR"))
+# library(visualizeR)
+# 
+# load(url("http://meteo.unican.es/work/visualizeR/data/multimip_sdelta_es.rda"), verbose=T)
+# cat(multimip.README)
+# filter.members <- multimip.factors[["Method"]]=="GCM" & ! multimip.factors[["GCM"]] %in% c("CNRM-CM5-r8", "EC-EARTH-r3")
+# sdeltas <- multimip.prtas.sdeltas["tas",c("GFDL-ESM2M-r1","IPSL-CM5A-MR-r1")]
+# factors <- lapply(multimip.factors, function(x) factor(x[filter.members]))
+# title <- "Delta T (K)"
+# cascadePlot(sdeltas, factors, multimip.stages, title=title, density.offset=2)
+
+```
+

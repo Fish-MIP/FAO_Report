@@ -201,7 +201,7 @@ fig_scen <- plot_grid(plot_grid(a, b, ncol = 2, nrow = 1),
 # save file
 # ggsave(fig_scen,filename="/Users/juliab6/Dropbox/FishMIP MAIN/FishMIP Repos/FAO_Report/figures/fig_scen.png")
 
-pdf("figures/fig_scen.pdf", width = 9, height = 5)
+pdf("data/data_products/fig_scen.pdf", width = 9, height = 5)
 fig_scen
 dev.off()
 ```
