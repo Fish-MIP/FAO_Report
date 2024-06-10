@@ -8,7 +8,6 @@ library(shinydashboard)
 library(tidyverse)
 library(plotly)
 library(bslib)
-library(cowplot)
 library(cmocean)
 library(scales)
 library(sf)
@@ -70,11 +69,6 @@ choro_data <- read_csv("../data/global_choro_maps_data.csv")
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
 
-#EEZ boundaries
-eez <- read_sf(file.path("/rd/gem/private/shared_resources/EEZ_v11_20191118",
-                         "un_bound_200nm.shp"))
-eez_360 <- read_sf("../data/eez_360deg.shp")
-
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
 scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
@@ -99,9 +93,6 @@ base_map <- list(geom_tile(),
                                    type = scale_fill_custom, oob = oob_squish,
                                    name = "% change in fish biomass"),
                  coord_cartesian(),
-                 #Adding EEZ
-                 geom_sf(inherit.aes = F, data = eez, fill = NA, lwd = 0.5,
-                         color = "#b35151", linetype = "dashed"),
                  #Adding world
                  geom_sf(inherit.aes = F, data = world, lwd = 0.25,
                          color = "black", show.legend = F),
@@ -499,15 +490,11 @@ server <- function(input, output, session) {
       minx <- min(df$x)
       maxx <- max(df$x)
       rangex <- abs(abs(maxx)-abs(minx))
-      base_map[[5]] <- geom_sf(inherit.aes = F, data = world_360, lwd = 0.25,
+      base_map[[4]] <- geom_sf(inherit.aes = F, data = world_360, lwd = 0.25,
                                color = "black", show.legend = F)
-      base_map[[4]] <- geom_sf(inherit.aes = F, data = eez_360, fill = NA, 
-                               lwd = 0.5, color = "#b35151", linetype = "dashed")
     }else{
-      base_map[[5]] <- geom_sf(inherit.aes = F, data = world, lwd = 0.25,
+      base_map[[4]] <- geom_sf(inherit.aes = F, data = world, lwd = 0.25,
                                color = "black", show.legend = F)
-      base_map[[4]] <- geom_sf(inherit.aes = F, data = eez, fill = NA, 
-                               lwd = 0.5, color = "#b35151", linetype = "dashed")
     }
     
     if(rangex >= 1.15*rangey){
