@@ -12,29 +12,29 @@ library(cmocean)
 library(scales)
 library(sf)
 library(rnaturalearth)
+library(ggiraph)
 
 # Loading data ------------------------------------------------------------
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report/"
+
 #Loading ensemble biomass change
 maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
                       col_select = c(x, y, starts_with("rel_change"), 
                                      NAME_EN, name_merge, figure_name))
 
 #Ensemble percentage change in biomass by countries
-count_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
-                        "ensemble_perc_bio_change_country.csv",
+count_bio <- list.files(base_folder, "ensemble_perc_bio_change_country.csv",
                         recursive = T, full.names = T) |> 
   read_csv()
 
 
 #Ensemble percentage change in biomass by FAO regions
-fao_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
-                      "ensemble_perc_bio_change_fao_region.csv",
+fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
                       recursive = T, full.names = T) |> 
   read_csv()
 
 #Ensemble percentage change in biomass by FAO regions
-lme_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
-                      "ensemble_perc_bio_change_lme.csv",
+lme_bio <- list.files(base_folder, "ensemble_perc_bio_change_lme.csv",
                       recursive = T, full.names = T) |> 
   read_csv()
 
