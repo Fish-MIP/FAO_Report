@@ -23,10 +23,10 @@ library(tidyverse)
 ```{r}
 
 effort <- fread("/rd/gem/private/users/yannickr/effort_histsoc_1841_2017_EEZ_addFAO.csv") 
-effort_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/effort_isimip3a_histsoc_1841_2010.csv") 
+# effort_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/effort_isimip3a_histsoc_1841_2010.csv") 
 
 catch <-fread("/rd/gem/private/users/yannickr/catch_histsoc_1869_2017_EEZ_addFAO.csv")
-catch_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/catch-validation_isimip3a_histsoc_1850_2004.csv")
+# catch_check<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/catch-validation_isimip3a_histsoc_1850_2004.csv")
 
 lme_names<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/LMEnames.csv")
 
@@ -52,18 +52,8 @@ catch_lme<-catch %>%
   summarise(catch = sum(catch, na.rm = T)) %>% 
   ungroup()
 
-# ggplot(effort_lme, aes(x = Year, y = effort))+
-#   geom_point()+
-#   facet_wrap(~LME)
-# 
-# ggplot(catch_lme, aes(x = Year, y = catch))+
-#   geom_point()+
-#   facet_wrap(~LME)
-
 both<-effort_lme %>% 
   full_join(catch_lme)
-
-# better to plot them separately
 
 patagonian<-both %>% 
   filter(LME == 14) %>% 
@@ -169,57 +159,100 @@ dev.off()
 
 ```{r}
 
+## chose LME ----
+
 # unique(lme_names$LME_NAME)
-# filter(lme_names, LME_NAME == "Benguela Current") # 29 # "South China Sea": 36
+# filter(lme_names, LME_NAME == "Patagonian Shelf") # "Banguela Current" 29 # "South China Sea": 36 # "Patagonian Shelf": 14
 
 lme_number = 29
+lme_name = unique(filter(lme_names, LME == lme_number)$LME_NAME)
+
+## Convert names ----
+
+# sort(unique(effort$Gear))
+# sort(unique(effort$FGroup))
+
+effort<-effort %>% 
+  mutate(Gear = case_when(Gear == "Dredges" ~ "Dredges",
+                          Gear == "Falling_Gear" ~ "Falling gear",
+                          Gear == "Gillnets" ~ "Gillnets",
+                          Gear == "Lift_Nets" ~ "Lift nets",
+                          Gear == "Lines_Handlines_and_poles" ~ "Handlines and poles", # or Handlines and pole-and-lines?
+                          Gear == "Lines_Longlines" ~ "Longlines",
+                          Gear == "Lines_Unspecified" ~ "Lines unspecified",
+                          Gear == "Others_Multiple_Gears" ~ "Others",
+                          Gear == "Others_Others" ~ "Others",
+                          Gear == "Others_Support" ~ "Others",
+                          Gear == "Others_Unknown" ~ "Others",
+                          Gear == "Pots_and_Traps" ~ "Pots and traps",
+                          Gear == "Seine_Danish_and_Other" ~ "Danish seine",
+                          Gear == "Seine_Purse_Seine" ~ "Purse seine",
+                          Gear == "Trawl_Bottom" ~ "Bottom trawl",
+                          Gear == "Trawl_Midwater_or_Unsp" ~ "Midwater trawl",
+                          .default = as.character(Gear)), 
+         FGroup = case_when(FGroup == "bathydemersal<30cm" ~ "Bathydemersal <30cm",
+                          FGroup == "bathydemersal>=90cm" ~ "Bathydemersal >=90cm",
+                          FGroup == "bathydemersal30-90cm" ~ "Bathydemersal 30-90cm",
+                          FGroup == "bathypelagic<30cm" ~ "Bathypelagic <30cm",
+                          FGroup == "bathypelagic>=90cm" ~ "Bathypelagic >=90cm",
+                          FGroup == "bathypelagic30-90cm" ~ "Bathypelagic 30-90cm",
+                          FGroup == "benthopelagic<30cm" ~ "Benthopelagic <30cm",
+                          FGroup == "benthopelagic>=90cm" ~ "Benthopelagic >=90cm",
+                          FGroup == "benthopelagic30-90c" ~ "Benthopelagic 30-90c",
+                          FGroup == "cephalopods" ~ "Cephalopods",
+                          FGroup == "demersal<30cm" ~ "Demersal <30cm",
+                          FGroup == "demersal<90cm" ~ "Demersal <90cm",
+                          FGroup == "demersal30-90cm" ~ "Demersal 30-90cm",
+                          FGroup == "demersalmollusc" ~ "Demersal mollusc",
+                          FGroup == "flatfish<90cm" ~ "Flatfish <90cm",
+                          FGroup == "flatfish>=90cm" ~ "Flatfish >=90cm",
+                          FGroup == "krill" ~ "Krill",
+                          FGroup == "lobsterscrab" ~ "Lobster and Crab",
+                          FGroup == "pelagic<30cm" ~ "Pelagic <30cm",
+                          FGroup == "pelagic<90cm" ~ "Pelagic <90cm",
+                          FGroup == "pelagic30-90cm" ~ "Pelagic 30-90cm",
+                          FGroup == "rays<90cm" ~ "Rays <90cm",
+                          FGroup == "rays>=90cm" ~ "Rays >=90cm",
+                          FGroup == "reef-associated<30cm" ~ "Reef-associated <30cm",
+                          FGroup == "reef-associated<90cm" ~ "Reef-associated <90cm",
+                          FGroup == "reef-associated30-90cm" ~ "Reef-associated 30-90cm",
+                          FGroup == "shark<90cm" ~ "Shark <90cm",
+                          FGroup == "shark>=90cm" ~ "Shark >=90cm",
+                          FGroup == "shrimp" ~ "Shrimp",
+                          .default = as.character(FGroup)))
+
+# # fix Gears == Others above
+# effort<-effort %>% 
+#   group_by(Year, eez_country_name, SAUP, Gear, FGroup, Sector, LME, fao_area, Phase) %>% 
+#   summarise(NomActive = sum(NomActive, na.rm = T)) %>% 
+#   ungroup()
 
 ## effort by EEZ ----
 
 effort_lme<-effort %>% 
   filter(LME == lme_number) %>% 
-  group_by(Year, LME, eez_country_name) %>% 
+  group_by(Year, eez_country_name) %>% 
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
-  mutate(LME = "Benguela Current", 
-         effort = effort/1000000) %>%
-  # filter(!eez_country_name == "High Seas") %>% # can be removed as not an EEZ. 
+  mutate(effort = effort/1000000) %>% 
   rename(`Effort (million KwD)` = effort) 
-
-sum(effort_lme$`Effort (million KwD)`)
 
 # when considering South China Sea: two more EEZs (Macao and hong Kong) than previous plot because,when building the effort data, first we considered the admin country and then the geographical region to accomodate EcoOcean needs. Later, we split lme0 into FAO regions too. 
 # effort_lme %>% group_by(eez_country_name) %>% summarise(effort=sum(effort)) %>% arrange(-effort) 
 
-# ## effort by sector ----
-# 
-# effort_sector<-effort %>% 
-#   filter(LME == lme_number) %>% 
-#   group_by(Year, LME, Sector) %>% 
-#   summarise(effort = sum(NomActive, na.rm = T)) %>% 
-#   ungroup() %>% 
-#   mutate(LME = "Benguela Current", 
-#          effort = effort/1000000) %>%
-#   rename(`Effort (million KwD)` = effort) 
-# 
-# sum(effort_sector$`Effort (million KwD)`)
-
 ## effort by gear -----
 
-# should we consider only one EEZ? #### CHECK BETTER
+# Consider only one EEZ
 top_1<-effort_lme %>% group_by(eez_country_name) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
 top_1_eez<-top_1$eez_country_name[1]
 
 effort_gear<-effort %>% 
   filter(LME == lme_number, eez_country_name == top_1_eez) %>% 
-  group_by(Year, LME, Gear) %>% 
+  group_by(Year, Gear) %>% 
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
-  mutate(LME = "Benguela Current", 
-         effort = effort/1000000) %>%
+  mutate(effort = effort/1000000) %>% 
   rename(`Effort (million KwD)` = effort) 
-
-# sum(effort_gear$`Effort (million KwD)`) # OK before considering only top_1
 
 ## select only the top 5 gears
 top_5<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
@@ -230,20 +263,17 @@ effort_gear<-effort_gear %>%
 
 ## effort by functional group -----
 
-# should we consider only one EEZ and one gear? #### CHECK BETTER
+# Consider only one EEZ and one gear
 top_1<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
 top_1_gear<-top_1$Gear[1]
 
 effort_fgroup<-effort %>% 
-  filter(LME == lme_number, Gear == top_1_gear) %>% 
-  group_by(Year, LME, FGroup) %>% 
+  filter(LME == lme_number, eez_country_name == top_1_eez, Gear == top_1_gear) %>% 
+  group_by(Year, FGroup) %>% 
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
-  mutate(LME = "Benguela Current", 
-         effort = effort/1000000) %>%
+  mutate(effort = effort/1000000) %>% 
   rename(`Effort (million KwD)` = effort) 
-
-# sum(effort_fgroup$`Effort (million KwD)`)
 
 ## select only the top 5 gears
 top_5<-effort_fgroup %>% group_by(FGroup) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
@@ -264,34 +294,15 @@ plot_eez <- ggplot(data = effort_lme, aes(x = Year, y = `Effort (million KwD)`, 
   annotate(geom="text", x=1860, y=text_y, label="Transition")+
   annotate(geom="text", x=1980, y=text_y, label="Experiment")+
   geom_line()+
-  scale_colour_brewer(palette="Set1", name = "Waters under \nnational jurisdiction")+ # right terminology? or water under national jurisdiction
+  scale_colour_brewer(palette="Set1", name = "Waters under \nnational jurisdiction")+ 
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year", title = "Benguela Current", tag = "a")+
+  labs(y = "Effort (million KwD)", x = "Year", title = lme_name, tag = "a")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        # axis.title.x=element_blank(),
-        # axis.text.x=element_blank(),
-        # axis.ticks.x=element_blank(),
         axis.title.y = element_text(size = 13),
         axis.text.y = element_text(size = 11),
-        axis.text.x = element_text(size = 11)) # angle = 45, vjust = 0.765, hjust = 0.65))
+        axis.text.x = element_text(size = 11)) 
 plot_eez
-
-# plot_sector <- ggplot(data = effort_sector, aes(x = Year, y = `Effort (million KwD)`, group = Sector, color = Sector)) +
-#   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
-#   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
-#   geom_line()+
-#   scale_colour_brewer(palette="Set1", name = "Fishing sector")+ 
-#   theme_classic()+
-#   labs(y = "Effort (million KwD)", title = "Benguela Current", tag = "b")+
-#   theme(plot.title = element_text(size = 13),
-#         plot.tag = element_text(face = "bold", size = 13),
-#         axis.title.x=element_blank(),
-#         axis.text.x=element_blank(),
-#         axis.ticks.x=element_blank(),
-#         axis.title.y = element_text(size = 13),
-#         axis.text.y = element_text(size = 11))
-# plot_sector
 
 plot_gear <- ggplot(data = effort_gear, aes(x = Year, y = `Effort (million KwD)`, group = Gear, color = Gear)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
@@ -302,29 +313,23 @@ plot_gear <- ggplot(data = effort_gear, aes(x = Year, y = `Effort (million KwD)`
   labs(y = "Effort (million KwD)", x = "Year", title = top_1_eez, tag = "b")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        # axis.title.x=element_blank(),
-        # axis.text.x=element_blank(),
-        # axis.ticks.x=element_blank(),
         axis.title.y = element_text(size = 13),
         axis.text.y = element_text(size = 11),
-        axis.text.x = element_text(size = 11)) #, angle = 45, vjust = 0.765, hjust = 0.65))
+        axis.text.x = element_text(size = 11)) 
 plot_gear
 
 plot_fgroup <- ggplot(data = effort_fgroup, aes(x = Year, y = `Effort (million KwD)`, group = FGroup, color = FGroup)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   geom_line()+
-  scale_colour_brewer(palette="Set1", name = "Fished resource")+ # no Functional group 
+  scale_colour_brewer(palette="Set1", name = "Fished resource")+ 
   theme_classic()+
   labs(y = "Effort (million KwD)", x = "Year", title = top_1_gear, tag = "c")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        # axis.title.x=element_blank(),
-        # axis.text.x=element_blank(),
-        # axis.ticks.x=element_blank(),
         axis.title.y = element_text(size = 13),
         axis.text.y = element_text(size = 11),
-        axis.text.x = element_text(size = 11)) #, angle = 45, vjust = 0.765, hjust = 0.65))
+        axis.text.x = element_text(size = 11))
 plot_fgroup
 
 layout <- '
@@ -339,4 +344,78 @@ plot31
 dev.off()
 
 ```
+
+## Table for Rishi
+
+```{r}
+
+rm(list = ls()) # load data again to discard changes 
+effort <- fread("/rd/gem/private/users/yannickr/effort_histsoc_1841_2017_EEZ_addFAO.csv") 
+
+# head(effort)
+# filter(effort, is.na(Year))
+# filter(effort, is.na(Gear))
+# filter(effort, is.na(Sector))
+# filter(effort, is.na(fao_area))
+
+# summary by Year, Gear, Sector, fao_area
+
+effort_rishi<-effort %>% 
+  filter(Year >= 1950) %>%
+  group_by(Year, Gear, Sector, fao_area) %>% 
+  summarise(NomActive = sum(NomActive, na.rm = T )) %>% 
+  ungroup()
+
+fwrite(effort_rishi, "data/data_products/effort_summary_Rishi.csv")
+
+# what % of effort comes from bottom trawl in FAO regions? 
+effort_rishi_trawl<-effort_rishi %>% 
+  group_by(Gear, fao_area) %>% 
+  summarise(NomActive = sum(NomActive, na.rm = T )) %>% 
+  ungroup()
+
+effort_tot<-effort_rishi_trawl %>% 
+  group_by(fao_area) %>% 
+  summarise(NomActive_tot_fao_region = sum(NomActive, na.rm = T)) %>% 
+  ungroup()
+
+effort_rishi_perc_trawl <-effort_rishi_trawl %>% 
+  full_join(effort_tot) %>% 
+  mutate(NomActive_perc = (NomActive/NomActive_tot_fao_region)*100) %>% 
+  filter(Gear == "Trawl_Bottom") %>% 
+  arrange(-NomActive_perc)
+
+check<-effort_rishi_trawl %>% 
+  full_join(effort_tot) %>% 
+  mutate(NomActive_perc = (NomActive/NomActive_tot_fao_region)*100) %>% 
+  filter(fao_area == 51) 
+
+sum(check$NomActive_perc)
+
+fwrite(effort_rishi_perc_trawl, "data/data_products/effort_summary_trawl_Rishi.csv")
+
+# is Industrial effort primarily Bottom Trawl?
+effort_rishi_industrial<-effort_rishi %>% 
+  group_by(Gear, Sector) %>% 
+  summarise(NomActive = sum(NomActive, na.rm = T )) %>% 
+  ungroup()
+
+effort_tot<-effort_rishi_industrial %>% 
+  group_by(Sector) %>% 
+  summarise(NomActive_tot_sector = sum(NomActive, na.rm = T)) %>% 
+  ungroup()
+
+effort_rishi_perc_industrial <-effort_rishi_industrial %>% 
+  full_join(effort_tot) %>% 
+  mutate(NomActive_perc = (NomActive/NomActive_tot_sector)*100) %>% 
+  filter(Sector == "Industrial") %>% 
+  arrange(-NomActive_perc)
+
+sum(effort_rishi_perc_industrial$NomActive_perc)
+
+fwrite(effort_rishi_perc_industrial, "data/data_products/effort_summary_Industrial_Rishi.csv")
+
+```
+
+
 
