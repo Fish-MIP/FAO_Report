@@ -25,21 +25,24 @@ maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv",
 #Ensemble percentage change in biomass by countries
 count_bio <- list.files(base_folder, "ensemble_perc_bio_change_country.csv",
                         recursive = T, full.names = T) |> 
-  read_csv()
+  read_csv() |> 
+  rename(name = figure_name)
 
 
 #Ensemble percentage change in biomass by FAO regions
 fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
                       recursive = T, full.names = T) |> 
-  read_csv()
+  read_csv() |> 
+  rename(name = NAME_EN)
 
 #Ensemble percentage change in biomass by FAO regions
 lme_bio <- list.files(base_folder, "ensemble_perc_bio_change_lme.csv",
                       recursive = T, full.names = T) |> 
-  read_csv()
+  read_csv() |> 
+  rename(name = name_merge)
 
 #Table of summary statistics
-table_stats <- read_csv("../data/table_stats_country_admin.csv")
+table_stats_admin <- read_csv("../data/table_stats_country_admin.csv") 
 
 #List of countries
 country_list <- maps_data |> 
@@ -68,6 +71,28 @@ choro_data <- read_csv("../data/global_choro_maps_data.csv")
 #Map of the world
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
+
+#Biomass change - World map
+levs <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", 
+          "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", 
+          "Decrease <10%",  "Increase >30%", "No data")
+
+#Ensure category column is a factor and ordered
+table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp") |> 
+  mutate(category = factor(category, levels = levs, ordered = T))
+
+# Define colors for each fill category for the global summary maps
+fill_colors <- c(
+  "Decrease >30%" = "#AC390E",
+  "Decrease 20 to 30%" = "#C4603E",
+  "Decrease 10 to 20%" = "darksalmon",
+  "Decrease <10%" = "wheat",
+  "Increase <10%" = "honeydew3",
+  "Increase 10 to 20%" = "lightblue2",
+  "Increase 20 to 30%" = "#4297D3",
+  "Increase >30%" = "#1B194B",
+  "No data" = "#f7f7f7"
+)
 
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
@@ -183,10 +208,21 @@ ui <- navbarPage(title = "Interactive Tool",
                               br(),
                               strong("How should I cite data from this site?"),
                               br(),
-                              "If you use data downloaded from this site, we \
-                              suggest the following citation:",
+                              "You can download the data used to create the\
+                              plots shown in this interactive tool using the\
+                              'Donwload' button included under each tab. As a\
+                              condition of using these data, you must cite its\
+                              use. Please use the following citation:",
                               br(),
-                              "FishMIP (2024). FAO Report citation.",
+                              "FishMIP (2024). FAO Report\
+                                              citation.",
+                              br(),
+                              "When using the data product in a publication,\
+                              please include the following citation(s) in\
+                              addition to the data product citation provided\
+                              above:",
+                              br(),
+                              "FishMIP (2024). Some other citation.",
                               br(),
                               br(),
                               strong("Acknowledgments"),
@@ -206,29 +242,38 @@ ui <- navbarPage(title = "Interactive Tool",
                           img(src = "FishMIP_logo.png", height = 150,
                               width = 450, style = "display: block;
                               margin-left: auto; margin-right: auto;"),
-                          "Map showing fish biomass change under four different \
-                          scenarios will show here. Please allow up to two \
-                          minutes for the maps to appear on your screen.",
+                          "Here we present the mean estimated changes in fish \
+                          biomass across the entire FishMIP ensemble \
+                          (including 10 ecosystem models) in relation to our \
+                          reference period (mean between 2005-2014) within the\
+                          boundaries of a country's exclusive economic zone\
+                          (EEZ).",
                           br(),
+                          "Choose the scenario and decade of your interest for\
+                          the interactive map to appear on your screen. Allow\
+                          up to a minute for the map to show on your screen.",
                           br(),
-                          "This tab will show circle plots from Gage and a map\
-                          of the world. Aiming at having an interactive map \
-                          here. We will also have a download button.",
+                          "More info about interactive plot.",
                           br(),
                           br(),
                           sidebarLayout(
                             sidebarPanel(
-                              selectInput(inputId = "world_scenario",
-                                          label = "Choose emissions scenario",
-                                          choices = c("SSP1-2.6 (low emissions)",
-                                                      "SSP5-8.5 (high emissions)"
-                                                      )
+                              radioButtons(inputId = "world_scenario",
+                                           label = "Choose emissions scenario",
+                                           choiceNames =
+                                             c("SSP1-2.6 (low emissions)",
+                                               "SSP5-8.5 (high emissions)"),
+                                           choiceValues = c("ssp126", "ssp585"),
+                                           selected = NULL
                               ),
-                              selectInput(inputId = "world_decade",
-                                          label = "Choose decade of projected \
-                                          change",
-                                          choices = c("2041-2050 (medium term)",
-                                                      "2091-2100 (long term)"),
+                              radioButtons(inputId = "world_decade",
+                                           "Choose decade of projected change",
+                                           choiceNames = 
+                                             c("2041-2050 (medium term)",
+                                               "2091-2100 (long term)"),
+                                           choiceValues = c("2041-2050",
+                                                            "2091-2100"),
+                                           selected = NULL
                               ),
                               p("Click the 'Download' button below to get the \
                                 data used to create this map."),
@@ -239,7 +284,7 @@ ui <- navbarPage(title = "Interactive Tool",
                           ),
                           mainPanel(
                             fluidRow(
-                              plotOutput(outputId = "plot_world")
+                              girafeOutput(outputId = "plot_world")
                                      )
                           )
                           )),
@@ -362,15 +407,10 @@ ui <- navbarPage(title = "Interactive Tool",
                                 data used to create this time series plot."),
                               #Download button
                               downloadButton(outputId = "download_ts",
-                                             label = "Download"
-                                             )
+                                             label = "Download")
                             ),
-                          mainPanel(
-                            plotlyOutput(outputId = "plot_ts"),
-                            br(),
-                            br(), 
-                            br(),
-                            #dataTableOutput(outputId = "table_ts")
+                            mainPanel(
+                              plotOutput(outputId = "plot_ts")
                           ))
                  ))
 
@@ -390,56 +430,35 @@ server <- function(input, output, session) {
   
   #Select correct data 
   world_map_data <- reactive({
-    if(str_detect(input$world_scenario, "low") & 
-       str_detect(input$world_decade, "medium")){
-         data <- choro_data |> 
-           select(x, y, rel_change_mean50_ssp126_mean) |> 
-           rename(values = rel_change_mean50_ssp126_mean)
-    }else if(str_detect(input$world_scenario, "low") & 
-             str_detect(input$world_decade, "long")){
-      data <- choro_data |> 
-        select(x, y, rel_change_mean00_ssp126_mean) |> 
-        rename(values = rel_change_mean00_ssp126_mean)
-    }else if(str_detect(input$world_scenario, "high") & 
-             str_detect(input$world_decade, "medium")){
-      data <- choro_data |> 
-        select(x, y, rel_change_mean50_ssp585_mean) |> 
-        rename(values = rel_change_mean50_ssp585_mean)
-    }else if(str_detect(input$world_scenario, "high") & 
-             str_detect(input$world_decade, "long")){
-      data <- choro_data |> 
-        select(x, y, rel_change_mean00_ssp585_mean) |> 
-        rename(values = rel_change_mean00_ssp585_mean)
-    }
+    data <- table_stats_admin_shp |>
+      filter(scenario == input$world_scenario, decade == input$world_decade)
   })
   
   #Plot data
-  output$plot_world <- renderPlot({
+  output$plot_world <- renderGirafe({
       p1 <- ggplot()+
-        geom_tile(data = world_map_data(),
-                  aes(x, y, fill = values))+
-        scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
-                          type = scale_fill_custom, oob = oob_squish,
-                          name = "% change in fish biomass")+
-        #Adding world
-        geom_sf(inherit.aes = F, data = world, lwd = 0.25, color = "black", 
-                show.legend = F)+
-        #Projecting to Mollweide
-        coord_sf(crs = st_crs("+proj=moll +x_0=0 +y_0=0 +lat_0=0"))+
+        geom_sf_interactive(data = world_map_data(), 
+                            aes(fill = category, tooltip = tooltip, 
+                                data_id = iso_code), show.legend = TRUE)+
+        scale_fill_manual(values = fill_colors, breaks = levs, labels = levs, 
+                          drop = F)+
         theme_bw()+
-        guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5,
-                                     barwidth = 40, barheight = 2,
-                                     ticks.linewidth = 1, frame.linewidth = 0.5,
-                                     ticks.colour = "#444444",
-                                     frame.colour = "#444444",
-                                     title.theme = element_text(face = "plain",
-                                                                size = 14),
-                                     label.theme = element_text(size = 14)))+
         theme(panel.border = element_rect(colour = NA),
+              plot.title = element_text(hjust = 0.5),
               legend.position = "bottom",
-              axis.title = element_blank())
+              title = element_text(size = 11, face = "bold"),
+              axis.title = element_blank(),
+              legend.key.height = unit(2, "mm"),
+              legend.key.width = unit(2, "mm"))+
+        labs(fill = "% change in fish biomass")+
+        guides(fill = guide_legend(title.position = "top", title.hjust = 0.5,
+                                   title.vjust = 1, nrow = 2, label.vjust = 1,
+                                   label.position = "bottom", 
+                                   label.hjust = 0.5))
       
-      p1
+      return(girafe(code = print(p1)) %>%
+               girafe_options(opts_zoom(max = 5),
+                              opts_toolbar(hidden = c("zoom_rect"))))
     })
   
   ########## Maps tab ----
@@ -558,15 +577,20 @@ server <- function(input, output, session) {
   region_list <- reactive({
     if(input$sectors_ts == "EEZ"){
       data <- country_list
+      df <- count_bio
     }else if(input$sectors_ts == "FAO"){
       data <- fao_list
+      df <- fao_bio
     }else if(input$sectors_ts == "LME"){
       data <- lme_list
+      df <- lme_bio
     }
+    return(list(df = df,
+                df_list = data))
   })
    
   observeEvent(region_list(), {
-    choices <- region_list()$name
+    choices <- region_list()$df_list$name
     updateSelectInput(inputId = "region_ts",
                       choices = choices)})
   
@@ -587,63 +611,91 @@ server <- function(input, output, session) {
     return(region_name)
   })
 
-    
   ts_df <- reactive({
-    if(input$sectors_ts == "EEZ"){
-      df <- count_bio |> 
-        filter(figure_name == input$region_ts)
-    }else if(input$sectors_ts == "FAO"){
-      df <- fao_bio |> 
-        filter(NAME_EN == input$region_ts)
-    }else if(input$sectors_ts == "LME"){
-      df <- lme_bio |> 
-        filter(name_merge == input$region_ts)
-    }
+    df <- region_list()$df |> 
+      filter(name == input$region_ts)
     return(df)
     })
   
-  output$plot_ts <- renderPlotly({
-    ggplotly({
-      p <- ggplot(ts_df(), aes(x = year, y = mean_change, colour = scenario))+
-      geom_line(linewidth = 0.5)+
-      #Adding no change line at 0 for reference 
-      geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+  output$plot_ts <- renderPlot({
+      p <- ggplot(data = ts_df(), aes(x = year, y = mean_change, colour = scenario))+
+            geom_line(linewidth = 0.5)+
+      #Adding no change line at 0 for reference
+      geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65,
                  linetype = 2)+
       #Adding line dividing historical period and future projections
       geom_vline(xintercept = 2015, color = "grey80", linewidth = 0.65)+
-      #Adding SD as shading 
+      #Adding SD as shading
       geom_ribbon(aes(ymin = mean_change-sd_change,
                       ymax = mean_change+sd_change, fill = scenario),
                   alpha = 0.3, color = NA)+
       #Manually setting colours to be used in plots
-      scale_color_manual(values = c("historical" = "black", 
-                                    "ssp126" = "#33bbee", 
-                                    "ssp585" = "#ee3377"), 
+      scale_color_manual(values = c("historical" = "black",
+                                    "ssp126" = "#33bbee",
+                                    "ssp585" = "#ee3377"),
                          name = "Scenarios",
                          labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
-      scale_fill_manual(values = c("historical" = "black", 
-                                   "ssp126" = "#33bbee", 
-                                   "ssp585" = "#ee3377"), 
+      scale_fill_manual(values = c("historical" = "black",
+                                   "ssp126" = "#33bbee",
+                                   "ssp585" = "#ee3377"),
                         name = "Scenarios",
                         labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
       guides(color = guide_legend(nrow = 1, title.position = "left"))+
       theme_classic()+
       scale_x_continuous(breaks = seq(1950, 2100, 10))+
       labs(y = "Change in exploitable fish biomass (%)")+
-      theme(legend.position = "top", legend.justification = "center", 
-            legend.text = element_text(size = 14), 
+      theme(legend.position = "top", legend.justification = "center",
+            legend.text = element_text(size = 14),
             legend.title = element_text(size = 14),
-            panel.grid.minor.y = element_blank(), 
+            panel.grid.minor.y = element_blank(),
             axis.title.x = element_blank(),
             axis.title.y = element_text(size = 13),
-            axis.text.x = element_text(angle = 45, vjust = 0.765, 
+            axis.text.x = element_text(angle = 45, vjust = 0.765,
                                        hjust = 0.65, size = 12),
             axis.text.y = element_text(size = 12))
-    })
     p
   })
   
-  #output$table_ts <- renderDataTable(ts_df())
+  # output$plot_ts <- renderPlotly({
+  #   ggplotly({
+  #     p <- ggplot(data = ts_df(), aes(x = year, y = mean_change, colour = scenario))+
+  #       geom_line(linewidth = 0.5)+
+      # #Adding no change line at 0 for reference 
+      # geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
+      #            linetype = 2)+
+      # #Adding line dividing historical period and future projections
+      # geom_vline(xintercept = 2015, color = "grey80", linewidth = 0.65)+
+      # #Adding SD as shading 
+      # geom_ribbon(aes(ymin = mean_change-sd_change,
+      #                 ymax = mean_change+sd_change, fill = scenario),
+      #             alpha = 0.3, color = NA)+
+      # #Manually setting colours to be used in plots
+      # scale_color_manual(values = c("historical" = "black", 
+      #                               "ssp126" = "#33bbee", 
+      #                               "ssp585" = "#ee3377"), 
+      #                    name = "Scenarios",
+      #                    labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+      # scale_fill_manual(values = c("historical" = "black", 
+      #                              "ssp126" = "#33bbee", 
+      #                              "ssp585" = "#ee3377"), 
+      #                   name = "Scenarios",
+      #                   labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+      # guides(color = guide_legend(nrow = 1, title.position = "left"))+
+      # theme_classic()+
+      # scale_x_continuous(breaks = seq(1950, 2100, 10))+
+      # labs(y = "Change in exploitable fish biomass (%)")+
+      # theme(legend.position = "top", legend.justification = "center", 
+      #       legend.text = element_text(size = 14), 
+      #       legend.title = element_text(size = 14),
+      #       panel.grid.minor.y = element_blank(), 
+      #       axis.title.x = element_blank(),
+      #       axis.title.y = element_text(size = 13),
+      #       axis.text.x = element_text(angle = 45, vjust = 0.765, 
+      #                                  hjust = 0.65, size = 12),
+      #       axis.text.y = element_text(size = 12))
+  #     })
+  #   p
+  # })
   
   output$download_ts <- downloadHandler(
     filename = function(){
