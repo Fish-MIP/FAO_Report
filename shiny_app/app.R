@@ -18,10 +18,7 @@ library(glue)
 
 
 #Base folder for project
-base_folder <- "/rd/gem/private/users/camillan"
-
-#Defining location of notebook outputs
-out_folder <- file.path(base_folder, "FAO_Report")
+base_folder <- "/rd/gem/private/users/camillan/FAO_Report"
 
 # Loading data ------------------------------------------------------------
 #Loading ensemble biomass change
@@ -34,46 +31,26 @@ maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv",
 
 
 #Ensemble percentage change in biomass by countries
-count_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
+count_bio <- list.files(base_folder, 
                         "ensemble_perc_bio_change_country.csv",
                         recursive = T, full.names = T) |> 
   read_csv()
 
 
 #Ensemble percentage change in biomass by FAO regions
-fao_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
+fao_bio <- list.files(base_folder, 
                       "ensemble_perc_bio_change_fao_region.csv",
                       recursive = T, full.names = T) |> 
   read_csv()
 
 #Ensemble percentage change in biomass by FAO regions
-lme_bio <- list.files("/rd/gem/private/users/camillan/FAO_Report/", 
+lme_bio <- list.files(base_folder, 
                       "ensemble_perc_bio_change_lme.csv",
                       recursive = T, full.names = T) |> 
   read_csv()
 
-# iso3c lookups
-iso_lookup <- read.csv("../data/iso3c_lookup_regions.csv")
-
 #Table of summary statistics
-table_stats_admin <- read_csv("../data/table_stats_country_admin.csv") %>% left_join(iso_lookup) %>%
-  mutate(fill_category = case_when(
-    mean < -30 ~ "Decrease >30%",
-    mean <= -20 & mean >= -30 ~ "Decrease 20 to 30%",
-    mean <= -10 & mean > -20 ~ "Decrease 10 to 20%",
-    mean <= 0 & mean > -10 ~ "Decrease <10%",
-    mean >= 0 & mean < 10 ~ "Increase <10%",
-    mean >= 10 & mean < 20 ~ "Increase 10 to 20%", 
-    mean >= 20 & mean <= 30 ~ "Increase 20 to 30%",
-    mean > 30 ~ "Increase >30%"
-  )) 
-
-ws_df <- table_stats_admin %>%
-  distinct(scenario, decade) %>%
-  mutate(Country_FAO = "Western Sahara", Country_FAO_new = "Western Sahara", continent = "Africa", spatial_scale = "countries_admin", ISO3_country = "ESH", 
-         mean = NA, median = NA, sd = NA, min = NA, max = NA, n_model = NA, agreement = NA, wilcox_p = NA, fill_category = NA)
-table_stats_admin <- table_stats_admin %>%
-  rbind(., ws_df)
+table_stats_admin <- read_csv("../data/table_stats_country_admin.csv") 
 
 #List of countries
 country_list <- maps_data |> 
@@ -107,17 +84,7 @@ fao_list <- maps_data |>
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
 
-world_360_small <- world_360 %>% 
-  filter(type %in% c("Country", "Sovereign country") | name_long == "Western Sahara") %>%
-  filter(!st_is_empty(.)) %>%
-  st_transform(st_crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
-  
-table_stats_admin_shp <- world_360_small %>% 
-  dplyr::select(-continent) %>%
-  right_join(table_stats_admin, by = c("iso_a3" = "ISO3_country")) %>%
-  rename(ISO3_country = iso_a3) %>% 
-  dplyr::select(colnames(table_stats_admin)) %>%
-  filter(!st_is_empty(.)) 
+table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp")
 
 
 # Supporting information --------------------------------------------------
@@ -166,12 +133,14 @@ fill_colors <- c(
   "Increase <10%" = "honeydew3",
   "Increase 10 to 20%" = "lightblue2",
   "Increase 20 to 30%" = "#4297D3",
-  "Increase >30%" = "#1B194B"
+  "Increase >30%" = "#1B194B",
+  "No data" = "#f7f7f7"
 )
 
 # order categories for global summary maps so the legend shows in the correct order
-all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", "Decrease <10%",  "Increase >30%")
-table_stats_admin_shp$fill_category <- factor(table_stats_admin_shp$fill_category, c(all_categories))
+all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%",
+                    "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%",
+                    "Decrease <10%",  "Increase >30%")
 
 #Function to improve map ratios for plotting
 scaler <- function(x, type, ratio = F){
@@ -432,52 +401,26 @@ server <- function(input, output, session) {
               str_detect(input$world_decade, "medium")) {
       
       data <- table_stats_admin_shp |> 
-        filter(scenario == "ssp126",
-               decade == "2041-2050") %>%
-        dplyr::select(-spatial_scale, -min, -max, -wilcox_p) %>% 
-        mutate(country_map = 1) %>%
-        mutate(mean_tooltip = ifelse(mean > 0, glue("+{round(mean, 2)}%"), glue("{round(mean, 2)}%"))) %>%
-        mutate(tooltip = glue("Country name: {Country_FAO}\n Biomass change = {mean_tooltip}\n Model agreement = {agreement}%"))            
-        
-        
+        filter(scenari == "ssp126",
+               decade == "2041-2050")
     } else if(str_detect(input$world_scenario, "low") & 
              str_detect(input$world_decade, "long")){
-      
       data <- table_stats_admin_shp |> 
-        filter(scenario == "ssp126",
-               decade == "2091-2100") %>%
-        dplyr::select(-spatial_scale, -min, -max, -wilcox_p) %>% 
-        mutate(country_map = 1) %>%
-        mutate(mean_tooltip = ifelse(mean > 0, glue("+{round(mean, 2)}%"), glue("{round(mean, 2)}%"))) %>%
-        mutate(tooltip = glue("Country name: {Country_FAO}\n Biomass change = {mean_tooltip}\n Model agreement = {agreement}%"))    
-
+        filter(scenari == "ssp126",
+               decade == "2091-2100") 
     } else if(str_detect(input$world_scenario, "high") & 
               str_detect(input$world_decade, "medium")){
       
       data <- table_stats_admin_shp |> 
-        filter(scenario == "ssp585",
-               decade == "2041-2050") %>%
-        dplyr::select(-spatial_scale, -min, -max, -wilcox_p) %>% 
-        mutate(country_map = 1) %>%
-        mutate(mean_tooltip = ifelse(mean > 0, glue("+{round(mean, 2)}%"), glue("{round(mean, 2)}%"))) %>%
-        mutate(tooltip = glue("Country name: {Country_FAO}\n Biomass change = {mean_tooltip}\n Model agreement = {agreement}%"))
-      
-      
+        filter(scenari == "ssp585",
+               decade == "2041-2050")
     } else if(str_detect(input$world_scenario, "high") & 
               str_detect(input$world_decade, "long")){
-      
       data <- table_stats_admin_shp |> 
-        filter(scenario == "ssp585",
-               decade == "2091-2100") %>%
-        dplyr::select(-spatial_scale, -min, -max, -wilcox_p) %>% 
-        mutate(country_map = 1) %>%
-        mutate(mean_tooltip = ifelse(mean > 0, glue("+{round(mean, 2)}%"), glue("{round(mean, 2)}%"))) %>%
-        mutate(tooltip = glue("Country name: {Country_FAO}\n Biomass change = {mean_tooltip}\n Model agreement = {agreement}%"))
-      
+        filter(scenari == "ssp585",
+               decade == "2091-2100") 
     }
-
   })
-  
   
   output$plot_world <-
     renderGirafe({
@@ -518,8 +461,10 @@ server <- function(input, output, session) {
 
       p1 <- ggplot() +
         geom_sf_interactive(data = world_map_data(),
-                                 aes(fill = fill_category, tooltip = tooltip, data_id = mean), show.legend = TRUE) +
-        scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories, drop = F) +  # Assign fill colors manually
+                            aes(fill = fill_catg, tooltip = tooltip, 
+                                data_id = mean), show.legend = TRUE) +
+        scale_fill_manual(values = fill_colors, breaks = all_categories, 
+                          labels = all_categories, drop = F) +
         theme_bw() +
         theme(
               panel.border = element_rect(colour = NA),
