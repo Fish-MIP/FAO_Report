@@ -3,6 +3,8 @@ title: "Plotting biomass change under different SSPs"
 author: "Denisse Fierro Arcos & Camilla Novaglio"
 date: "2024-01-09"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Introduction
@@ -51,7 +53,6 @@ if(!dir.exists(out_folder)){
 
 #Defining location for plots
 out_plot <- file.path(base_folder, "FAO_Report/maps_global_regions")
-out_plot <- file.path("data/data_products")
 if(!dir.exists(out_plot)){
   dir.create(out_plot)
 }
@@ -173,7 +174,7 @@ Capture fisheries production data comes from the [FAO's Fisheries and Aquacultur
   
 ```{r}
 #Load fisheries data
-fisheries_catch <- read_csv("data/world_mean_annual_catch.csv") |> 
+fisheries_catch <- read_csv(file.path(out_folder, "world_mean_annual_catch.csv")) |> 
   mutate(class_fish = factor(class_fish, 
                              levels = c("<0.25", "0.25-1", "1-2", "2-4", 
                                         "4-6", ">6"), ordered = T))
@@ -192,7 +193,7 @@ We will transform the data frame containing the percentage change into a multi-l
   
 ```{r}
 #Loading ensemble biomass change
-maps_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv")
+maps_data <- read_csv(file.path(out_folder,"ensemble/ensemble_perc_bio_change_data_map.csv"))
 
 #Extract data for scenario, transform to raster and reproject
 maps_data_proj <- maps_data |> 
@@ -226,7 +227,6 @@ scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
-  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
@@ -363,7 +363,6 @@ asia_cent <- world |>
 ```
     
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
-  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
@@ -516,7 +515,7 @@ americas_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define linetypes to be used in plots
@@ -655,7 +654,7 @@ europe_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define base steps for maps
@@ -758,7 +757,6 @@ africa_cent <- world |>
 ```
   
 We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
-  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
@@ -900,7 +898,7 @@ ocean_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define base steps for maps
@@ -980,7 +978,7 @@ Finally, we will create maps for mean biomass change within the FAO regions.
   
 ```{r}
 #Listing all relevant files to calculate biomass projections
-maps_data <- read_csv("data/ensemble_perc_bio_change_fao_map.csv")
+maps_data <- read_csv(file.path(out_folder,"ensemble/ensemble_perc_bio_change_fao_map.csv"))
 
 #Add to FAO EEZ mask
 choro_data_proj <- area_gfdl_df |> 
@@ -992,7 +990,6 @@ choro_data_proj <- area_gfdl_df |>
   project(y = rob_proj) 
 ```
 
-  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
@@ -1109,7 +1106,7 @@ Finally, we can map this information.
   
 ```{r}
 #Load standard deviation
-maps_data_sd <- read_csv("data/ensemble_sd_bio_change_data_map.csv")
+maps_data_sd <- read_csv(file.path(out_folder,"ensemble/ensemble_sd_bio_change_data_map.csv"))
 
 #Extract data for scenario, transform to raster and reproject
 maps_data_sd_proj <- maps_data_sd |> 
@@ -1295,7 +1292,7 @@ Combining maps of percentage change (`*_change`), standard deviation (`*_SD`) an
 
 ```{r}
 #Loading ensemble biomass change
-maps_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv")
+maps_data <- read_csv(file.path(out_folder,"ensemble/ensemble_perc_bio_change_data_map.csv"))
 
 #Extract data for scenario, transform to raster and reproject
 maps_data_proj <- maps_data |> 
@@ -1355,7 +1352,7 @@ p00_585_change2 <- ggplot()+
   
 ```{r}
 # Listing all relevant files to calculate biomass projections
-maps_data_agreement_proj <- read_csv("data/ensemble_model_agreement.csv") |>   
+maps_data_agreement_proj <- read_csv(file.path(out_folder,"ensemble/ensemble_model_agreement.csv")) |>   
   #Transform to multi-layer raster
   rast(type = "xyz", crs = "epsg:4326") |>
   #Reproject to Robinson
@@ -1389,14 +1386,12 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
 #SSP1-2.6 2091-2100
 p00_126_agreement <- ggplot()+ 
   geom_spatraster(data = maps_data_agreement_proj$rel_change_mean00_ssp126)+
-  # labs(title = "SSP1-2.6: 2091-2100")+
   base_gg+
   theme(legend.position = "none")
 
 #SSP5-8.5 2091-2100
 p00_585_agreement <- ggplot()+
   geom_spatraster(data = maps_data_agreement_proj$rel_change_mean00_ssp585)+
-  # labs(title = "SSP5-8.5: 2091-2100")+
   base_gg+
   guides(fill = guide_colorbar(barwidth = 1.2, 
                                barheight = 7,
@@ -1405,36 +1400,6 @@ p00_585_agreement <- ggplot()+
   theme(legend.title = element_text(size = 14),
         legend.text = element_text(size = 12))
 
-# #Get legend for land
-# legend_agreement <- get_legend(p00_585_agreement)
-# 
-# #Remove legend from last plot
-# p00_585_agreement <- p00_585_agreement+
-#   theme(legend.position = "none")
-# 
-# #Plotting change maps and legend
-# p_change <- plot_grid(p00_126_change, p00_585_change, ncol = 2, 
-#                       labels = c("a", "b"), label_x = 0.1)
-# #Adding legend
-# p_change <- plot_grid(p_change, 
-#                       plot_grid(leg_land, leg_fish, ncol = 2),
-#                       nrow = 2, rel_heights = c(1, 0.4))
-# 
-# #Plotting standard deviation maps and legend
-# p_sd <- plot_grid(p00_126_SD, p00_585_SD, ncol = 2, labels = c("c", "d"), 
-#                   label_x = 0.1)
-# #Adding legend
-# p_sd <- plot_grid(p_sd, legend_sd, nrow = 2, rel_heights = c(1, 0.4))
-# 
-# #Plotting agreement maps and legend
-# p_agree <- plot_grid(p00_126_agreement, p00_585_agreement, ncol = 2, 
-#                      labels = c("e", "f"), label_x = 0.1)
-# #Adding legend
-# p_agree <- plot_grid(p_agree, legend_agreement, nrow = 2, 
-#                      rel_heights = c(1, 0.4))
-# 
-# #Putting all plots together
-# all_plots <- plot_grid(p_change, p_sd, p_agree, nrow = 3)
 ```
 
 ### Combine all plots using new layout 
@@ -1442,15 +1407,6 @@ p00_585_agreement <- ggplot()+
 ```{r}
 
 library(patchwork)
-
-# ## trial 
-# layout <- "
-# AB
-# "
-# 
-# all_plots<-p00_126_change2 + p00_585_change2 + 
-#   plot_layout(design = layout)+
-#   plot_annotation(tag_levels = "a") 
 
 layout <- "
 AB

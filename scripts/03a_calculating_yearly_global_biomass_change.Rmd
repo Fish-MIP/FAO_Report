@@ -1,8 +1,10 @@
 ---
 title: "Calculating temporal biomass change"
-author: "Denisse Fierro Arcos"
+author: "Denisse Fierro Arcos & Camilla Novaglio"
 date: "2024-04-30"
 output: pdf_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Loading libraries
@@ -400,10 +402,10 @@ bio_data |>
   
 ```{r}
 #Getting GFDL grid area
-area_gfdl_lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv")
+area_gfdl_lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/gfdl-esm4_60arcmin_global_FAO-LME.csv"))
 
 #Getting IPSL grid area
-area_ipsl_lme <- read_csv("data/ipsl-cm6a_60arcmin_global_FAO-LME.csv")
+area_ipsl_lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/ipsl-cm6a_60arcmin_global_FAO-LME.csv"))
 ```
   
 ## Calculating percentage change in fish biomass mean per LME from global FishMIP models

@@ -1,6 +1,6 @@
 ---
 title: "Processing biomass data to create maps of biomass change"
-author: "Denisse Fierro Arcos"
+author: "Denisse Fierro Arcos & Camilla Novaglio"
 date: "2024-04-23"
 output: pdf_document
 editor_options: 
@@ -124,24 +124,24 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   left_join(area_gfdl_df, by = join_by(x, y)) |> 
   ungroup()
 
-## Commented out as not used in FAO report adn currently re-running analysis to provide high res final plots. 
-# #Adding LME metadata
-# lme <- read_csv("data/gfdl-esm4_60arcmin_global_FAO-LME.csv") |> 
-#   #Keeping LMEs only - Removing FAO regions
-#   filter(ID_mrgd > 100) |> 
-#   select(x, y, name_merge)
+#Adding LME metadata
+lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/gfdl-esm4_60arcmin_global_FAO-LME.csv")) |>
+  #Keeping LMEs only - Removing FAO regions
+  filter(ID_mrgd > 100) |>
+  select(x, y, name_merge)
 
 #Save ensemble data
 maps_data |> 
   #Adding LME information
-  # left_join(lme, join_by(x, y)) |> # Commented out as per reason above. 
-  write_csv("data/ensemble_perc_bio_change_data_map.csv")
+  left_join(lme, join_by(x, y)) |> 
+  write_csv(file.path(out_folder, "ensemble/ensemble_perc_bio_change_data_map.csv"))
+
 ```
     
 ## Calculated spatially weighted percentage change for FishMIP ensemble 
   
 ```{r}
-choro_data <- read_csv("data/ensemble_perc_bio_change_data_map.csv") |> 
+choro_data <- read_csv(file.path(out_folder, "ensemble/ensemble_perc_bio_change_data_map.csv")) |> 
   #Group by ID to link to shapefile
   group_by(ID_mrgd) |> 
   #Calculate weighted means across all columns starting with "rel_change"
@@ -163,7 +163,7 @@ choro_data <- choro_data |>
 
 #Saving result
 choro_data |> 
-  write_csv("data/global_choro_maps_data.csv")
+  write_csv(file.path(out_folder, "global_choro_maps_data.csv"))
 ```
   
 ## Calculating annual fisheries catch
@@ -271,7 +271,7 @@ fisheries_catch_clean <- fisheries_catch_clean |>
 
 #Saving clean fisheries catch data
 fisheries_catch_clean |> 
-  write_csv("data/world_mean_annual_catch.csv")
+  write_csv(file.path(out_folder, "world_mean_annual_catch.csv"))
 ```
   
 ## Calculating percentage difference in human populations 
@@ -321,7 +321,7 @@ pop_change <- list.files("data/", pattern = "national_annual",
 
 #Save results 
 pop_change |> 
-  write_csv("data/world_population_change.csv")
+  write_csv(file.path(out_folder, "world_population_change.csv"))
 ```
     
 ## Calculating biomass change by FAO region
@@ -409,7 +409,7 @@ fao_map_data <- list.files(out_folder,
 
 #Save ensemble data
 fao_map_data |> 
-  write_csv("data/ensemble_perc_bio_change_fao_map.csv")
+  write_csv(file.path(out_folder, "ensemble/ensemble_perc_bio_change_fao_map.csv"))
 ```
   
 ## Calculating proportion of sustainable fisheries by country
@@ -429,7 +429,7 @@ fao_fisheries <- read_csv(list.files(out_folder,
 
 #Save results
 fao_fisheries |> 
-  write_csv("data/prop_sustainable_fisheries_fao.csv")
+  write_csv(file.path(out_folder, "prop_sustainable_fisheries_fao.csv"))
 ```
   
 ## Calculating standard deviation in fish biomass estimates from global FishMIP models
@@ -457,7 +457,7 @@ maps_data_sd <- list.files(out_folder,
 
 #Save results
 maps_data_sd |> 
-  write_csv("data/ensemble_sd_bio_change_data_map.csv")
+  write_csv(file.path(out_folder,"ensemble/ensemble_sd_bio_change_data_map.csv"))
 ```
 
 ## Calculating coefficient of variation 
@@ -477,7 +477,7 @@ maps_data_cv <- maps_data_sd |>
   
 #Saving result
 maps_data_cv |> 
-  write_csv("data/ensemble_cv_bio_change_data_map.csv")
+  write_csv(file.path(out_folder,"ensemble/ensemble_cv_bio_change_data_map.csv"))
 ```
   
 ## Calculating model agreement
@@ -485,7 +485,7 @@ maps_data_cv |>
 ```{r}
 # Listing all relevant files to calculate biomass projections
 maps_data_agreement <- list.files(out_folder, 
-                                  pattern = "perc_bio_change_data_map.csv", 
+                                  pattern = "_perc_bio_change_data_map.csv", 
                                   full.names = T) |> 
   map_df(~fread(.)) |> 
   bind_rows() |>
@@ -506,14 +506,14 @@ maps_data_agreement <- list.files(out_folder,
             same_sign = max(n_positive, n_negative),
             agreement = (same_sign/n_model)*100) |> 
   ungroup() |> 
-  # convert 0 land into NAs 
-  mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
+  # # convert 0 land into NAs 
+  # mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
   select(c(x,y,scenario, agreement)) |> 
   pivot_wider(names_from = scenario, values_from = agreement) 
 
 #Save results
 maps_data_agreement |> 
-  write_csv("data/ensemble_model_agreement.csv")
+  write_csv(file.path(out_folder,"ensemble/ensemble_model_agreement.csv"))
 ```
 
   

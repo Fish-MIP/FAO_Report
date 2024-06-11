@@ -127,7 +127,8 @@ gfdl_mask <- rast_save(fao_eez_shp, gfdl, "ID_mrgd",
                                             "gfdl-esm4_60arcmin_global_FAO-EEZ.nc"))
 
 gfdl_lme <- rast_save(fao_lme_shp, gfdl, "ID_merged", 
-                      out_file = "../data/gfdl-esm4_60arcmin_global_FAO-LME.nc")
+                      out_file = file.path(fao_dir, 
+                                           "gfdl-esm4_60arcmin_global_FAO-LME.nc"))
 
 #Creating IPSL mask
 ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
@@ -135,7 +136,8 @@ ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
                                             "ipsl-cm6a_60arcmin_global_FAO-EEZ.nc"))
 
 ipsl_lme <- rast_save(fao_lme_shp, ipsl, "ID_merged", 
-                      out_file = "../data/ipsl-cm6a_60arcmin_global_FAO-LME.nc")
+                      out_file = file.path(fao_dir, 
+                                           "ipsl-cm6a_60arcmin_global_FAO-LME.nc"))
 
 ```
   
@@ -163,15 +165,28 @@ gfdl_df <- rast_df(gfdl_mask, gfdl, meta,
                    file.path(fao_dir, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv"))
 
 gfdl_lme_df <- rast_df(gfdl_lme, gfdl, meta_lme, 
-                       "../data/gfdl-esm4_60arcmin_global_FAO-LME.csv")
+                       file.path(fao_dir, "gfdl-esm4_60arcmin_global_FAO-LME.csv"))
+
+# Warning message:                                                                                                     
+# In left_join(drop_na(left_join(as.data.frame(ras_area, xy = T),  :
+#   Detected an unexpected many-to-many relationship between `x` and `y`.
+# ℹ Row 8721 of `x` matches multiple rows in `y`.
+# ℹ Row 86 of `y` matches multiple rows in `x`.
+# ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
 
 #Saving IPSL raster as data frame
 ipsl_df <- rast_df(ipsl_mask, ipsl, meta, 
                    file.path(fao_dir, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv"))
 
 ipsl_lme_df <- rast_df(ipsl_lme, ipsl, meta_lme, 
-                       "../data/ipsl-cm6a_60arcmin_global_FAO-LME.csv")
+                       file.path(fao_dir, "ipsl-cm6a_60arcmin_global_FAO-LME.csv"))
 
+# Warning message:                                                                                                     
+# In left_join(drop_na(left_join(as.data.frame(ras_area, xy = T),  :
+#   Detected an unexpected many-to-many relationship between `x` and `y`.
+# ℹ Row 8721 of `x` matches multiple rows in `y`.
+# ℹ Row 86 of `y` matches multiple rows in `x`.
+# ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
 
 # Check missing territories: 
 head(meta) # names on file printed in 00 and including all countries and territories 
