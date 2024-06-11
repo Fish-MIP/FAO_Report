@@ -84,7 +84,13 @@ fao_list <- maps_data |>
 world <- ne_countries(returnclass = "sf", scale = "medium")
 world_360 <- read_sf("../data/world_360deg.shp")
 
-table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp")
+#Biomass change - World map
+levs <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", 
+          "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", 
+          "Decrease <10%",  "Increase >30%", "No data")
+
+table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp") |> 
+  mutate(category = factor(category, levels = levs, ordered = T))
 
 
 # Supporting information --------------------------------------------------
@@ -266,13 +272,8 @@ ui <- navbarPage(title = "Interactive Tool",
                               )
                             ),
                             mainPanel(
-
-                            #  fluidRow(plotlyOutput(outputId = "plot_world")) # change to plotlyOutput if we want plotly interactive plots instead
-                              girafeOutput("plot_world"), # using girafe for the interactive maps
-                              br(),
-                              br(), 
-                              br(),
-                              dataTableOutput(outputId = "world_df")
+                              #using girafe for the interactive maps
+                              girafeOutput("plot_world") 
                             )
                           )),
                  tabPanel(title = "Maps",
@@ -401,70 +402,35 @@ server <- function(input, output, session) {
               str_detect(input$world_decade, "medium")) {
       
       data <- table_stats_admin_shp |> 
-        filter(scenari == "ssp126",
+        filter(scenario == "ssp126",
                decade == "2041-2050")
     } else if(str_detect(input$world_scenario, "low") & 
              str_detect(input$world_decade, "long")){
       data <- table_stats_admin_shp |> 
-        filter(scenari == "ssp126",
+        filter(scenario == "ssp126",
                decade == "2091-2100") 
     } else if(str_detect(input$world_scenario, "high") & 
               str_detect(input$world_decade, "medium")){
       
       data <- table_stats_admin_shp |> 
-        filter(scenari == "ssp585",
+        filter(scenario == "ssp585",
                decade == "2041-2050")
     } else if(str_detect(input$world_scenario, "high") & 
               str_detect(input$world_decade, "long")){
       data <- table_stats_admin_shp |> 
-        filter(scenari == "ssp585",
+        filter(scenario == "ssp585",
                decade == "2091-2100") 
     }
   })
   
   output$plot_world <-
     renderGirafe({
-
-    # if(any(str_detect(colnames(world_map_data()), "values"))){
-    #   
-    #   # p1 <- ggplot() +
-    #   #   geom_sf_interactive(data = world_map_data(),
-    #   #                       aes(fill = fill_category, tooltip = tooltip, data_id = values), show.legend = TRUE) +
-    #   #   scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories, drop = F) +  # Assign fill colors manually
-    #   #   theme_bw() +
-    #   #   theme(
-    #   #     panel.border = element_rect(colour = NA),
-    #   #     plot.title = element_text(hjust = 0.5),
-    #   #     legend.position = "bottom",
-    #   #     title = element_text(size = 11, face = "bold"),
-    #   #     axis.title = element_blank(),
-    #   #     legend.key.height = unit(2, "mm"),
-    #   #     legend.key.width = unit(2, "mm")
-    #   #   )  +
-    #   #   labs(fill = "% change in fish biomass") +
-    #   #   guides(fill = guide_legend(
-    #   #     title.position = "top",
-    #   #     title.hjust = 0.5,
-    #   #     title.vjust = 1,
-    #   #     nrow = 2,
-    #   #     label.position = "bottom",
-    #   #     label.hjust = 0.5,
-    #   #     label.vjust = 1))
-    #   # 
-    #   # return(girafe(code = print(p1)) %>%
-    #   #          girafe_options(opts_zoom(max = 5),
-    #   #                         opts_toolbar(hidden = c("zoom_rect"))))
-    # 
-    # 
-    # }else 
-      if(any(str_detect(colnames(world_map_data()), "country_map"))){
-
       p1 <- ggplot() +
         geom_sf_interactive(data = world_map_data(),
-                            aes(fill = fill_catg, tooltip = tooltip, 
-                                data_id = mean), show.legend = TRUE) +
-        scale_fill_manual(values = fill_colors, breaks = all_categories, 
-                          labels = all_categories, drop = F) +
+                            aes(fill = category, tooltip = tooltip, 
+                                data_id = iso_code), show.legend = TRUE) +
+        scale_fill_manual(values = fill_colors, breaks = levs, 
+                          labels = levs, drop = F) +
         theme_bw() +
         theme(
               panel.border = element_rect(colour = NA),
@@ -488,22 +454,8 @@ server <- function(input, output, session) {
           return(girafe(code = print(p1)) %>%
                    girafe_options(opts_zoom(max = 5),
                                   opts_toolbar(hidden = c("zoom_rect"))))
-
-    }
       
   })
-  
-  output$world_df <- renderDataTable(world_map_data() %>% st_drop_geometry() %>% 
-                                       dplyr::select(-tooltip, -fill_category, -country_map, -mean_tooltip, -Country_FAO_new) %>%
-                                       mutate(mean = round(mean, 2), 
-                                              median = round(median, 2), 
-                                              sd = round(sd, 2)) %>%                
-                                       rename(`mean_biomass_change_%` = mean,
-                                              `median_biomass_change_%` = median,
-                                              `sd_biomass_change_%` = sd,
-                                               number_of_models = n_model,
-                                               `model_agreement_%` = agreement)) # clean up the datatable a bit
-  
   
   ########## Maps tab
   region_list_maps <- reactive({
