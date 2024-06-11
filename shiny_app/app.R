@@ -89,9 +89,22 @@ levs <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%",
           "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%", 
           "Decrease <10%",  "Increase >30%", "No data")
 
+#Ensure category column is a factor and ordered
 table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp") |> 
   mutate(category = factor(category, levels = levs, ordered = T))
 
+# Define colors for each fill category for the global summary maps
+fill_colors <- c(
+  "Decrease >30%" = "#AC390E",
+  "Decrease 20 to 30%" = "#C4603E",
+  "Decrease 10 to 20%" = "darksalmon",
+  "Decrease <10%" = "wheat",
+  "Increase <10%" = "honeydew3",
+  "Increase 10 to 20%" = "lightblue2",
+  "Increase 20 to 30%" = "#4297D3",
+  "Increase >30%" = "#1B194B",
+  "No data" = "#f7f7f7"
+)
 
 # Supporting information --------------------------------------------------
 #Create custom-made color palette
@@ -129,25 +142,6 @@ base_map <- list(geom_tile(),
                        title = element_text(size = 14, face = "bold"),
                        axis.text = element_text(size = 12)))
 
-
-# Define colors for each fill category for the global summary maps
-fill_colors <- c(
-  "Decrease >30%" = "#AC390E",
-  "Decrease 20 to 30%" = "#C4603E",
-  "Decrease 10 to 20%" = "darksalmon",
-  "Decrease <10%" = "wheat",
-  "Increase <10%" = "honeydew3",
-  "Increase 10 to 20%" = "lightblue2",
-  "Increase 20 to 30%" = "#4297D3",
-  "Increase >30%" = "#1B194B",
-  "No data" = "#f7f7f7"
-)
-
-# order categories for global summary maps so the legend shows in the correct order
-all_categories <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%",
-                    "Increase 10 to 20%", "Decrease 10 to 20%", "Increase 20 to 30%",
-                    "Decrease <10%",  "Increase >30%")
-
 #Function to improve map ratios for plotting
 scaler <- function(x, type, ratio = F){
   if((x > 0 & type == "min") | (x < 0 & type == "min")){
@@ -172,16 +166,20 @@ ui <- navbarPage(title = "Interactive Tool",
                           box(title = "About this website", status = "primary",
                               width = 18,
                               fluidRow(column(width = 11,
-                                              "This tool shows estimates of fish biomass change\
-                              under two different climate scenarios: low
-                              emissions (SSP1-2.6) and high emissions\
-                              (SSP5-8.5). Results shown are the mean percentage\
-                              across 10 ecosystem models making up the FishMIP\
-                              ensemble.",
+                                              "This tool shows estimates of fish\
+                                              biomass change under two\
+                                              different climate scenarios: low\
+                                              emissions (SSP1-2.6) and high\
+                                              emissions (SSP5-8.5). Results\
+                                              shown are the mean percentage\
+                                              across 10 ecosystem models making\
+                                              up the FishMIP ensemble.",
                                               br(),
-                                              "This tool was developed by FishMIP and supports \
-                              the 'xxxxx' report for the FAO and published in \
-                              July 2024 and it can be accessed ",
+                                              "This tool was developed by\
+                                              FishMIP and supports the 'xxxxx'\
+                                              report for the FAO and published\
+                                              in July 2024 and it can be \
+                                              accessed ",
                                               tags$a(href="https://fishmip.org/publications.html",
                                                      "here."),
                                               br(),
@@ -216,10 +214,25 @@ ui <- navbarPage(title = "Interactive Tool",
                                               br(),
                                               strong("How should I cite data from this site?"),
                                               br(),
-                                              "If you use data downloaded from this site, we \
-                              suggest the following citation:",
+                                              "You can download the data used\
+                                              to create the plots shown in this\
+                                              app, using the 'Donwload' button\
+                                              under each tab. As a condition of\
+                                              using these data, you must cite\
+                                              the use of the data set. Use\
+                                              the following citation:",
                                               br(),
-                                              "FishMIP (2024). FAO Report citation.",
+                                              "FishMIP (2024). FAO Report\
+                                              citation.",
+                                              br(),
+                                              "When using the data product in a\
+                                              publication, please include the\
+                                              following citation(s) in addition\
+                                              to the data product citation\
+                                              provided above:",
+                                              br(),
+                                              "FishMIP (2024). Some other \
+                                              citation.",
                                               br(),
                                               br(),
                                               strong("Acknowledgments"),
@@ -239,14 +252,14 @@ ui <- navbarPage(title = "Interactive Tool",
                           img(src = "FishMIP_logo.png", height = 150,
                               width = 450, style = "display: block;
                               margin-left: auto; margin-right: auto;"),
-                          "Map showing fish biomass change under four different \
-                          scenarios will show here. Please allow up to two \
-                          minutes for the maps to appear on your screen.",
+                          "Ensemble mean for percentage change in fish biomass\
+                          under two scenarios from the reference period (mean
+                          for the decade between 2005 and 2014). Please allow\
+                          up to one minute for the map to appear on your\
+                          screen.",
                           br(),
                           br(),
-                          "This tab will show circle plots from Gage and a map\
-                          of the world. Aiming at having an interactive map \
-                          here. We will also have a download button.",
+                          "More text here about interactive map.",
                           br(),
                           br(),
                           sidebarLayout(
@@ -389,7 +402,6 @@ server <- function(input, output, session) {
 
   output$download_world <- downloadHandler(
     filename = function() {
-
         "summary_stats_country.csv"
     },
     content = function(file) {
