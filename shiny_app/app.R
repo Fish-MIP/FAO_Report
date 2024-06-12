@@ -6,7 +6,6 @@ library(shiny)
 library(shinyWidgets)
 library(shinydashboard)
 library(tidyverse)
-library(plotly)
 library(bslib)
 library(cmocean)
 library(scales)
@@ -64,9 +63,6 @@ fao_list <- maps_data |>
   drop_na() |> 
   rename("name"= "NAME_EN") |> 
   arrange(name)
-
-#Loading choropleth shapefile
-choro_data <- read_csv("../data/global_choro_maps_data.csv")
 
 #Map of the world
 world <- ne_countries(returnclass = "sf", scale = "medium")
@@ -410,7 +406,7 @@ ui <- navbarPage(title = "Interactive Tool",
                                              label = "Download")
                             ),
                             mainPanel(
-                              plotOutput(outputId = "plot_ts")
+                              girafeOutput(outputId = "plot_ts")
                           ))
                  ))
 
@@ -456,7 +452,7 @@ server <- function(input, output, session) {
                                    label.position = "bottom", 
                                    label.hjust = 0.5))
       
-      return(girafe(code = print(p1)) %>%
+      return(girafe(code = print(p1)) |>
                girafe_options(opts_zoom(max = 5),
                               opts_toolbar(hidden = c("zoom_rect"))))
     })
@@ -601,11 +597,11 @@ server <- function(input, output, session) {
       #removing accents
       iconv(from = 'UTF-8', to = 'ASCII//TRANSLIT') |> 
       #Removing parentheses
-      str_remove_all("\\(|\\)") |> 
+      str_remove_all("\\(|\\)|\\.") |> 
       #Replaces spaces " " with dashes "-"
       str_replace_all(" ", "-") |> 
       #Remove apostrophes in names
-      str_replace("'", "")
+      str_replace("'|,|--", "")
     region_name <- str_c("mean_ensemble_perc_change_fish_bio_timeseries_", 
                          region_name, "_1950-2100.csv")
     return(region_name)
@@ -617,85 +613,55 @@ server <- function(input, output, session) {
     return(df)
     })
   
-  output$plot_ts <- renderPlot({
-      p <- ggplot(data = ts_df(), aes(x = year, y = mean_change, colour = scenario))+
-            geom_line(linewidth = 0.5)+
-      #Adding no change line at 0 for reference
-      geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65,
-                 linetype = 2)+
-      #Adding line dividing historical period and future projections
-      geom_vline(xintercept = 2015, color = "grey80", linewidth = 0.65)+
-      #Adding SD as shading
-      geom_ribbon(aes(ymin = mean_change-sd_change,
-                      ymax = mean_change+sd_change, fill = scenario),
-                  alpha = 0.3, color = NA)+
-      #Manually setting colours to be used in plots
-      scale_color_manual(values = c("historical" = "black",
-                                    "ssp126" = "#33bbee",
-                                    "ssp585" = "#ee3377"),
-                         name = "Scenarios",
-                         labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
-      scale_fill_manual(values = c("historical" = "black",
-                                   "ssp126" = "#33bbee",
-                                   "ssp585" = "#ee3377"),
-                        name = "Scenarios",
-                        labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
-      guides(color = guide_legend(nrow = 1, title.position = "left"))+
-      theme_classic()+
-      scale_x_continuous(breaks = seq(1950, 2100, 10))+
-      labs(y = "Change in exploitable fish biomass (%)")+
-      theme(legend.position = "top", legend.justification = "center",
-            legend.text = element_text(size = 14),
-            legend.title = element_text(size = 14),
-            panel.grid.minor.y = element_blank(),
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size = 13),
-            axis.text.x = element_text(angle = 45, vjust = 0.765,
-                                       hjust = 0.65, size = 12),
-            axis.text.y = element_text(size = 12))
-    p
+  output$plot_ts <- renderGirafe({
+      p <- ggplot(data = ts_df(), aes(x = year, y = mean_change, 
+                                      colour = scenario, group = scenario))+
+        geom_point_interactive(aes(tooltip = textbox, data_id = year), 
+                               size = 0.1, hover_nearest = T)+
+        geom_line(linewidth = 0.5)+
+        #Adding no change line at 0 for reference
+        geom_hline_interactive(aes(tooltip = paste0("No difference from ",
+                                                    "reference period"), 
+                                   data_id = "Nodiff"), yintercept = 0, 
+                               color = "grey80", linewidth = 0.65,
+                   linetype = 2)+
+        #Adding line dividing historical period and future projections
+        geom_vline_interactive(aes(tooltip = 
+                                     paste0("End of historical period, ",
+                                            "start of emissions scenarios"), 
+                                   data_id = "hist_ssp"),
+                               xintercept = 2015, color = "grey80", linewidth = 0.65)+
+        #Adding SD as shading
+        geom_ribbon(aes(ymin = mean_change-sd_change,
+                        ymax = mean_change+sd_change, fill = scenario),
+                    alpha = 0.3, color = NA)+
+        #Manually setting colours to be used in plots
+        scale_color_manual(values = c("historical" = "black",
+                                      "ssp126" = "#33bbee",
+                                      "ssp585" = "#ee3377"),
+                           name = "Scenarios",
+                           labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+        scale_fill_manual(values = c("historical" = "black",
+                                     "ssp126" = "#33bbee",
+                                     "ssp585" = "#ee3377"),
+                          name = "Scenarios",
+                          labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
+        guides(color = guide_legend(nrow = 1, title.position = "left"))+
+        theme_classic()+
+        scale_x_continuous(breaks = seq(1950, 2100, 10))+
+        labs(y = "Change in exploitable fish biomass (%)")+
+        theme(legend.position = "top", legend.justification = "center",
+              legend.text = element_text(size = 10.5),
+              legend.title = element_text(size = 10.5),
+              panel.grid.minor.y = element_blank(),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size = 10.5, hjust = 0.2),
+              axis.text.x = element_text(angle = 45, vjust = 0.765,
+                                         hjust = 0.65, size = 10),
+              axis.text.y = element_text(size = 10))
+    
+      return(girafe(ggobj = p, height_svg = 3))
   })
-  
-  # output$plot_ts <- renderPlotly({
-  #   ggplotly({
-  #     p <- ggplot(data = ts_df(), aes(x = year, y = mean_change, colour = scenario))+
-  #       geom_line(linewidth = 0.5)+
-      # #Adding no change line at 0 for reference 
-      # geom_hline(yintercept = 0, color = "grey80", linewidth = 0.65, 
-      #            linetype = 2)+
-      # #Adding line dividing historical period and future projections
-      # geom_vline(xintercept = 2015, color = "grey80", linewidth = 0.65)+
-      # #Adding SD as shading 
-      # geom_ribbon(aes(ymin = mean_change-sd_change,
-      #                 ymax = mean_change+sd_change, fill = scenario),
-      #             alpha = 0.3, color = NA)+
-      # #Manually setting colours to be used in plots
-      # scale_color_manual(values = c("historical" = "black", 
-      #                               "ssp126" = "#33bbee", 
-      #                               "ssp585" = "#ee3377"), 
-      #                    name = "Scenarios",
-      #                    labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
-      # scale_fill_manual(values = c("historical" = "black", 
-      #                              "ssp126" = "#33bbee", 
-      #                              "ssp585" = "#ee3377"), 
-      #                   name = "Scenarios",
-      #                   labels = c("Historical", "SSP1-2.6", "SSP5-8.5"))+
-      # guides(color = guide_legend(nrow = 1, title.position = "left"))+
-      # theme_classic()+
-      # scale_x_continuous(breaks = seq(1950, 2100, 10))+
-      # labs(y = "Change in exploitable fish biomass (%)")+
-      # theme(legend.position = "top", legend.justification = "center", 
-      #       legend.text = element_text(size = 14), 
-      #       legend.title = element_text(size = 14),
-      #       panel.grid.minor.y = element_blank(), 
-      #       axis.title.x = element_blank(),
-      #       axis.title.y = element_text(size = 13),
-      #       axis.text.x = element_text(angle = 45, vjust = 0.765, 
-      #                                  hjust = 0.65, size = 12),
-      #       axis.text.y = element_text(size = 12))
-  #     })
-  #   p
-  # })
   
   output$download_ts <- downloadHandler(
     filename = function(){
@@ -703,7 +669,9 @@ server <- function(input, output, session) {
     },
     #Creating name of download file based on original file name
     content = function(file){
-      write_csv(ts_df(), file)
+      df <- ts_df() |> 
+        select(!textbox)
+      write_csv(df, file)
     }
   )
 }
