@@ -30,6 +30,8 @@ catch <-fread("/rd/gem/private/users/yannickr/catch_histsoc_1869_2017_EEZ_addFAO
 
 lme_names<-fread("/rd/gem/private/users/yannickr/DKRZ_EffortFiles/LMEnames.csv")
 
+out_folder <- "/rd/gem/private/users/camillan/FAO_Report/"
+
 ```
 
 ## Data for figure 30 
@@ -60,7 +62,7 @@ patagonian<-both %>%
   mutate(LME = "Patagonian Shelf", 
          catch = catch/1000000, 
          effort = effort/1000000) %>%
-  rename(`Catch (million tonnes)` = catch, `Effort (million KwD)` = effort) %>% 
+  rename(`Catch (million tonnes)` = catch, `Effort (million kWd)` = effort) %>% 
   pivot_longer(!c(Year, LME), names_to = "variable", values_to = "value")
 
 canary<-both %>% 
@@ -68,7 +70,7 @@ canary<-both %>%
   mutate(LME = "Canary Current", 
          catch = catch/1000000, 
          effort = effort/1000000) %>%
-  rename(`Catch (million tonnes)` = catch, `Effort (million KwD)` = effort) %>% 
+  rename(`Catch (million tonnes)` = catch, `Effort (million kWd)` = effort) %>% 
   pivot_longer(!c(Year, LME), names_to = "variable", values_to = "value")
 
 ```
@@ -95,18 +97,18 @@ patagonian_plot_catch <- ggplot(data = filter(patagonian, variable == "Catch (mi
         axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
-        axis.title.y = element_text(size = 13),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11))
 
-patagonian_plot_effort <- ggplot(data = filter(patagonian, variable == "Effort (million KwD)"), aes(x = Year, y = value)) +
+patagonian_plot_effort <- ggplot(data = filter(patagonian, variable == "Effort (million kWd)"), aes(x = Year, y = value)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   geom_line()+
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year")+
+  labs(y = "Effort (million kilowatt * days at sea)", x = "Year")+
   theme(
-        axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 11),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11),
         axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, hjust = 0.65))
 
@@ -128,18 +130,18 @@ canary_plot_catch <- ggplot(data = filter(canary, variable == "Catch (million to
         axis.title.x=element_blank(),
         axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
-        axis.title.y = element_text(size = 13),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11))
 
-canary_plot_effort <- ggplot(data = filter(canary, variable == "Effort (million KwD)"), aes(x = Year, y = value)) +
+canary_plot_effort <- ggplot(data = filter(canary, variable == "Effort (million kWd)"), aes(x = Year, y = value)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   geom_line()+
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year")+
+  labs(y = "Effort (million kilowatt * days at sea)", x = "Year")+
   theme(
-        axis.title.x = element_text(size = 13),
-        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 11),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11),
         axis.text.x = element_text(size = 11, angle = 45, vjust = 0.765, hjust = 0.65))
 
@@ -149,7 +151,7 @@ BD
 '
 plot30<-patagonian_plot_catch+patagonian_plot_effort+canary_plot_catch+canary_plot_effort+ plot_layout(design = layout)
 
-pdf("data/data_products/Fig30_effort.pdf", width = 9, height = 6)
+pdf("data/data_products/Fig30_effort.pdf", width = 9, height = 6) # file.path(out_folder, "Fig30_effort.pdf")
 plot30
 dev.off()
 
@@ -201,7 +203,7 @@ effort<-effort %>%
                           FGroup == "benthopelagic30-90c" ~ "Benthopelagic 30-90c",
                           FGroup == "cephalopods" ~ "Cephalopods",
                           FGroup == "demersal<30cm" ~ "Demersal <30cm",
-                          FGroup == "demersal<90cm" ~ "Demersal <90cm",
+                          FGroup == "demersal>=90cm" ~ "Demersal >=90cm",
                           FGroup == "demersal30-90cm" ~ "Demersal 30-90cm",
                           FGroup == "demersalmollusc" ~ "Demersal mollusc",
                           FGroup == "flatfish<90cm" ~ "Flatfish <90cm",
@@ -209,12 +211,12 @@ effort<-effort %>%
                           FGroup == "krill" ~ "Krill",
                           FGroup == "lobsterscrab" ~ "Lobster and Crab",
                           FGroup == "pelagic<30cm" ~ "Pelagic <30cm",
-                          FGroup == "pelagic<90cm" ~ "Pelagic <90cm",
+                          FGroup == "pelagic>=90cm" ~ "Pelagic >=90cm",
                           FGroup == "pelagic30-90cm" ~ "Pelagic 30-90cm",
                           FGroup == "rays<90cm" ~ "Rays <90cm",
                           FGroup == "rays>=90cm" ~ "Rays >=90cm",
                           FGroup == "reef-associated<30cm" ~ "Reef-associated <30cm",
-                          FGroup == "reef-associated<90cm" ~ "Reef-associated <90cm",
+                          FGroup == "reef-associated>=90cm" ~ "Reef-associated >=90cm",
                           FGroup == "reef-associated30-90cm" ~ "Reef-associated 30-90cm",
                           FGroup == "shark<90cm" ~ "Shark <90cm",
                           FGroup == "shark>=90cm" ~ "Shark >=90cm",
@@ -234,8 +236,9 @@ effort_lme<-effort %>%
   group_by(Year, eez_country_name) %>% 
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
+  filter(eez_country_name != "High Seas") %>% # remove as not national jurisdictional waters
   mutate(effort = effort/1000000) %>% 
-  rename(`Effort (million KwD)` = effort) 
+  rename(`Effort (million kWd)` = effort) 
 
 # when considering South China Sea: two more EEZs (Macao and hong Kong) than previous plot because,when building the effort data, first we considered the admin country and then the geographical region to accomodate EcoOcean needs. Later, we split lme0 into FAO regions too. 
 # effort_lme %>% group_by(eez_country_name) %>% summarise(effort=sum(effort)) %>% arrange(-effort) 
@@ -243,7 +246,7 @@ effort_lme<-effort %>%
 ## effort by gear -----
 
 # Consider only one EEZ
-top_1<-effort_lme %>% group_by(eez_country_name) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
+top_1<-effort_lme %>% group_by(eez_country_name) %>% summarise(effort=sum(`Effort (million kWd)`)) %>% arrange(-effort) 
 top_1_eez<-top_1$eez_country_name[1]
 
 effort_gear<-effort %>% 
@@ -252,10 +255,10 @@ effort_gear<-effort %>%
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
   mutate(effort = effort/1000000) %>% 
-  rename(`Effort (million KwD)` = effort) 
+  rename(`Effort (million kWd)` = effort) 
 
 ## select only the top 5 gears
-top_5<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
+top_5<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million kWd)`)) %>% arrange(-effort) 
 top_5<-top_5$Gear[1:5]
 
 effort_gear<-effort_gear %>% 
@@ -264,8 +267,10 @@ effort_gear<-effort_gear %>%
 ## effort by functional group -----
 
 # Consider only one EEZ and one gear
-top_1<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
+top_1<-effort_gear %>% group_by(Gear) %>% summarise(effort=sum(`Effort (million kWd)`)) %>% arrange(-effort) 
 top_1_gear<-top_1$Gear[1]
+
+top_1_gear<-"Bottom trawl" # better choice
 
 effort_fgroup<-effort %>% 
   filter(LME == lme_number, eez_country_name == top_1_eez, Gear == top_1_gear) %>% 
@@ -273,10 +278,10 @@ effort_fgroup<-effort %>%
   summarise(effort = sum(NomActive, na.rm = T)) %>% 
   ungroup() %>% 
   mutate(effort = effort/1000000) %>% 
-  rename(`Effort (million KwD)` = effort) 
+  rename(`Effort (million kWd)` = effort) 
 
 ## select only the top 5 gears
-top_5<-effort_fgroup %>% group_by(FGroup) %>% summarise(effort=sum(`Effort (million KwD)`)) %>% arrange(-effort) 
+top_5<-effort_fgroup %>% group_by(FGroup) %>% summarise(effort=sum(`Effort (million kWd)`)) %>% arrange(-effort) 
 top_5<-top_5$FGroup[1:5]
 
 effort_fgroup<-effort_fgroup %>% 
@@ -286,9 +291,9 @@ effort_fgroup<-effort_fgroup %>%
 
 ```{r}
 
-text_y<- max(effort_lme$`Effort (million KwD)`, na.rm = T) +3
+text_y<- max(effort_lme$`Effort (million kWd)`, na.rm = T) +3
 
-plot_eez <- ggplot(data = effort_lme, aes(x = Year, y = `Effort (million KwD)`, group = eez_country_name, color = eez_country_name)) +
+plot_eez <- ggplot(data = effort_lme, aes(x = Year, y = `Effort (million kWd)`, group = eez_country_name, color = eez_country_name)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   annotate(geom="text", x=1860, y=text_y, label="Transition")+
@@ -296,38 +301,38 @@ plot_eez <- ggplot(data = effort_lme, aes(x = Year, y = `Effort (million KwD)`, 
   geom_line()+
   scale_colour_brewer(palette="Set1", name = "Waters under \nnational jurisdiction")+ 
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year", title = lme_name, tag = "a")+
+  labs(y = "Effort (million kilowatt * days at sea)", x = "Year", title = lme_name, tag = "a")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        axis.title.y = element_text(size = 13),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11),
         axis.text.x = element_text(size = 11)) 
 plot_eez
 
-plot_gear <- ggplot(data = effort_gear, aes(x = Year, y = `Effort (million KwD)`, group = Gear, color = Gear)) +
+plot_gear <- ggplot(data = effort_gear, aes(x = Year, y = `Effort (million kWd)`, group = Gear, color = Gear)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   geom_line()+
   scale_colour_brewer(palette="Set1", name = "Fishing gear")+ 
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year", title = top_1_eez, tag = "b")+
+  labs(y = "Effort (million kilowatt * days at sea)", x = "Year", title = top_1_eez, tag = "b")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        axis.title.y = element_text(size = 13),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11),
         axis.text.x = element_text(size = 11)) 
 plot_gear
 
-plot_fgroup <- ggplot(data = effort_fgroup, aes(x = Year, y = `Effort (million KwD)`, group = FGroup, color = FGroup)) +
+plot_fgroup <- ggplot(data = effort_fgroup, aes(x = Year, y = `Effort (million kWd)`, group = FGroup, color = FGroup)) +
   annotate("rect", xmin=1841, xmax=1960, ymin=-Inf, ymax=Inf, alpha=0.2, fill= "#66c2a4") +
   annotate("rect", xmin=1961, xmax=2010, ymin=-Inf, ymax=Inf, alpha=0.4, fill="#66c2a4") +
   geom_line()+
   scale_colour_brewer(palette="Set1", name = "Fished resource")+ 
   theme_classic()+
-  labs(y = "Effort (million KwD)", x = "Year", title = top_1_gear, tag = "c")+
+  labs(y = "Effort (million kilowatt * days at sea)", x = "Year", title = top_1_gear, tag = "c")+
   theme(plot.title = element_text(size = 13),
         plot.tag = element_text(face = "bold", size = 13),
-        axis.title.y = element_text(size = 13),
+        axis.title.y = element_text(size = 11),
         axis.text.y = element_text(size = 11),
         axis.text.x = element_text(size = 11))
 plot_fgroup
