@@ -46,8 +46,8 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
   
 ```{r}
 #Getting a list of files containing biomass data
-global_files <- list.files("/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/", # needs full path as there are different/older versions that get picked up otherwise 
-                           pattern = "global_10g-100kg.rds", 
+global_files <- list.files(base_folder,
+                           pattern = "2024-06-03.*global_10g-100kg.rds", 
                            full.names = T, recursive = T)
 
 #Getting a list of models
@@ -215,7 +215,10 @@ bio_data |>
 
 bio_data <- bio_data |>
   group_by(year, scenario, NAME_EN) |> 
-  summarise(mean_change = mean(perc_change, na.rm = T),
+  summarise(min_change = min(perc_change, na.rm = T),
+            mean_change = mean(perc_change, na.rm = T),
+            median_change = median(perc_change, na.rm = T),
+            max_change = max(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T))
 
 #Create name to save file
@@ -402,10 +405,14 @@ bio_data |>
   
 ```{r}
 #Getting GFDL grid area
-area_gfdl_lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/gfdl-esm4_60arcmin_global_FAO-LME.csv"))
+area_gfdl_lme <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-LME.csv", 
+                            recursive = T, full.names = T) |> 
+  read_csv()
 
 #Getting IPSL grid area
-area_ipsl_lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/ipsl-cm6a_60arcmin_global_FAO-LME.csv"))
+area_ipsl_lme <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-LME.csv",
+                            recursive = T, full.names = T) |> 
+  read_csv()
 ```
   
 ## Calculating percentage change in fish biomass mean per LME from global FishMIP models

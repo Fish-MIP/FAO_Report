@@ -50,8 +50,8 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
   
 ```{r}
 #Getting a list of files containing biomass data
-global_files <- list.files("/rd/gem/private/users/camillan/Extract_tcblog10_Data/Output/sumSize_annual/sizeConsidered10g_100kg/", # needs full path as there are different/older versions that get picked up otherwise 
-                           pattern = "global_10g-100kg.rds", 
+global_files <- list.files(base_folder,
+                           pattern = "2024-06-03.*global_10g-100kg.rds", 
                            full.names = T, recursive = T)
 
 #Getting a list of models
@@ -122,20 +122,29 @@ maps_data <- list.files(out_folder, pattern = "_perc_bio_change_data_map.csv",
   #Apply mask - We will use GFDL because it includes a few extra rows in the
   #southern hemisphere. Otherwise is the same as IPSL
   left_join(area_gfdl_df, by = join_by(x, y)) |> 
-  ungroup()
+  ungroup() |> 
+  select(!NAME_EN)
 
 #Adding LME metadata
-lme <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/gfdl-esm4_60arcmin_global_FAO-LME.csv")) |>
+lme <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-LME.csv", 
+                  recursive = T, full.names = T)|>
+  read_csv() |> 
   #Keeping LMEs only - Removing FAO regions
   filter(ID_mrgd > 100) |>
   select(x, y, name_merge)
+
+#Adding FAO metadata (full regions)
+fao <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO.csv", 
+                  recursive = T, full.names = T) |> 
+  read_csv() |> 
+  select(!cell_area:ID_mrgd)
 
 #Save ensemble data
 maps_data |> 
   #Adding LME information
   left_join(lme, join_by(x, y)) |> 
-  write_csv(file.path(out_folder, "ensemble/ensemble_perc_bio_change_data_map.csv"))
-
+  write_csv(file.path(out_folder, 
+                      "ensemble/ensemble_perc_bio_change_data_map.csv"))
 ```
     
 ## Calculating annual fisheries catch
@@ -275,7 +284,7 @@ pop_sum <- function(file){
 }
 
 #Apply function to all relevant files
-pop_change <- list.files("data/", pattern = "national_annual", 
+pop_change <- list.files(file.path(out_folder, "population_data"), 
                          full.names = T) |> 
   map(~pop_sum(.)) |> 
   #Join all data frames
@@ -381,7 +390,8 @@ fao_map_data <- list.files(out_folder,
 
 #Save ensemble data
 fao_map_data |> 
-  write_csv(file.path(out_folder, "ensemble/ensemble_perc_bio_change_fao_map.csv"))
+  write_csv(file.path(out_folder,
+                      "ensemble/ensemble_perc_bio_change_fao_map.csv"))
 ```
   
 ## Calculating proportion of sustainable fisheries by country
@@ -429,7 +439,8 @@ maps_data_sd <- list.files(out_folder,
 
 #Save results
 maps_data_sd |> 
-  write_csv(file.path(out_folder,"ensemble/ensemble_sd_bio_change_data_map.csv"))
+  write_csv(file.path(out_folder,
+                      "ensemble/ensemble_sd_bio_change_data_map.csv"))
 ```
 
 ## Calculating coefficient of variation 
@@ -449,7 +460,8 @@ maps_data_cv <- maps_data_sd |>
   
 #Saving result
 maps_data_cv |> 
-  write_csv(file.path(out_folder,"ensemble/ensemble_cv_bio_change_data_map.csv"))
+  write_csv(file.path(out_folder,
+                      "ensemble/ensemble_cv_bio_change_data_map.csv"))
 ```
   
 ## Calculating model agreement
@@ -485,7 +497,8 @@ maps_data_agreement <- list.files(out_folder,
 
 #Save results
 maps_data_agreement |> 
-  write_csv(file.path(out_folder,"ensemble/ensemble_model_agreement.csv"))
+  write_csv(file.path(out_folder,
+                      "ensemble/ensemble_model_agreement.csv"))
 ```
 
   

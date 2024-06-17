@@ -17,10 +17,9 @@ library(ggiraph)
 base_folder <- "/rd/gem/private/users/camillan/FAO_Report/"
 
 #Loading ensemble biomass change
-
-
-maps_data <- read_csv("../data/ensemble_perc_bio_change_data_map.csv", 
-                      col_select = c(x, y, starts_with("rel_change"), 
+maps_data <- list.files(base_folder, "ensemble_perc_bio_change_data_map.csv", 
+                        recursive = T, full.names = T) |> 
+  read_csv(col_select = c(x, y, starts_with("rel_change"), 
                                      NAME_EN, name_merge, figure_name))
 
 #Ensemble percentage change in biomass by countries
@@ -28,9 +27,6 @@ count_bio <- list.files(base_folder, "ensemble_perc_bio_change_country.csv",
                         recursive = T, full.names = T) |> 
   read_csv() |> 
   rename(name = figure_name)
-
-count_bio <- mutate(count_bio,textbox=paste0("Year: ",year,"\nScenario: ", scenario, "\nMean biomass change: ", round(mean_change,2),"%", "\nStandard deviation", round(sd_change,2)))
-
 
 #Ensemble percentage change in biomass by FAO regions
 fao_bio <- list.files(base_folder, "ensemble_perc_bio_change_fao_region.csv",
@@ -45,7 +41,9 @@ lme_bio <- list.files(base_folder, "ensemble_perc_bio_change_lme.csv",
   rename(name = name_merge)
 
 #Table of summary statistics
-table_stats_admin <- read_csv("../data/table_stats_country_admin.csv") 
+table_stats_admin <- list.files(base_folder, "table_stats_country_admin.csv",
+                                recursive = T, full.names = T) |> 
+  read_csv()
 
 #List of countries
 country_list <- maps_data |> 
@@ -70,7 +68,9 @@ fao_list <- maps_data |>
 
 #Map of the world
 world <- ne_countries(returnclass = "sf", scale = "medium")
-world_360 <- read_sf("../data/world_360deg.shp")
+world_360 <- list.files(base_folder, "world_360deg.shp",
+                        recursive = T, full.names = T) |> 
+  read_sf()
 
 #Biomass change - World map
 levs <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%", 
@@ -78,7 +78,10 @@ levs <- c("Decrease >30%", "Increase <10%",  "Decrease 20 to 30%",
           "Decrease <10%",  "Increase >30%", "No data")
 
 #Ensure category column is a factor and ordered
-table_stats_admin_shp <- read_sf("../data/biomass_shapefile_projected.shp") |> 
+table_stats_admin_shp <- list.files(base_folder, 
+                                    "biomass_shapefile_projected.shp",
+                                    recursive = T, full.names = T) |> 
+  read_sf() |>
   mutate(category = factor(category, levels = levs, ordered = T))
 
 # Define colors for each fill category for the global summary maps
@@ -196,15 +199,6 @@ ui <- navbarPage(title = "Interactive Tool",
                               tags$a(href="https://fishmip.org/",
                                      "website."),
                               br(),
-                              #br(),
-                              # strong("Who is this tool directed to?"),
-                              # br(),
-                              # "Our target audience includes anyone who wishes to learn about or use data \
-                              # on the projected climate change impacts on marine ecosystems and fisheries. \
-                              # Our data can be used to help support policy, research, education, and/or the wider public\",
-                              # br(),
-                              # br(),
-                              # strong("How should I use this tool?"),
                               br(),
                               strong("How should I use this tool?"),
                               br(),
@@ -431,7 +425,7 @@ server <- function(input, output, session) {
     },
     #Creating name of download file based on original file name
     content = function(file){
-      write_csv(table_stats, file)
+      write_csv(table_stats_admin, file)
     }
   )
   
