@@ -147,6 +147,46 @@ maps_data |>
                       "ensemble/ensemble_perc_bio_change_data_map.csv"))
 ```
     
+## Calculating FishMIP ensemble fish biomass for shiny app
+  
+```{r}
+#Listing all relevant files to calculate biomass projections
+maps_data_tiles <- list.files(out_folder, 
+                              pattern = "_perc_bio_change_data_map.csv", 
+                        full.names = T) |> 
+  map_df(~fread(.)) |> 
+  bind_rows() |> 
+  select(!mean00_ssp126:reference) |> 
+  pivot_longer(rel_change_mean50_ssp126:rel_change_mean00_ssp585, 
+               names_to = "change", values_to = "perc_change") |> 
+  group_by(x, y, change) |> 
+  summarise(min_change = min(perc_change, na.rm = T),
+            mean_change = mean(perc_change, na.rm = T),
+            median_change = median(perc_change, na.rm = T),
+            max_change = max(perc_change, na.rm = T),
+            sd_change = sd(perc_change, na.rm = T)) |> 
+  #Apply mask - We will use GFDL because it includes a few extra rows in the
+  #southern hemisphere. Otherwise is the same as IPSL
+  left_join(area_gfdl_df, by = join_by(x, y)) |> 
+  ungroup() |> 
+  select(!NAME_EN) |> 
+  #Adding information about FAO and LMEs
+  left_join(lme, join_by(x, y)) |> 
+  left_join(fao, join_by(x, y)) 
+
+maps_data_tiles |> 
+  select(!cell_area:Country_FAO) |> 
+  rename("longitude" = "x", "latitude" = "y") |> 
+  mutate(change = str_remove(change, "rel_change_")) |> 
+  separate_wider_delim(change, delim = "_", names = c("decade", "scenario")) |> 
+  mutate(decade = ifelse(decade == "mean50", "2041-2050", "2091-2100")) |> 
+  #Adding LME information
+  write_csv(file.path(out_folder, 
+                      "ensemble/ensemble_perc_bio_change_data_map_tiles.csv"))
+```
+
+    
+    
 ## Calculating annual fisheries catch
 We will calculate the yearly mean capture fisheries production per country (2012-2021). Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity).  
   
