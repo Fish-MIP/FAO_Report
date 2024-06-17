@@ -25,7 +25,7 @@ You will also need to have the following packages installed prior to running the
 ```R
 [1] tidyverse_2.0.0         here_1.0.1      sf_1.0-12     data.table_1.14.8   countrycode_1.5.0 rnaturalearth_0.3.2 glue_1.7.0
 [7] rnaturalearthdata_0.1.0 patchwork_1.1.2 terra_1.7-18  googlesheets4_1.1.0 readxl_1.4.2      janitor_2.2.0 
-[13] ggnewscale_0.4.9       tidyterra_0.4.0 cmocean_0.3-1 cowplot_1.1.1       shiny_1.7.4       
+[13] ggnewscale_0.4.9       tidyterra_0.4.0 cmocean_0.3-1 cowplot_1.1.1 
 ```
   
 ## How to run these notebooks in your computer
@@ -36,7 +36,7 @@ Since this repository has an open software license, once you have a copy of this
 ## Estimates of fish biomass change from FishMIP model ensemble (Shiny app)
 If you do not have experience in `R`, but would still like to have access to the temporal trends of fish biomass change (plots and data) as produced by the script named [05_plotting_yearly_global_biomass_change](https://github.com/Fish-MIP/FAO_Report/blob/main/scripts/05_plotting_yearly_global_biomass_change.Rmd), we are providing an alternative.  
   
-We have developed a shiny app, you can access the beta version [here](https://rstudio.global-ecosystem-model.cloud.edu.au/shiny/FAO_Report/shiny_app/). You can select the Exclusive Economic Zone [[1]](#1) or the FAO area for fishery purposes [[3]](#3) of your interest, which will produce an interactive plot of temporal trends of fish biomass changes in the area you selected. It will also show the entire dataset used to create the interactive plot. Additionally, there is a download button (on the left panel) that allows you to download the data shown in the table as a csv file.  
+We have developed a shiny app, you can access the beta version [here](https://rstudio.global-ecosystem-model.cloud.edu.au/shiny/FAO_report_shiny/). You can select the Exclusive Economic Zone [[1]](#1) or the FAO area for fishery purposes [[3]](#3) of your interest, which will produce an interactive plot of temporal trends of fish biomass changes in the area you selected. It will also show the entire dataset used to create the interactive plot. Additionally, there is a download button (on the left panel) that allows you to download the data shown in the table as a csv file.  
   
 ## How to report issues or suggest changes
 You can check reported issue or create a new issue [here](https://github.com/Fish-MIP/FAO_Report/issues).  
