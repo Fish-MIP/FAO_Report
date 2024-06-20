@@ -23,6 +23,11 @@ library(data.table)
 library(terra)
 #Combining plots
 library(cowplot)
+
+# filepaths
+library(here)
+# getting iso3c codes
+library(countrycode)
 ```
 
 ## Setting up notebook
@@ -68,6 +73,12 @@ eez_keys <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/EEZ_
 
 filter(eez_keys, ISO3_country == "AUS") # 2 different id_merge (one for AU and the other for Macquarie island). Extraction of data by country through lat and lon will be done using id_mrq (eez specific) but grouping to calculate mean biomass will be done using fao_official (fao_country specific) so that both Au and mq island will fall under Au as per fao_official
 
+admin_keys <- read.csv(here("data/country_admin_key.csv")) %>%
+  filter(continent != "") %>% # there was blank space at bottom for some reason
+  mutate(iso3c_admin = countrycode(sourcevar = admin_name, origin = "country.name", destination = "iso3c")) %>% ## ok cool
+  filter(!is.na(iso3c_admin)) %>% # filter out disputed areas
+  dplyr::select(-continent) # remove continent as it is already in the area_grid below
+
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder, pattern = "global_10g-100kg.rds", 
                            full.names = T, recursive = T)
@@ -86,7 +97,7 @@ We will go through each FishMIP model and calculate the mean fish biomass for th
 #Looping through each FishMIP model
 for(m in members){
   
- # m = members[[1]]
+ # m = members[[2]]
   
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
@@ -103,10 +114,17 @@ for(m in members){
       fao_official == "the State of Libya" ~ "Libya", 
       fao_official == "the Republic of Côte d'Ivoire" ~ "Côte d'Ivoire",
       fao_official == "the Independent State of Papua New Guinea" ~ "Papua New Guinea", 
-      fao_official == "the Commonwealth of Puerto Rico" ~ "the United States of America",
+      fao_official == "the Commonwealth of Puerto Rico" ~ "United States of America",
       fao_official == "the Republic of Cabo Verde" ~ "Cabo Verde",
       TRUE ~ Country_FAO
-    ))
+    )) %>%
+    left_join(admin_keys, by = c("figure_name" = "country_territory")) 
+  
+  # test <- distinct(area_grid, continent, fao_official, Country_FAO, figure_name, admin_name, iso3c_admin) %>%
+  #   filter(!is.na(continent))
+  # 
+  # ## ok we're missing 3, which 3? It is ok actually, I checked the other members and they are in there... so should be fine! 
+  # setdiff(admin_keys$country_territory, test$figure_name) # [1] "Iraq"    "Jordan"  "Albania"
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -117,9 +135,10 @@ for(m in members){
     #Removing areas not recognised in FAO official name list
     drop_na(fao_official) |>
     #Calculate mean per ensemble member
-    group_by(year, mem, esm, scenario, Country_FAO) |> 
+    group_by(year, mem, esm, scenario, admin_name) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) %>%
-    ungroup()
+    ungroup() %>%
+    rename(Country_FAO = admin_name)
   
   #Create name to save file
   f_out <- file.path(country_level_folder, str_c(m, "_yearly_perc_bio_change_admin.csv"))
@@ -142,7 +161,7 @@ bio_data <- list.files(country_level_folder,
   map_df(~fread(.)) %>%
   filter(Country_FAO != "")
 
-unique(bio_data$Country_FAO) #148
+unique(bio_data$Country_FAO) #149
 
 #Calculating reference period
 ref_bio <- bio_data |> 
@@ -183,11 +202,7 @@ bio_data <- bio_data |>
   group_by(year, scenario, Country_FAO) |> 
   dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
             sd_change = sd(perc_change, na.rm = T)) |> 
-  #Add names in FAO-EEZ keys
-  #left_join(fao_eez, by = c("Country_FAO" = "Country_name")) |> 
  ungroup() 
-#%>%
- # mutate(fa_ffcl = ifelse(is.na(fa_ffcl), Country_FAO, fa_ffcl))
 
 #Check results
 bio_data
