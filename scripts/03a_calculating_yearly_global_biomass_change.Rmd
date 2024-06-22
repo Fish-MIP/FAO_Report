@@ -11,6 +11,7 @@ editor_options:
   
 ```{r, message=FALSE, warning=FALSE}
 #Data wrangling
+rm(list = ls())
 library(tidyverse)
 library(data.table)
 ```
@@ -234,6 +235,7 @@ bio_data |>
 ```{r, eval = F}
 #Looping through each FishMIP model
 for(m in members){
+  
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
     area_grid <- area_ipsl_df
@@ -245,7 +247,7 @@ for(m in members){
   
   #Keep only information for grid cells within country boundaries
   area_grid <- area_grid |> 
-    drop_na(fao_official) |>
+    # drop_na(fao_official) |> # NO we are calculating this for the globe! 
     #Remove columns that are not relevant
     select(x:cell_area)
   
@@ -255,7 +257,7 @@ for(m in members){
     map_df(~bind_rows(.)) |>
     #Add area for each grid cell and area ID
     left_join(area_grid, by = join_by(x, y)) |>
-    #Removing grid cells outside countries
+    #Removing grid cells outside countries # does this now means land?! 
     drop_na(cell_area) |> 
     #Calculate weighted mean for biomass per ensemble member globally
     group_by(year, mem, esm, scenario) |> 
@@ -316,6 +318,14 @@ bio_data |>
 ## Calculating percentage change in fish biomass mean from global FishMIP models in the top 7 countries with highest catches
   
 ```{r}
+
+# Adjustment - add Puerto Rico as USA
+area_ipsl_df <- area_ipsl_df %>% 
+  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico", "the United States of America", Country_FAO))
+  
+area_gfdl_df <- area_gfdl_df %>% 
+  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico", "the United States of America", Country_FAO))
+
 #Defining top 7 countries by catch
 top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", 
            "United States of America", "Viet")

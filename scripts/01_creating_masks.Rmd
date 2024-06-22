@@ -137,7 +137,7 @@ gfdl_lme <- rast_save(fao_lme_shp, gfdl, "ID_merged",
                                            "gfdl-esm4_60arcmin_global_FAO-LME.nc"))
 
 gfdl_fao <- rast_save(fao_shp, gfdl, "F_CODE",
-                      out_file = "../data/gfdl-esm4_60arcmin_global_FAO.nc")
+                      out_file = "data/gfdl-esm4_60arcmin_global_FAO.nc")
 
 #Creating IPSL mask
 ipsl_mask <- rast_save(fao_eez_shp, ipsl, "ID_mrgd",
@@ -149,7 +149,7 @@ ipsl_lme <- rast_save(fao_lme_shp, ipsl, "ID_merged", out_file =
                                   "ipsl-cm6a_60arcmin_global_FAO-LME.nc"))
 
 ipsl_fao <- rast_save(fao_shp, ipsl, "F_CODE",
-                      out_file = "../data/ipsl-cm6a_60arcmin_global_FAO.nc")
+                      out_file = "data/ipsl-cm6a_60arcmin_global_FAO.nc")
 ```
   
 ## Applying function to save raster as data frame
@@ -157,6 +157,7 @@ ipsl_fao <- rast_save(fao_shp, ipsl, "F_CODE",
 ```{r}
 #Loading metadata file
 meta <- list.files(fao_dir, "FAO-Major-Areas_EEZ_continent_keys.csv",
+                 
                    recursive = T, full.name = T) |> 
   read_csv()
 
@@ -193,7 +194,7 @@ gfdl_lme_df <- rast_df(gfdl_lme, gfdl, meta_lme,
 # ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
 
 gfdl_fao_df <- rast_df(gfdl_fao, gfdl, meta_fao, 
-                       "../data/gfdl-esm4_60arcmin_global_FAO.csv")
+                       "data/gfdl-esm4_60arcmin_global_FAO.csv")
 
 #Saving IPSL raster as data frame
 ipsl_df <- rast_df(ipsl_mask, ipsl, meta, 
@@ -204,7 +205,7 @@ ipsl_lme_df <- rast_df(ipsl_lme, ipsl, meta_lme,
                                  "ipsl-cm6a_60arcmin_global_FAO-LME.csv"))
 
 ipsl_fao_df <- rast_df(ipsl_fao, ipsl, meta_fao, 
-                       "../data/ipsl-cm6a_60arcmin_global_FAO.csv")
+                       "data/ipsl-cm6a_60arcmin_global_FAO.csv")
 ```
   
 ## Saving shapefile with updated continent names

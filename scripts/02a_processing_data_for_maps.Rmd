@@ -51,7 +51,7 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
 ```{r}
 #Getting a list of files containing biomass data
 global_files <- list.files(base_folder,
-                           pattern = "2024-06-03.*global_10g-100kg.rds", 
+                           pattern = "2024-06-03.*global_10g-100kg.rds", # older files: 2023-11-27
                            full.names = T, recursive = T)
 
 #Getting a list of models
@@ -185,8 +185,6 @@ maps_data_tiles |>
                       "ensemble/ensemble_perc_bio_change_data_map_tiles.csv"))
 ```
 
-    
-    
 ## Calculating annual fisheries catch
 We will calculate the yearly mean capture fisheries production per country (2012-2021). Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity).  
   
@@ -409,7 +407,7 @@ for(m in members){
 }
 ```
   
-We will compile the results of the model outputs processing above in a single file. We will also rearrange the data in preparation for plotting. Finally, we will apply a Robinson projection for mapping.  
+## We will compile the results of the model outputs processing above in a single file. We will also rearrange the data in preparation for plotting. Finally, we will apply a Robinson projection for mapping.  
   
 ```{r}
 #Listing all relevant files to calculate biomass projections
@@ -530,8 +528,6 @@ maps_data_agreement <- list.files(out_folder,
             same_sign = max(n_positive, n_negative),
             agreement = (same_sign/n_model)*100) |> 
   ungroup() |> 
-  # # convert 0 land into NAs 
-  # mutate(agreement = ifelse(!is.na(n_model), agreement, NA)) |> 
   select(c(x,y,scenario, agreement)) |> 
   pivot_wider(names_from = scenario, values_from = agreement) 
 

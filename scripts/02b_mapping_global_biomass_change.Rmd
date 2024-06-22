@@ -160,10 +160,13 @@ main <- ggplot()+
         legend.text = element_text(size = 13))
 ```
   
-Saving map showing FAO regions and EEZs classified by continent.  
+## Saving map showing FAO regions and EEZs classified by continent.  
   
 ```{r, eval = F}
 ggsave(filename = file.path(out_plot, "fao_eez_global_map.pdf"), main,
+       device = "pdf", width = 14, height = 9)
+
+ggsave(filename = file.path("outputs/", "fao_eez_global_map.pdf"), main,
        device = "pdf", width = 14, height = 9)
 ```
   
@@ -189,7 +192,7 @@ world <- world |>
   left_join(fisheries_catch, by = join_by(ISO3CD))
 ```
   
-We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection.   
+## We will transform the data frame containing the percentage change into a multi-layer raster, and apply a Robinson projection.   
   
 ```{r}
 #Loading ensemble biomass change
@@ -205,7 +208,7 @@ maps_data_proj <- maps_data |>
   project(y = rob_proj) 
 ```
   
-We will also create a custom-made colour palette for the maps.  
+## We will also create a custom-made colour palette for the maps.  
   
 ```{r}
 #Create custom-made color palette
@@ -226,7 +229,8 @@ scale_fill_custom <- function(..., alpha = 1, begin = 0, end = 1, direction = 1,
 }
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
@@ -260,7 +264,9 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                       plot.title = element_text(hjust = 0.5),
                       legend.position = "none"))
 ```
-  
+
+## Legends
+
 Since we are using the same legend for data shown on land and the ocean, we will extract them once and apply them to all maps. To do this we will use the `get_legend` function from the `cowplot` package, but this option may not work with all operating system.  
   
 If you get any errors, you can using the `get_plot_component` function instead. Replace line 275 with `get_plot_component(land, 'guide-box-bottom', return_all = TRUE)`, where `land` refers to the map with data plotted on land only. Make sure to do the same for the fish biomass map in line 288.   
@@ -298,7 +304,7 @@ leg_fish <- get_legend(fish)
 leg_fish<-get_plot_component(fish, 'guide-box-bottom', return_all = TRUE)
 ```
   
-We can now plot the maps for all scenario and period combinations. 
+## We can now plot the maps for all scenario and period combinations. 
   
 ```{r}
 #SSP1-2.6 2041-2050
@@ -334,11 +340,14 @@ all_plots <- plot_grid(plot_grid(p50_126_change, p50_585_change, ncol = 2,
                        ncol = 1, nrow = 3, rel_heights = c(1, 1, 0.4))
 ```
   
-We can save the final figure including four maps.    
+## We can save the final figure including four maps.    
   
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "global_perc_change_map_50-00.pdf"), all_plots,
+       device = "pdf", width = 14, height = 8)
+
+ggsave(file.path("outputs/", "global_perc_change_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 8)
 ```
   
@@ -362,7 +371,7 @@ asia_cent <- world |>
                                         "4-6", ">6"), ordered = T))
 ```
     
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
@@ -404,7 +413,7 @@ base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8,
                 lims(x = c(25, 160), y = c(-15, 50)))
 ```
 
-We will apply the plotting instructions to the four maps that we need in the figure for Asia.  
+## We will apply the plotting instructions to the four maps that we need in the figure for Asia.  
 
 ```{r}
 #SSP1-2.6 2041-2050
@@ -447,10 +456,14 @@ asia_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 #Removing variable
 rm(asia_cent)
 ```
-  
+ 
+## Saving   
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "asia_perc_change_map_50-00.pdf"), asia_plots, 
+       device = "pdf", width = 14, height = 8)
+
+ggsave(file.path("outputs/", "asia_perc_change_map_50-00.pdf"), asia_plots, 
        device = "pdf", width = 14, height = 8)
 ```
   
@@ -515,7 +528,7 @@ americas_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define linetypes to be used in plots
@@ -592,11 +605,18 @@ americas_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 #Removing variables not needed
 rm(amercent, amercent_bound, eez_amer)
 ```
-  
+
+## Saving 
+
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "americas_perc_change_map_50-00.pdf"), 
        americas_plots, device = "pdf", width = 14, height = 9)
+
+ggsave(file.path("outputs/", "americas_perc_change_map_50-00.pdf"), 
+       americas_plots, device = "pdf", width = 14, height = 9)
+
+
 ```  
   
 ## Figure 9 FAO report - Europe
@@ -654,7 +674,7 @@ europe_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define base steps for maps
@@ -727,10 +747,15 @@ europe_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 #Removing variables not needed
 rm(eez_euro, eurocent, eurocent_bound)
 ```
-  
+
+## Saving
+
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "europe_perc_change_map_50-00.pdf"),
+       europe_plots, device = "pdf", width = 14, height = 8)
+
+ggsave(file.path("outputs/", "europe_perc_change_map_50-00.pdf"),
        europe_plots, device = "pdf", width = 14, height = 8)
 ```
   
@@ -756,7 +781,7 @@ africa_cent <- world |>
                                         "4-6", ">6"), ordered = T))
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.  
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_binned(limits = c(-50, 50), n.breaks = 8, 
@@ -829,10 +854,15 @@ africa_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 #Removing variable not needed
 rm(africa_cent)
 ```
+
+## Saving  
   
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "africa_perc_change_map_50-00.pdf"),
+       africa_plots, device = "pdf", width = 14, height = 9)
+
+ggsave(file.path("outputs/", "africa_perc_change_map_50-00.pdf"),
        africa_plots, device = "pdf", width = 14, height = 9)
 ```
   
@@ -898,7 +928,7 @@ ocean_data <- maps_data |>
   as.data.frame(xy = T)
 ```
   
-We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
   
 ```{r}
 #Define base steps for maps
@@ -967,9 +997,14 @@ oceania_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 rm(oceancent, oceancent_bound, eez_ocean)
 ```
   
+## saving
+  
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "oceania_perc_change_map_50-00.pdf"),
+       oceania_plots, device = "pdf", width = 14, height = 8)
+
+ggsave(file.path("outputs/", "oceania_perc_change_map_50-00.pdf"),
        oceania_plots, device = "pdf", width = 14, height = 8)
 ```
     
@@ -989,6 +1024,8 @@ choro_data_proj <- area_gfdl_df |>
   #Reproject to Robinson
   project(y = rob_proj) 
 ```
+
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
 
 ```{r}
 #Define base steps for maps
@@ -1050,9 +1087,14 @@ fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
                            rel_heights = c(1, 1, 0.4))
 ```
   
+## Saving 
+
 ```{r}
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "fao_regions_perc_change_map_50-00.pdf"),
+       fao_reg_plots, device = "pdf", width = 14, height = 9)
+
+ggsave(file.path("outputs/", "fao_regions_perc_change_map_50-00.pdf"),
        fao_reg_plots, device = "pdf", width = 14, height = 9)
 ```
   
@@ -1067,7 +1109,7 @@ Finally, we will create a choropleth map for the proportion of sustainable fishe
 #   left_join(fao_fisheries, join_by(NAME_EN))
 ```
   
-Finally, we can map this information.  
+## Finally, we can map this information.  
   
 ```{r}
 # fao_fisheries_plot <- ggplot()+
@@ -1095,7 +1137,9 @@ Finally, we can map this information.
 #         legend.margin = margin(0, 0, 0, 0),
 #         legend.box.margin = margin(0, 0, 0, 0))
 ```
-  
+
+## Saving 
+
 ```{r}
 # # Saving fisheries map
 # ggsave(file.path(out_plot, "fao_regions_perc_sustainable_fisheries.pdf"),
@@ -1118,6 +1162,8 @@ maps_data_sd_proj <- maps_data_sd |>
   project(y = rob_proj) 
 ```
   
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps. 
+
 ```{r}
 #Define base steps for maps
 base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
@@ -1142,18 +1188,6 @@ base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1,
                       panel.border = element_rect(colour = NA),
                       plot.title = element_text(hjust = 0.5)))
 
-# #SSP1-2.6 2041-2050
-# p50_126_SD <- ggplot()+ 
-#   geom_spatraster(data = maps_data_sd_proj$rel_change_mean50_ssp126_sd)+
-#   labs(title = "SSP1-2.6: 2041-2050")+
-#   base_gg
-# 
-# #SSP5-8.5 2041-2050
-# p50_585_SD <- ggplot()+
-#   geom_spatraster(data = maps_data_sd_proj$rel_change_mean50_ssp585_sd)+
-#   labs(title = "SSP5-8.5: 2041-2050")+
-#   base_gg
-
 #SSP1-2.6 2091-2100
 p00_126_SD <- ggplot()+ 
   geom_spatraster(data = maps_data_sd_proj$rel_change_mean00_ssp126_sd)+
@@ -1173,26 +1207,6 @@ p00_585_SD <- ggplot()+
   theme(legend.title = element_text(size = 14),
         legend.text = element_text(size = 12))
 
-# #Get legend for land
-# legend_sd <- get_legend(p00_585_SD)
-# 
-# #Remove legend from last plot
-# p00_585_SD <- p00_585_SD+
-#   theme(legend.position = "none")
-# 
-# #Plotting everything together
-# all_plots <- plot_grid(plot_grid(p50_126_SD, p50_585_SD, ncol = 2, nrow = 1, 
-#                                  labels = c("a", "b"), label_x = 0.1),
-#                        plot_grid(p00_126_SD, p00_585_SD, ncol = 2, nrow = 1,
-#                                  labels = c("c", "d"), label_x = 0.1),
-#                        legend_sd, ncol = 1, nrow = 3, 
-#                        rel_heights = c(1, 1, 0.4))
-```
-  
-```{r}
-# # Saving multi-panel plot
-# ggsave(file.path(out_plot, "global_sd_map_50-00.pdf"), all_plots, 
-#        device = "pdf", width = 14, height = 9)
 ```
 
 ## Figure FAO report - Coefficient of variation - REMOVED from report
@@ -1210,6 +1224,8 @@ p00_585_SD <- ggplot()+
 #   #Reproject to Robinson
 #   project(y = rob_proj) 
 ```
+
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
 
 ```{r}
 # #Define base steps for maps
@@ -1279,6 +1295,8 @@ p00_585_SD <- ggplot()+
 #                        rel_heights = c(1, 1, 0.4))
 ```
 
+## saving 
+
 ```{r}
 # # Saving multi-panel plot
 # ggsave(file.path(out_plot, "global_cv_map_50-00.pdf"), all_plots, 
@@ -1288,7 +1306,7 @@ p00_585_SD <- ggplot()+
 ## Figure FAO report - Model agreement 
 Combining maps of percentage change (`*_change`), standard deviation (`*_SD`) and model agreement (`*_agreement`).  
 
-### Plot % cahnge but without land data (catches)
+## Plot % cahnge but without land data (catches)
 
 ```{r}
 #Loading ensemble biomass change
@@ -1304,6 +1322,8 @@ maps_data_proj <- maps_data |>
   project(y = rob_proj) 
 
 ```
+
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
 
 ```{r}
 
@@ -1348,7 +1368,7 @@ p00_585_change2 <- ggplot()+
 
 ```
 
-### Plot agreement 
+## Plot agreement 
   
 ```{r}
 # Listing all relevant files to calculate biomass projections
@@ -1358,6 +1378,8 @@ maps_data_agreement_proj <- read_csv(file.path(out_folder,"ensemble/ensemble_mod
   #Reproject to Robinson
   project(y = rob_proj)
 ```
+
+## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
 
 ```{r}
 #Define base steps for maps
@@ -1402,7 +1424,7 @@ p00_585_agreement <- ggplot()+
 
 ```
 
-### Combine all plots using new layout 
+## Combine all plots using new layout 
 
 ```{r}
 
@@ -1422,7 +1444,12 @@ all_plots<-p00_126_change2 + p00_585_change2 +
 
 ```
 
+## saving
+
 ```{r}
 ggsave(file.path(out_plot, "agreement_map_00.pdf"), all_plots, 
+       device = "pdf", width = 14, height = 13.5)
+
+ggsave(file.path("outputs/", "agreement_map_00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 13.5)
 ```
