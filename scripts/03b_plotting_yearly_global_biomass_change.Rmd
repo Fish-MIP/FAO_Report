@@ -167,7 +167,6 @@ table<-stats %>%
 
 ### print tables ----
 fwrite(table, paste0(base_folder,"table_stats.csv")) 
-fwrite(table, paste0("outputs/","table_stats.csv")) 
 
 ##### format table for report ----
 
@@ -201,7 +200,6 @@ table_formatted<-table %>%
   arrange(spatial_scale, continent, figure_name) 
 
 fwrite(table_formatted, paste0(base_folder,"table_stats_formatted.csv")) 
-fwrite(table_formatted, paste0("outputs/","table_stats_formatted.csv")) 
 
 ```
 
@@ -287,13 +285,9 @@ top_7<-global_bio |>
 pdf(file.path(base_folder, "top_7_global_trends.pdf"), width=9, height= 10)
 top_7
 dev.off()
-
-pdf(file.path("outputs/", "top_7_global_trends.pdf"), width=9, height= 10)
-top_7
-dev.off()
 ```
 
-## Figure 2 - Asia
+## Figure - Asia
 In this figure, we will exclude marine areas under the jurisdiction of countries in Asia as classified by the FAO.  
   
 ```{r}
@@ -322,12 +316,9 @@ pdf(file.path(base_folder, "asia_perc_change.pdf"), width=9, height= 10)
 asia
 dev.off()
 
-pdf(file.path("outputs/", "asia_perc_change.pdf"), width=9, height= 10)
-asia
-dev.off()
 ```
   
-## Figure 3 - Africa
+## Figure - Africa
 In this figure, we will exclude marine areas under the jurisdiction of countries in Africa as classified by the FAO.  
   
 ```{r}
@@ -354,13 +345,9 @@ africa<-count_bio |>
 pdf(file.path(base_folder, "africa_perc_change.pdf"), width=9, height= 12)
 africa
 dev.off()
-
-pdf(file.path("outputs/", "africa_perc_change.pdf"), width=9, height= 12)
-africa
-dev.off()
 ```
   
-## Figure 4 - Europe
+## Figure - Europe
 In this figure, we will exclude marine areas under the jurisdiction of countries in Europe as classified by the FAO.  
   
 ```{r}
@@ -393,13 +380,9 @@ europe<-count_bio_europe |>
 pdf(file.path(base_folder, "europe_perc_change.pdf"), width=9, height= 9)
 europe
 dev.off()
-
-pdf(file.path("outputs/", "europe_perc_change.pdf"), width=9, height= 9)
-europe
-dev.off()
 ```
   
-## Figure 5 - Americas
+## Figure - Americas
 In this figure, we will exclude marine areas under the jurisdiction of countries in the Americas as classified by the FAO.  
   
 ```{r}
@@ -426,13 +409,9 @@ americas<-count_bio |>
 pdf(file.path(base_folder, "americas_perc_change.pdf"), width=9, height= 13)
 americas
 dev.off()
-
-pdf(file.path("outputs/", "americas_perc_change.pdf"), width=9, height= 13)
-americas
-dev.off()
 ```
   
-## Figure 6 - Oceania
+## Figure - Oceania
 In this figure, we will exclude marine areas under the jurisdiction of countries in Oceania as classified by the FAO.  
   
 ```{r}
@@ -459,13 +438,9 @@ oceania<-count_bio |>
 pdf(file.path(base_folder, "oceania_perc_change.pdf"), width=9, height= 9)
 oceania
 dev.off()
-
-pdf(file.path("outputs/", "oceania_perc_change.pdf"), width=9, height= 9)
-oceania
-dev.off()
 ```
   
-## Figure 7 - FAO regions
+## Figure - FAO regions
   
 ```{r}
 #Filtering data
@@ -490,13 +465,9 @@ fao_regions<-fao_bio |>
 pdf(file.path(base_folder, "fao_regions_perc_change.pdf"), width=9, height= 6)
 fao_regions
 dev.off()
-
-pdf(file.path("outputs/", "fao_regions_perc_change.pdf"), width=9, height= 6)
-fao_regions
-dev.off()
 ```
   
-## Uncertaity plot - REMOVED from report
+## Uncertaity plot
 
 ```{r}
 
@@ -530,7 +501,7 @@ uncert_decade<-ggplot(filter(bio_dataOCD, figure_name != "Arctic Sea"), aes(x=fi
         axis.title=element_text(size=14)) + # face = "bold"
   facet_wrap(~decade)
 
-png("outputs/FAOarea_uncertity.png", width=10, height=5, units="in",res=1200)
+pdf(file.path(base_folder, "FAOarea_uncertity.png"), width=10, height=5, units="in",res=1200)
 uncert_decade
 dev.off()
 

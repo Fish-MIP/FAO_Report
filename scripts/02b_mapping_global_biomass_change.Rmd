@@ -120,7 +120,7 @@ fao_proj <- fao_eez_proj |>
   select(!continent)
 ```
   
-## Figure 2 FAO report - Regions used in report
+## Figure FAO report - Regions used in report
 FAO regions are coloured by ocean basin, and EEZs are classified by continent.  
   
 ```{r}
@@ -170,7 +170,7 @@ ggsave(filename = file.path("outputs/", "fao_eez_global_map.pdf"), main,
        device = "pdf", width = 14, height = 9)
 ```
   
-## Figure 3 FAO report - Percentage change per decade and scenario.
+## Figure FAO report - Percentage change per decade and scenario.
 In this figure, we will show percentage fish biomass change in the ocean, while yearly mean capture fisheries production per country (2012-2021) will be shown on land.
 
 Capture fisheries production data comes from the [FAO's Fisheries and Aquaculture Data Portal](https://www.fao.org/fishery/statistics-query/en/global_production/global_production_quantity). 
@@ -346,12 +346,9 @@ all_plots <- plot_grid(plot_grid(p50_126_change, p50_585_change, ncol = 2,
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "global_perc_change_map_50-00.pdf"), all_plots,
        device = "pdf", width = 14, height = 8)
-
-ggsave(file.path("outputs/", "global_perc_change_map_50-00.pdf"), all_plots,
-       device = "pdf", width = 14, height = 8)
 ```
   
-## Figure 5 FAO report - Asia 
+## Figure FAO report - Asia 
   
 ```{r}
 sf_use_s2(F)
@@ -462,12 +459,9 @@ rm(asia_cent)
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "asia_perc_change_map_50-00.pdf"), asia_plots, 
        device = "pdf", width = 14, height = 8)
-
-ggsave(file.path("outputs/", "asia_perc_change_map_50-00.pdf"), asia_plots, 
-       device = "pdf", width = 14, height = 8)
 ```
   
-## Figure 7 FAO report - Americas
+## Figure FAO report - Americas
 As we did with Europe, we would like the Americas to show in the middle of the map, so we will have to pre-process our data before plotting the maps.  
   
 ```{r}
@@ -612,14 +606,9 @@ rm(amercent, amercent_bound, eez_amer)
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "americas_perc_change_map_50-00.pdf"), 
        americas_plots, device = "pdf", width = 14, height = 9)
-
-ggsave(file.path("outputs/", "americas_perc_change_map_50-00.pdf"), 
-       americas_plots, device = "pdf", width = 14, height = 9)
-
-
 ```  
   
-## Figure 9 FAO report - Europe
+## Figure FAO report - Europe
 Since we want to show Europe in the middle of the map, we will have to project our data and split the base map in two hemispheres.  
   
 ```{r}
@@ -754,12 +743,9 @@ rm(eez_euro, eurocent, eurocent_bound)
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "europe_perc_change_map_50-00.pdf"),
        europe_plots, device = "pdf", width = 14, height = 8)
-
-ggsave(file.path("outputs/", "europe_perc_change_map_50-00.pdf"),
-       europe_plots, device = "pdf", width = 14, height = 8)
 ```
   
-## Figure 11 FAO report - Africa
+## Figure FAO report - Africa
   
 ```{r}
 #Extract data for scenario, transform to raster and reproject
@@ -861,12 +847,9 @@ rm(africa_cent)
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "africa_perc_change_map_50-00.pdf"),
        africa_plots, device = "pdf", width = 14, height = 9)
-
-ggsave(file.path("outputs/", "africa_perc_change_map_50-00.pdf"),
-       africa_plots, device = "pdf", width = 14, height = 9)
 ```
   
-## Figure 13 FAO report - Oceania
+## Figure FAO report - Oceania
 
 ```{r}
 #Split world in two hemispheres 
@@ -1003,12 +986,9 @@ rm(oceancent, oceancent_bound, eez_ocean)
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "oceania_perc_change_map_50-00.pdf"),
        oceania_plots, device = "pdf", width = 14, height = 8)
-
-ggsave(file.path("outputs/", "oceania_perc_change_map_50-00.pdf"),
-       oceania_plots, device = "pdf", width = 14, height = 8)
 ```
     
-## Figure 15 FAO report - FAO regions
+## Figure FAO report - FAO regions
 Finally, we will create maps for mean biomass change within the FAO regions.  
   
 ```{r}
@@ -1093,60 +1073,9 @@ fao_reg_plots <- plot_grid(plot_grid(p50_126, p50_585, ncol = 2, nrow = 1,
 # Saving multi-panel plot
 ggsave(file.path(out_plot, "fao_regions_perc_change_map_50-00.pdf"),
        fao_reg_plots, device = "pdf", width = 14, height = 9)
-
-ggsave(file.path("outputs/", "fao_regions_perc_change_map_50-00.pdf"),
-       fao_reg_plots, device = "pdf", width = 14, height = 9)
 ```
   
-## Figure 16 FAO report - FAO sustainable fisheries - REMOVED from report
-Finally, we will create a choropleth map for the proportion of sustainable fisheries within FAO regions for 2019.  
-  
-```{r}
-# #Loading FAO fisheries data
-# fao_fisheries <- read_csv("data/prop_sustainable_fisheries_fao.csv")
-# 
-# fao_fisheries <- fao_proj |> 
-#   left_join(fao_fisheries, join_by(NAME_EN))
-```
-  
-## Finally, we can map this information.  
-  
-```{r}
-# fao_fisheries_plot <- ggplot()+
-#   #Plotting FAO classified by ocean basin
-#   geom_sf(data = fao_fisheries, aes(fill = OBS_VALUE))+
-#   geom_sf(data = eez_proj, fill = "white", colour = "white")+
-#   scale_fill_distiller(palette = "YlGnBu", direction = 1)+
-#   #Plotting base map
-#   geom_sf(data = world_proj, color = "#dbdade", fill = "#dbdade")+
-#   #Adding coastlines and international boundaries
-#   geom_sf(data = world_bound_proj, lwd = 0.25, color = "#484848", 
-#           show.legend = F, aes(linetype = as.factor(TYPE)))+
-#   scale_linetype_manual(values = line_manual)+
-#   geom_sf(data = world_bound_proj[world_bound_proj$TYPE == 8,], 
-#           linetype = "longdash", lwd = 0.25, color = "#838285", 
-#           show.legend = F)+
-#   #Removing grey background
-#   theme_bw()+
-#   #Formatting legend title
-#   guides(fill = guide_colorbar(title = "% sustainable fisheries", 
-#                                title.position = "top", title.hjust = 0.5, 
-#                                barwidth = 15))+
-#   #Formatting legend
-#   theme(legend.position = "bottom", panel.border = element_rect(colour = NA),
-#         legend.margin = margin(0, 0, 0, 0),
-#         legend.box.margin = margin(0, 0, 0, 0))
-```
-
-## Saving 
-
-```{r}
-# # Saving fisheries map
-# ggsave(file.path(out_plot, "fao_regions_perc_sustainable_fisheries.pdf"),
-#        fao_fisheries_plot, device = "pdf", width = 14, height = 9)
-```
-  
-## Figure 18 FAO report - FAO standard deviation
+## Figure FAO report - FAO standard deviation
   
 ```{r}
 #Load standard deviation
@@ -1207,100 +1136,6 @@ p00_585_SD <- ggplot()+
   theme(legend.title = element_text(size = 14),
         legend.text = element_text(size = 12))
 
-```
-
-## Figure FAO report - Coefficient of variation - REMOVED from report
-
-```{r}
-# #Load coefficient of variation
-# maps_data_cv <- read_csv("data/ensemble_cv_bio_change_data_map.csv")
-# 
-# #Extract data for scenario, transform to raster and reproject
-# maps_data_cv_proj <- maps_data_cv |> 
-#   #Selecting coordinate columns and percentage change columns
-#   select(x, y, ends_with("_cv")) |> 
-#   #Transform to multi-layer raster
-#   rast(type = "xyz", crs = "epsg:4326") |> 
-#   #Reproject to Robinson
-#   project(y = rob_proj) 
-```
-
-## We will plot each decade/scenario combination separately and then create a multi-panel figure with all maps.
-
-```{r}
-# #Define base steps for maps
-# base_gg <- list(scale_fill_distiller(palette = "Blues", direction = 1, 
-#                                      na.value = NA, limits = c(0, 200), 
-#                                      oob = oob_squish),
-#                 geom_sf(inherit.aes = F, data = world_proj, show.legend = F,
-#                         color = "#dbdade", fill = "#dbdade"),
-#                 geom_sf(inherit.aes = F, data = eez_proj, fill = NA, 
-#                         colour = "white", show.legend = F, linewidth = 0.5),
-#                 #Adding coastlines and international boundaries
-#                 geom_sf(inherit.aes = F, data = world_bound_proj, lwd = 0.25, 
-#                         color = "#484848", show.legend = F, 
-#                         aes(linetype = as.factor(TYPE))),
-#                 scale_linetype_manual(values = line_manual),
-#                 geom_sf(inherit.aes = F, 
-#                         data = world_bound_proj[world_bound_proj$TYPE == 8,], 
-#                         linetype = "longdash", lwd = 0.25, color = "#838285",
-#                         show.legend = F),
-#                 theme_bw(),
-#                 theme(axis.title = element_blank(), 
-#                       panel.border = element_rect(colour = NA),
-#                       plot.title = element_text(hjust = 0.5),
-#                       legend.position = "none"))
-# 
-# #SSP1-2.6 2041-2050
-# p50_126_CV <- ggplot()+
-#   geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp126_cv)+
-#   labs(title = "SSP1-2.6: 2041-2050")+
-#   base_gg
-# 
-# #SSP5-8.5 2041-2050
-# p50_585_CV <- ggplot()+
-#   geom_spatraster(data = maps_data_cv_proj$rel_change_mean50_ssp585_cv)+
-#   labs(title = "SSP5-8.5: 2041-2050")+
-#   base_gg
-# 
-# #SSP1-2.6 2091-2100
-# p00_126_CV <- ggplot()+
-#   geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp126_cv)+
-#   labs(title = "SSP1-2.6: 2091-2100")+
-#   base_gg
-# 
-# #SSP5-8.5 2091-2100
-# p00_585_CV <- ggplot()+
-#   geom_spatraster(data = maps_data_cv_proj$rel_change_mean00_ssp585_cv)+
-#   labs(title = "SSP5-8.5: 2091-2100")+
-#   base_gg+
-#   guides(fill = guide_colorbar(title = "Coefficient of variation (%)",
-#                                title.position = "top", title.hjust = 0.5, 
-#                                barwidth = 15))+
-#   theme(legend.position = "bottom")
-# 
-# #Get legend for land
-# legend_cv <- get_legend(p00_585_CV)
-# 
-# #Remove legend from last plot
-# p00_585_CV <- p00_585_CV+
-#   theme(legend.position = "none")
-# 
-# #Plotting everything together
-# all_plots <- plot_grid(plot_grid(p50_126_CV, p50_585_CV, ncol = 2, nrow = 1, 
-#                                  labels = c("a", "b"), label_x = 0.1),
-#                        plot_grid(p00_126_CV, p00_585_CV, ncol = 2, nrow = 1,
-#                                  labels = c("c", "d"), label_x = 0.1),
-#                        legend_cv, ncol = 1, nrow = 3, 
-#                        rel_heights = c(1, 1, 0.4))
-```
-
-## saving 
-
-```{r}
-# # Saving multi-panel plot
-# ggsave(file.path(out_plot, "global_cv_map_50-00.pdf"), all_plots, 
-#        device = "pdf", width = 14, height = 9)
 ```
 
 ## Figure FAO report - Model agreement 
@@ -1448,8 +1283,5 @@ all_plots<-p00_126_change2 + p00_585_change2 +
 
 ```{r}
 ggsave(file.path(out_plot, "agreement_map_00.pdf"), all_plots, 
-       device = "pdf", width = 14, height = 13.5)
-
-ggsave(file.path("outputs/", "agreement_map_00.pdf"), all_plots, 
        device = "pdf", width = 14, height = 13.5)
 ```
