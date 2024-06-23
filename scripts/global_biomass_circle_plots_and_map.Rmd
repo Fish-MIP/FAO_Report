@@ -42,6 +42,9 @@ out_folder <- file.path(base_folder, "FAO_Report")
 Read in data
 
 ```{r}
+
+##### CN: OLD FILE - new version: "/rd/gem/private/users/camillan/FAO_Report/table_stats.csv"
+
 cmip_data <- read.csv(here("data/table_stats_with_continent.csv")) %>%
   dplyr::select(1:15) %>%
     mutate(pos_neg = ifelse(mean > 0, "positive", "negative")) %>% # ~200 regions, makes sense
@@ -64,6 +67,9 @@ high_seas_df <- cmip_data %>%
   filter(spatial_scale == "FAO_area") %>%
   dplyr::select(fa_ffcl_shrt, scenario, decade, contnnt, mean, median, sd, min, max, n_model, agreement, wilcox_p, spatial_scale, ISO3_country)
 
+
+##### CN: OLD FILE - new version: "/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ/FAO-Major-Areas_EEZ_continent_keys.csv"
+
 regions_df_2 <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/EEZ_FAO_key.csv")) %>%
   mutate(Country_name = ifelse(is.na(Country_name), Short_name_En_Website, Country_name)) %>%
   mutate(Country_name = case_when(
@@ -72,6 +78,7 @@ regions_df_2 <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/
     TRUE ~ Country_name
   ))
 
+##### CN: NOT SURE ABOUT THIS FILE and how it was created
 
 admin_keys <- read.csv(here("data/country_admin_key.csv")) %>%
   filter(continent != "") %>% # there was blank space at bottom for some reason
@@ -81,6 +88,7 @@ admin_keys <- read.csv(here("data/country_admin_key.csv")) %>%
   dplyr::select(-notes) %>%
   distinct(admin_name, iso3c_admin)
 
+####### NEW VERSION PRINTED IN biomass_change_adminsitrative_region.Rmd: "data/table_stats_country_admin_CN.csv", some of the steps below might not be needed anymore as country anmes were adjusted there as well as territories with no country specified.  
 
 cmip_data_new <- read.csv(here("data/table_stats_country_admin.csv")) %>%
   left_join(admin_keys, by = c("Country_FAO" = "admin_name"))
@@ -230,6 +238,11 @@ get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt,
                                          levels=unique(rank_pos_neg$contnnt))
 
 ## change some names for plot so that they will fit... could probably move this to setup 
+
+
+### CN not sure I fully understand this, but for Admin country names I would use the Country_FAO column in cmip_data_new and avoid adjusting too much. e.g. USA should be United States of America (maybe United States is OK but not US), Russia must be Russian Federation, and Netherlands should be Netherlands (Kingdom of the). 
+
+
 rank_rgn <- get_pos_neg_ranks %>%
   arrange(contnnt, -arrange_mean) %>%
      mutate(rgn_name_short = fa_ffcl_shrt, 

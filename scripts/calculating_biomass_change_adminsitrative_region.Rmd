@@ -85,7 +85,7 @@ fix_masks<-function(mask){
   mask<-mask %>% 
     drop_na(fao_official) # remove all FAO fishing areas 
 
-  # 1. fix names from long to short 
+  ##### 1. fix names from long to short # NB this is very likely the same as above code with countrycode() but needed to check ----
 
   # # check Congo and Democratic Republic of the Congo as both needs to be there
   # unique(filter(mask, str_detect(Country_FAO, "Congo"))$Country_FAO)
@@ -130,7 +130,7 @@ fix_masks<-function(mask){
 
   setdiff(sort(unique(mask$Country_FAO)), sort(unique(mask$figure_name))) # Kiribati should be the only one
 
-  # 2. add country to missing ones as per Table A4
+  ##### 2. add country to missing ones as per Table A4 -----
   # sort(unique(filter(mask, is.na(Country_FAO))$figure_name))
 
   # remove disputed
@@ -261,7 +261,7 @@ for(m in members){
   # df_model |>
   #   fwrite(f_out)
  
-  #### 03a code ----
+  #### CN approach (copy-paste 03a code) ----
  
   #Keep only information for grid cells with countries recognised by FAO
   #Extracting data from countries calculations
@@ -313,7 +313,7 @@ for(m in members){
   
 ```{r eval = F}
 
-## CN moved in function above
+## GAGE appraoch (CN moved in function above)
 
 # #Listing all relevant files to calculate biomass projections
 # bio_data <- list.files(country_level_folder, 
@@ -373,7 +373,8 @@ for(m in members){
 ## We can now save the results for future reference.  
   
 ```{r}
-## CN moved above/below
+
+## GAGE approach (CN moved above/below)
 
 # #Create name to save file
 # f_out <- file.path(country_level_folder, "ensemble_perc_bio_change_admin_all.csv")
@@ -394,6 +395,9 @@ for(m in members){
 ## Calculating mean ensemble percentage change in biomass for top 7 countries
   
 ```{r eval = F}
+
+## CN approach 
+
 bio_data_by_model <- list.files(country_level_folder, 
                        pattern = "_yearly_perc_bio_change_admin.csv",
                        full.names = T, recursive = T) |> 
@@ -406,18 +410,6 @@ f_out <- file.path(country_level_folder, "mem_perc_bio_change_admin_all.csv")
 #Saving results for each model
 bio_data_by_model |>
   write_csv(f_out)
-
-# bio_data <- bio_data_by_model |>
-#   group_by(year, scenario, Country_FAO) |> 
-#   summarise(mean_change = mean(perc_change, na.rm = T),
-#             sd_change = sd(perc_change, na.rm = T))
-# 
-# #Create name to save file
-# f_out <- file.path(country_level_folder, "ensemble_perc_bio_change_admin_all.csv")
-# 
-# #Saving results for each model
-# bio_data |>
-#   write_csv(f_out)
 
 ```
     
@@ -466,9 +458,15 @@ w_test <- admin_count_bio_by_model %>%
   ungroup()
 
 table <- stats %>% 
-  full_join(w_test)
+  full_join(w_test) %>% 
+  mutate(spatial_scale = "countries_admin")
 
 fwrite(table, paste0(country_level_folder,"/table_stats_country_admin.csv"))
+
+## GAGE approach 
+# fwrite(table, here("data/table_stats_country_admin.csv"))
+
+## CN approach 
 fwrite(table, here("data/table_stats_country_admin_CN.csv"))
 
 ```
