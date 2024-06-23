@@ -337,8 +337,6 @@ top_7 <- c("China", "India", "Indonesia", "Peru", "Russian",
 #Looping through each FishMIP model
 for(m in members){
   
-    m = members[1]
-  
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
     area_grid <- area_ipsl_df
@@ -353,7 +351,7 @@ for(m in members){
   area_grid <- area_grid |> 
     filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
     #Remove continent information
-    select(x:cell_area, continent, Country_FAO)
+    dplyr::select(x:cell_area, Country_FAO)
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -364,7 +362,7 @@ for(m in members){
     drop_na(Country_FAO) |> # remove cells outside the top 7 countries
     #Calculate weighted mean for biomass per ensemble member per country
     group_by(year, mem, esm, scenario, Country_FAO) |> 
-    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T))
+    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) 
   
   #Calculating reference period
   ref_bio <- df_model |> 
