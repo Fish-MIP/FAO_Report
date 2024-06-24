@@ -245,13 +245,14 @@ for(m in members){
     print(paste0("processing '", m, "' file, using gfdl mask"))
   }
   
-  #Keep only information for grid cells within country boundaries
-  area_grid <- area_grid |> 
-    # drop_na(fao_official) |> # calculating trends for the whole globe 
+  #Keep information for all grid cells
+  area_grid <- area_grid |>  
+    # drop_na(fao_official) |> 
+    # calculating trends for the whole globe 
     #Remove columns that are not relevant
     select(x:cell_area)
   
-  # check mask - whole globe
+  # check mask - ensure it is the whole globe
   # library(raster)
   # plot(rasterFromXYZ(area_grid))
   

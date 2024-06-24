@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Loading libraries adn defining forlders 
+# Loading libraries and defining folders 
   
 ```{r, message=FALSE, warning=FALSE}
 rm(list = ls())
