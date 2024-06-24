@@ -56,20 +56,8 @@ area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
 
 ```{r}
 
-### GAGE approach ----
-
-#EEZ keys
-# eez_keys <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/EEZ_FAO_key.csv")) # CN not neede but if you want to use this, it is now:
-# eez_keys<-read_csv("/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ/FAO-Major-Areas_EEZ_continent_keys.csv")
-
-# admin_keys <- read.csv(here("data/country_admin_key.csv")) %>%
-#   filter(continent != "") %>% # there was blank space at bottom for some reason
-#   mutate(iso3c_admin = countrycode(sourcevar = admin_name, origin = "country.name", destination = "iso3c")) %>% ## ok cool
-#   filter(!is.na(iso3c_admin)) %>% # filter out disputed areas
-#   dplyr::select(-continent) # remove continent as it is already in the area_grid below
-
 ### CN approach ----
-#get info from the masks area_gfdl_df and area_ipsl_df built using EEZ nad FAO info
+#get info from the masks area_gfdl_df and area_ipsl_df built using EEZ and FAO info
 
 fix_masks<-function(mask){
   
@@ -77,7 +65,7 @@ fix_masks<-function(mask){
   
   # fix mistakes in file 
   # filter(mask, figure_name == "Comoros") # country == the Union of the Comoros
-  mask<-mask %>% 
+  mask <- mask %>% 
     mutate(Country_FAO = case_when(figure_name == "Comoros" ~ "the Union of the Comoros",
                                    .default = as.character(Country_FAO)),
           figure_name = ifelse(figure_name == "Prince Edward Island", "Prince Edward Islands", figure_name))
@@ -221,52 +209,15 @@ for(m in members){
     print(paste0("processing '", m, "' file, using gfdl mask"))
   }
   
- ## GAGE appraoch ---- 
-  # area_grid <- area_grid %>%
-  #   mutate(Country_FAO = case_when(
-  #     fao_official == "the Republic of Türkiye" ~ "Türkiye",
-  #     fao_official == "the State of Libya" ~ "Libya", 
-  #     fao_official == "the Republic of Côte d'Ivoire" ~ "Côte d'Ivoire",
-  #     fao_official == "the Independent State of Papua New Guinea" ~ "Papua New Guinea", 
-  #     fao_official == "the Commonwealth of Puerto Rico" ~ "United States of America",
-  #     fao_official == "the Republic of Cabo Verde" ~ "Cabo Verde",
-  #     TRUE ~ Country_FAO
-  #   )) %>%
-  #   left_join(admin_keys, by = c("figure_name" = "country_territory")) 
-  
-  # test <- distinct(area_grid, continent, fao_official, Country_FAO, figure_name, admin_name, iso3c_admin) %>%
-  #   filter(!is.na(continent))
-  # 
-  # ## ok we're missing 3, which 3? It is ok actually, I checked the other members and they are in there... so should be fine! 
-  # setdiff(admin_keys$country_territory, test$figure_name) # [1] "Iraq"    "Jordan"  "Albania"
-  
-  # #Load all data available for a single FishMIP model
-  # df_model <- str_subset(global_files, m) |>
-  #   map(~readRDS(.)) |>
-  #   map_df(~bind_rows(.)) |>
-  #   #Add area for each grid cell and area ID (FAO and EEZ)
-  #   left_join(area_grid, by = join_by(x, y)) |>
-  #   #Removing areas not recognised in FAO official name list
-  #   drop_na(fao_official) |>
-  #   #Calculate mean per ensemble member
-  #   group_by(year, mem, esm, scenario, admin_name) |> 
-  #   summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) %>%
-  #   ungroup() %>%
-  #   rename(Country_FAO = admin_name)
-  # 
-  # #Create name to save file
-  # f_out <- file.path(country_level_folder, str_c(m, "_yearly_perc_bio_change_admin.csv"))
-  # 
-  # #Saving results for each model
-  # df_model |>
-  #   fwrite(f_out)
- 
-  #### CN approach (copy-paste 03a code) ----
+
+#     country_continent <- area_grid %>%
+#     distinct(Country_FAO, continent)
  
   #Keep only information for grid cells with countries recognised by FAO
   #Extracting data from countries calculations
   area_grid <- area_grid |> 
     dplyr::select(x:cell_area, Country_FAO)
+  
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -306,89 +257,6 @@ for(m in members){
     fwrite(f_out)
  
 }
-
-```
-  
-## Calculating mean for reference period
-  
-```{r eval = F}
-
-## GAGE appraoch (CN moved in function above)
-
-# #Listing all relevant files to calculate biomass projections
-# bio_data <- list.files(country_level_folder, 
-#                        pattern = "_yearly_perc_bio_change_admin.csv",
-#                        full.names = T) |> 
-#   map_df(~fread(.)) %>%
-#   filter(Country_FAO != "")
-# 
-# unique(bio_data$Country_FAO) #149
-# 
-# #Calculating reference period
-# ref_bio <- bio_data |> 
-#   filter(year >= 2005 & year <= 2014) |> 
-#   #Calculate mean per ensemble member
-#   group_by(mem, esm, Country_FAO) |> 
-#   dplyr::summarise(ref_bio = mean(mean_bio, na.rm = T)) %>%
-#   ungroup()
-# 
-# # some are repetition if ID_mgr is removed 
-# fao_eez <-  eez_keys |>
-#   select(!ID_mrgd) |>
-#   distinct()
-# # nrow(fao_eez)
-# 
-# fao_eez <- fao_eez %>% 
-#   filter((is.na(continent) & is.na(Country_name))|(!is.na(continent) & !is.na(Country_name))) 
-# # nrow(fao_eez)
-# 
-# # calculate trends by model as needed for stat table 
-# bio_data_by_model <- bio_data |>
-#   #Add reference period to yearly biomass data
-#   left_join(ref_bio, by = c("mem", "esm", "Country_FAO")) |>
-#   #Calculate percentage change per model/year(scenario)/region
-#   mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) %>%
-#  select(-mean_bio, -ref_bio) 
-# 
-# #Check results
-# bio_data_by_model
-# 
-# bio_data <- bio_data |> 
-#   #Add reference period to yearly biomass data
-#   left_join(ref_bio, by = c("mem", "esm", "Country_FAO")) |> 
-#   #Calculate percentage change per model/year(scenario)/region
-#   mutate(perc_change = ((mean_bio-ref_bio)/ref_bio)*100) |> 
-#   #Calculate mean and standard deviation for percentage change 
-#   #per year(scenario)/region
-#   group_by(year, scenario, Country_FAO) |> 
-#   dplyr::summarise(mean_change = mean(perc_change, na.rm = T),
-#             sd_change = sd(perc_change, na.rm = T)) |> 
-#  ungroup() 
-# 
-# #Check results
-# bio_data
-
-```
-  
-## We can now save the results for future reference.  
-  
-```{r}
-
-## GAGE approach (CN moved above/below)
-
-# #Create name to save file
-# f_out <- file.path(country_level_folder, "ensemble_perc_bio_change_admin_all.csv")
-# 
-# #Saving results for each model
-# bio_data |>
-#   write_csv(f_out)
-# 
-# #Create name to save file
-# f_out <- file.path(country_level_folder, "mem_perc_bio_change_admin_all.csv")
-# 
-# #Saving results for each model
-# bio_data_by_model |>
-#   write_csv(f_out)
 
 ```
   
@@ -464,9 +332,9 @@ table <- stats %>%
 fwrite(table, paste0(country_level_folder,"/table_stats_country_admin.csv"))
 
 ## GAGE approach 
-# fwrite(table, here("data/table_stats_country_admin.csv"))
+fwrite(table, here("data/table_stats_country_admin.csv"))
 
 ## CN approach 
-fwrite(table, here("data/table_stats_country_admin_CN.csv"))
+# fwrite(table, here("data/table_stats_country_admin_CN.csv"))
 
 ```
