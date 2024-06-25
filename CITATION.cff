@@ -14,7 +14,7 @@ authors:
 
 title: "Data and code for FishMIP global marine ecosystem model ensemble projections summarised by countries and territories and other spatial regions"
 version: 0.0.1
-doi: TBA
-date-released: TBA
+doi: 10.5281/zenodo.12528169
+date-released: 25/06/2024
 url: "https://github.com/Fish-MIP/FAO_Report"
 license: Apache-2.0
