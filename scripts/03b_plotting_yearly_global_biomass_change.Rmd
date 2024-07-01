@@ -168,7 +168,7 @@ table<-stats %>%
 ### print tables ----
 fwrite(table, paste0(base_folder,"table_stats.csv")) 
 
-##### format table for report ----
+##### format table A4 for report ----
 
 table_formatted<-table %>% 
   mutate(id = paste(scenario, decade, sep = "_")) %>% 

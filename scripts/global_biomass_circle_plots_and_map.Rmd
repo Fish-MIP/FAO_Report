@@ -122,6 +122,10 @@ cmip_data_all <- cmip_data_new_fix %>%
 
 ## ok so we have 3 spatial scales: countries (eezs), countries_admins (administrative/sovereign nations), and FAO_area (high seas area)
 unique(cmip_data_all$spatial_scale)
+
+# save this for accessing all data need for table_formatting.R script to generate tables in report
+
+saveRDS(cmip_data_all,here("data/fishmip_summary_data.RDS"))
   
 ```
 
