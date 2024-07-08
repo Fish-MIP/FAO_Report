@@ -157,6 +157,7 @@ ipsl_fao <- rast_save(fao_shp, ipsl, "F_CODE",
 ```{r}
 #Loading metadata file
 meta <- list.files(fao_dir, "FAO-Major-Areas_EEZ_continent_keys.csv",
+                 
                    recursive = T, full.name = T) |> 
   read_csv()
 
@@ -184,13 +185,6 @@ gfdl_df <- rast_df(gfdl_mask, gfdl, meta,
 
 gfdl_lme_df <- rast_df(gfdl_lme, gfdl, meta_lme, 
                        file.path(fao_dir, "gfdl-esm4_60arcmin_global_FAO-LME.csv"))
-
-# Warning message:                                                                                                     
-# In left_join(drop_na(left_join(as.data.frame(ras_area, xy = T),  :
-#   Detected an unexpected many-to-many relationship between `x` and `y`.
-# ℹ Row 8721 of `x` matches multiple rows in `y`.
-# ℹ Row 86 of `y` matches multiple rows in `x`.
-# ℹ If a many-to-many relationship is expected, set `relationship = "many-to-many"` to silence this warning.
 
 gfdl_fao_df <- rast_df(gfdl_fao, gfdl, meta_fao, 
                        "../data/gfdl-esm4_60arcmin_global_FAO.csv")

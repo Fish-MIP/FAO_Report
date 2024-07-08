@@ -12,7 +12,7 @@ author: "Gage"
     - EEZ
     - Administrative country and FAO high seas regions
     - EEZs and FAO high seas regions
- - Additionally, we create maps of the mean change in those same cateogories
+ - Additionally, we create maps of the mean change in those same categories
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -42,71 +42,90 @@ out_folder <- file.path(base_folder, "FAO_Report")
 Read in data
 
 ```{r}
-cmip_data <- read.csv(here("data/table_stats_with_continent.csv")) %>%
-  dplyr::select(1:15) %>%
+
+##### CN: use this file: "/rd/gem/private/users/camillan/FAO_Report/table_stats.csv"
+  
+  cmip_data <- read.csv(file.path(base_folder, "FAO_Report/table_stats.csv")) %>%
     mutate(pos_neg = ifelse(mean > 0, "positive", "negative")) %>% # ~200 regions, makes sense
-  mutate(fa_ffcl_shrt = case_when(  # fix region names
-   fa_ffcl_shrt == "C√¥te d'Ivoire" ~ "Côte d'Ivoire", 
-   fa_ffcl_shrt == "T√ºrkiye" ~ "Türkiye",
-   fa_ffcl_shrt == "R√©union" ~ "Réunion",
-  fa_ffcl_shrt == "Cura√ßao" ~ "Curaçao",
-  TRUE ~ fa_ffcl_shrt
-  )) %>% 
   mutate(uncertain = ifelse(
     agreement < 80, "yes", "no"
   )) %>%
-  filter(!is.na(mean)) %>%
-  dplyr::select(-SD...mean, -Loss) %>%
-  mutate(ISO3_country = countrycode(sourcevar = fa_ffcl_shrt, origin = "country.name", destination = "iso3c"))
+  filter(!is.na(mean)) 
 
+country_continent <- cmip_data %>% 
+  distinct(figure_name, continent) # get distinct continent names with countries bc the admin file is missing continent names
 
 high_seas_df <- cmip_data %>%
   filter(spatial_scale == "FAO_area") %>%
-  dplyr::select(fa_ffcl_shrt, scenario, decade, contnnt, mean, median, sd, min, max, n_model, agreement, wilcox_p, spatial_scale, ISO3_country)
-
-regions_df_2 <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/EEZ_FAO_key.csv")) %>%
-  mutate(Country_name = ifelse(is.na(Country_name), Short_name_En_Website, Country_name)) %>%
-  mutate(Country_name = case_when(
-    ISO3_territory == "TUR" ~ "Türkiye",
-    ISO3_territory == "CIV" ~ "Côte d'Ivoire",
-    TRUE ~ Country_name
-  ))
+  dplyr::select(figure_name, scenario, decade, continent, mean, median, sd, min, max, n_model, agreement, wilcox_p, spatial_scale)
 
 
-cmip_data_new <- read.csv(here("data/table_stats_country_admin.csv")) 
+##### CN: use this file: "/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ/FAO-Major-Areas_EEZ_continent_keys.csv"
 
-regions_df_new <- cmip_data_new %>%
-  dplyr::select(Country_FAO) %>%
-  distinct(Country_FAO) %>%
-  left_join(regions_df_2, by = c("Country_FAO" = "Country_name")) %>%
-  filter(ISO3_country == ISO3_territory | ISO3_territory %in% c("TUR", "CPV", "CIV", "LBY", "PNG")) %>%
-  mutate(Country_FAO_new = ifelse(!is.na(ISO3_country), Short_name_En_Website, Country_FAO)) %>%
-  distinct(Country_FAO, Country_FAO_new, continent, ISO3_country) %>%
-  filter(!(Country_FAO_new %in% c("Canary Islands (the)", "Madeira Islands (the)", "Chagos Archipelago (the)", "Comoros (the)"))) %>%
-  mutate(ISO3_country = ifelse(is.na(ISO3_country), countrycode(sourcevar = Country_FAO, origin = "country.name", destination = "iso3c"), ISO3_country))
+regions_df_2 <- read_csv(file.path(out_folder, "Merged_FAO_EEZ/FAO-Major-Areas_EEZ_continent_keys.csv"))
+
+
+####### NEW VERSION PRINTED IN biomass_change_adminsitrative_region.Rmd: "data/table_stats_country_admin_CN.csv", some of the steps below might not be needed anymore as country anmes were adjusted there as well as territories with no country specified.  
+
+cmip_data_new <- read.csv(here("data/table_stats_country_admin.csv")) %>%
+    dplyr::rename(figure_name = Country_FAO) %>%
+  left_join(country_continent) %>%
+  mutate(continent = case_when(
+    figure_name == "China" ~ "Asia", 
+    figure_name == "India" ~ "Asia",
+    figure_name == "Indonesia" ~ "Asia", 
+    figure_name == "Peru" ~ "Americas", 
+    figure_name == "Russian Federation" ~ "Europe",
+    figure_name == "United States of America" ~ "Americas",
+    figure_name == "Viet Nam" ~ "Asia",
+    figure_name == "Kiribati" ~ "Oceania",
+    TRUE ~ continent
+  )) # fix missing continents in the admin country file
+
+## fix duplicates in admin data
+test <- cmip_data_new %>%
+  group_by(figure_name) %>%
+  summarise(n_obs = n()) %>% # should be 4 observations for each
+  filter(n_obs > 4)
+## ok so what is happening here? 
+# # A tibble: 7 × 2
+#   figure_name              n_obs
+#   <chr>                    <int>
+# 1 China                        8
+# 2 India                        8
+# 3 Indonesia                    8
+# 4 Peru                         8
+# 5 Russian Federation           8
+# 6 United States of America     8
+# 7 Viet Nam                     8
+
+
+fix_dups <- cmip_data_new %>%
+  filter(figure_name %in% c(test$figure_name)) %>%## looks like they are duplicated for some reason... lets just take distinct  
+  distinct() # ok that fixes it
   
-length(unique(regions_df_new$Country_FAO)) # 147.. 
-length(unique(cmip_data_new$Country_FAO)) # 147
+length(unique(cmip_data_new$figure_name)) # 148 regions
 
+cmip_data_new_fix <- cmip_data_new %>%
+  filter(!(figure_name %in% c(test$figure_name))) %>%
+  rbind(., fix_dups)
 
-setdiff(unique(cmip_data_new$Country_FAO), unique(regions_df_new$Country_FAO)) 
-
-
-cmip_data_all <- cmip_data_new %>%
-  left_join(regions_df_new) %>%
-  dplyr::select(-Country_FAO) %>%
-  rename(fa_ffcl_shrt = Country_FAO_new, contnnt = continent) %>%
-  rbind(high_seas_df) %>% 
- mutate(pos_neg = ifelse(mean > 0, "positive", "negative"))  %>%
+## bind data together
+cmip_data_all <- cmip_data_new_fix %>%
+  rbind(high_seas_df %>% dplyr::select(colnames(cmip_data_new_fix))) %>%
+  rbind(cmip_data %>% filter(spatial_scale == "countries") %>% dplyr::select(colnames(cmip_data_new_fix))) %>% mutate(pos_neg = ifelse(mean > 0, "positive", "negative"))  %>%
   mutate(uncertain = ifelse(
     agreement < 80, "yes", "no"
-  )) %>%
-  rbind(cmip_data %>% filter(spatial_scale == "countries"))
+  )) %>% # we classify as uncertain if model agreement < 80
+    mutate(continent = ifelse(spatial_scale == "FAO_area", "High Seas", continent)) # rename to continent high seas if it is high seas
+
 
 ## ok so we have 3 spatial scales: countries (eezs), countries_admins (administrative/sovereign nations), and FAO_area (high seas area)
+unique(cmip_data_all$spatial_scale)
 
-## save iso3c lookup for shinyapp 
-# write.csv(regions_df_new, here("data/iso3c_lookup_regions.csv"), row.names = FALSE)
+# save this for accessing all data need for table_formatting.R script to generate tables in report
+
+saveRDS(cmip_data_all,here("data/fishmip_summary_data.RDS"))
   
 ```
 
@@ -119,15 +138,15 @@ Make stacked circle bar chart, similar to that of the circle plot presented here
 ```{r}
 scenarios <- c("ssp585", "ssp126")
 spatial_scales <- c("countries_high_seas", "countries_admin", "countries_admin_high_seas", "countries")
-label_types <- c("iso3c", "country_name")
+label_types <- c("country_name") # we removed iso3c, so now only plotting country names
 
-for(label_type in label_types){
+
+label_type <- "country_name"
 for(spatial_type in spatial_scales){ # specify what spatial scales you want to include in plot
 
- # label_type = "country_name"
- # spatial_type = "countries_admin"
+# spatial_type = "countries_admin"
   
-  ## filter for spatial type
+  ## filter for spatial type (i.e., are we plotting admin countries or all eezs, with FAO areas or not, etc.)
   if(spatial_type == "countries_admin_high_seas"){
   
 cmip_data_plot <- cmip_data_all %>% 
@@ -158,7 +177,7 @@ cmip_data_plot <- cmip_data_plot %>%
     TRUE ~ mean
   )) %>%
   mutate(new_index = abs(mean)) %>%
-  group_by(fa_ffcl_shrt, scenario) %>%
+  group_by(figure_name, scenario) %>%
   mutate(stacked_mean_total = sum(new_index),
          arrange_mean = max(new_index)) %>%
   ungroup()
@@ -176,7 +195,7 @@ cmip_data_plot <- cmip_data_plot %>%
 
 # scen = "ssp585"
 
-    # make a cleaned up version of scenario names for plotting
+    # make a cleaned up version of scenario names for plotting.. this could probaly be simpler 
     scen_plot <- data.frame(scenario = scen) %>%
       mutate(scen_clean = case_when(
         scenario == "ssp126" ~ "SSP1-2.6",
@@ -197,72 +216,46 @@ plot_df <- cmip_data_plot %>% ## filter for scenario
   filter(
          scenario == scen) %>%
   data.frame() %>%
-  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>% # rename to continent high seas if it is high seas
-  arrange(contnnt, -arrange_mean) # order by continent, increase/decrease, and mean 
+  arrange(continent, -arrange_mean) # order by continent, increase/decrease, and mean 
 
 get_pos_neg_ranks <- plot_df %>% 
     mutate(new_index = abs(mean_outlier)) %>%
-  arrange(contnnt, -arrange_mean)
+  arrange(continent, -arrange_mean)
 
 rank_pos_neg <- get_pos_neg_ranks %>%
-  group_by(contnnt) %>% 
+  group_by(continent) %>% 
   summarise(sum_mean = sum(stacked_mean_total),
             count = length(stacked_mean_total)) %>%
   ungroup()
 
-rank_pos_neg$contnnt <- factor(rank_pos_neg$contnnt, 
-                                         levels=unique(rank_pos_neg$contnnt))
-get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt, 
-                                         levels=unique(rank_pos_neg$contnnt))
+rank_pos_neg$continent <- factor(rank_pos_neg$continent, 
+                                         levels=unique(rank_pos_neg$continent))
+get_pos_neg_ranks$continent <- factor(get_pos_neg_ranks$continent, 
+                                         levels=unique(rank_pos_neg$continent))
 
-## change some names for plot so that they will fit... could probably move this to setup 
+## using only full region names as delineated by FAO
+
 rank_rgn <- get_pos_neg_ranks %>%
-  arrange(contnnt, -arrange_mean) %>%
-     mutate(rgn_name_short = fa_ffcl_shrt, 
-         rgn_name_short = gsub("United Kingdom of Great Britain and Northern Ireland", "United Kingdom", rgn_name_short),
-         rgn_name_short = gsub("Islands|islands", "Isl", rgn_name_short),
-         rgn_name_short = gsub("Island", "Isl", rgn_name_short),
-         rgn_name_short = gsub("Democratic", "Dem", rgn_name_short),
-         rgn_name_short = gsub("Republic", "Rep", rgn_name_short),
-         rgn_name_short = gsub("South", "S", rgn_name_short),
-         rgn_name_short = gsub("American", "Am", rgn_name_short),
-         rgn_name_short = gsub("the United States", "US", rgn_name_short),
-         rgn_name_short = gsub("Territory", "Terr", rgn_name_short),
-         rgn_name_short = gsub("Saint", "St", rgn_name_short),
-         rgn_name_short = gsub(" and ", " & ", rgn_name_short),
-         rgn_name_short = gsub("Republique", "Rep", rgn_name_short),
-         rgn_name_short = gsub("Dem Rep of the", "Dem Rep of", rgn_name_short),
-         rgn_name_short = gsub("Georgia and the", "Georgia and", rgn_name_short),
-         rgn_name_short = gsub("St Vincent and the", "St Vincent and", rgn_name_short),
-         rgn_name_short = gsub("Howland Isl & Baker Isl", "Howland & Baker Isl", rgn_name_short),
-         rgn_name_short = gsub("Northern", "N", rgn_name_short), 
-         rgn_name_short = gsub("Alaska", "AK", rgn_name_short),
-         rgn_name_short = gsub("Hawaii", "HI", rgn_name_short),
-         rgn_name_short = gsub("\\(the\\)", "", rgn_name_short),
-         rgn_name_short = gsub("Kingdom of the Netherlands", "Netherlands", rgn_name_short),
-         rgn_name_short = gsub("Russian Federation", "Russia", rgn_name_short),
-         rgn_name_short = gsub("Federated States", "Fed. States", rgn_name_short),
-         rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short)) %>%
-  mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) # not sure why gsub wasn't working
+  arrange(continent, -arrange_mean) %>%
+     mutate(rgn_name_short = figure_name) %>%
+    mutate(rgn_name_short = ifelse(figure_name == "United Kingdom of Great Britain and Northern Ireland", "the United Kingdom", rgn_name_short)) # changing UK so that the name will fit within the margins of the plot. Per FAO names page: https://www.fao.org/nocs/en: "The full name is to be used on title pages, in signatures and in recording nominations, elections and votes. Once the full name has been mentioned or where space is limited, as for instance in a table, the following shorter form may be used: the United Kingdom."
 
-# rgn_labels_iso3c <- rank_rgn %>% distinct(ISO3_country, Country_name_short = rgn_name_short, Country_name = fa_ffcl_shrt) %>% arrange(ISO3_country)
-# write.csv(rgn_labels_iso3c, here("scripts/outputs/iso3c_table_names.csv"), row.names = FALSE)
 
 rank_rgn_label <- rank_rgn %>% 
-    arrange(contnnt, -arrange_mean) %>%
-  distinct(fa_ffcl_shrt, rgn_name_short, arrange_mean, ISO3_country) 
+    arrange(continent, -arrange_mean) %>%
+  distinct(figure_name, rgn_name_short, arrange_mean) 
 
 # add empty space to create space in the circleplot for axes
  empty_bar <- 5
- to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn_label)) )
+ to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn_label)))
  colnames(to_add) = colnames(rank_rgn_label)
- to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
+ to_add$figure_name <- as.character(1:empty_bar)
  rank_rgn_label  <- rbind(to_add, rank_rgn_label)
  
 empty_bar <- 5
  to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn)) )
  colnames(to_add) = colnames(rank_rgn)
- to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
+ to_add$figure_name <- as.character(1:empty_bar)
  rank_rgn_adj  <- rbind(to_add, rank_rgn)
  
 
@@ -270,7 +263,7 @@ rank_rgn_adj$end_point <- max_value # point where we will want to place the coun
 rank_rgn_label$end_point <- max_value # point where we will want to place the country labels.
 
  # some code to orient the country labels
-sequence_length = length(unique(rank_rgn_label$fa_ffcl_shrt))
+sequence_length = length(unique(rank_rgn_label$figure_name))
 first_sequence = c(1:(sequence_length%/%2)) 
 second_sequence = c((sequence_length%/%2+1):sequence_length) 
 first_angles = c(90 - 180/length(first_sequence) * first_sequence)
@@ -283,7 +276,7 @@ rank_rgn_label$hjust <- c(rep(0, length(first_sequence)),
 # color for region labels and breaks
 rank_rgn_adj <- rank_rgn_adj %>%
   rename(index = mean) %>%
-  mutate(fa_ffcl_shrt = factor(fa_ffcl_shrt, unique(fa_ffcl_shrt))) %>%
+  mutate(figure_name = factor(figure_name, unique(figure_name))) %>%
   mutate(pos_neg = factor(pos_neg, unique(pos_neg))) %>%
   mutate(color = "black") %>%
   mutate(color = ifelse(is.na(index), "white", color)) %>%
@@ -303,72 +296,60 @@ rank_rgn_adj <- rank_rgn_adj %>%
 if(spatial_type == "countries_high_seas"){
 
   rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 75, 125, 165, 190, 215),
                          name_y = c(70, 70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 5.5
 
-plot_margin = margin(120, 120, 180, 70, unit = "pt")
+plot_margin = margin(160, 120, 180, 70, unit = "pt")
 
 
 }else if(spatial_type == "countries"){
 
     rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 75, 125, 165, 200),
                          name_y = c(70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
   
 label_size = 5.5
 
-plot_margin = margin(110, 120, 200, 50, unit = "pt")
+plot_margin = margin(160, 120, 220, 50, unit = "pt")
 
 
 }else if(spatial_type == "countries_admin"){
   
     rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 60, 90, 125, 145),
                          name_y = c(70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 7
 
-plot_margin = margin(140, 10, 160, 10, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
+plot_margin = margin(180, 60, 240, 60, unit = "pt")   # need to make sure names fit on plot... top, right, bottom, left
 
 
 }else if(spatial_type == "countries_admin_high_seas"){
   
   rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(25, 55, 90, 125, 145, 165),
                          name_y = c(70, 70, 70, 70, 70, 70))
   
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 7
 
-plot_margin = margin(165, 105, 200, 90, unit = "pt")   # need to make sure names fit on plot... 
+plot_margin = margin(180, 105, 240, 90, unit = "pt")   # need to make sure names fit on plot... 
 }
 
-if(label_type == "iso3c" & spatial_type %in% c("countries_admin", "countries_admin_high_seas")){
-  
-  label_size = 10
-  plot_margin =  theme_grey()$plot.margin # reset to default margins if iso3c
-  
-}else if(label_type == "iso3c" & spatial_type %in% c("countries", "countries_high_seas")){
-  
-    
-  label_size = 8
-  plot_margin =  theme_grey()$plot.margin # reset to default margins if iso3c
-  
-}
 
 # specify theme
 circle_theme <- theme(axis.line=element_blank(),
@@ -407,17 +388,6 @@ rank_rgn_adj$fill_category <- factor(rank_rgn_adj$fill_category, levels = all_ca
 
 all_categories_labels <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",   "Increase >30%")
 
-# if we are plotting iso3c labels instead of country name, specify that
-if(label_type == "iso3c"){
-  
-  rank_rgn_adj <- rank_rgn_adj %>%
-    dplyr::select(-rgn_name_short) %>%
-    rename(rgn_name_short = ISO3_country)
-  
-  rank_rgn_label <- rank_rgn_label %>%
-    dplyr::select(-rgn_name_short) %>%
-    rename(rgn_name_short = ISO3_country)
-}
 
 # we need to plot separate geoms for the decades because we are stacking the bar plots
 data_2041 <- rank_rgn_adj %>%
@@ -431,9 +401,9 @@ rank_rgn_label <- rank_rgn_label %>%
   mutate(rgn_name_short = ifelse(arrange_mean >= 69, glue("{rgn_name_short}*"), rgn_name_short)) # denote if the country mean is technically above the max
 
  g <- ggplot() + # ok so this works but losing order of data in plots for some reason
-  # geom_col(data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) + # if you dont want patterns, use this geom instead
+  # geom_col(data = data_2091, aes(x = figure_name, y = new_index, fill = fill_category), position = "stack", show.legend = TRUE) + # if you dont want patterns, use this geom instead
       geom_col_pattern(position = "stack",
-                    data = data_2091, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain),
+                    data = data_2091, aes(x = figure_name, y = new_index, fill = fill_category, pattern = uncertain),
     pattern_density = .5,
    pattern_spacing = 0.004,
    pattern_frequency = 5,
@@ -442,9 +412,9 @@ rank_rgn_label <- rank_rgn_label %>%
     pattern_color = "white",
    show.legend = TRUE
     ) +
-  #geom_col(data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
+  #geom_col(data = data_2041, aes(x = figure_name, y = new_index, fill = fill_category), position = "stack", show.legend = FALSE) +
    geom_col_pattern(position = "stack",
-                    data = data_2041, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category, pattern = uncertain),
+                    data = data_2041, aes(x = figure_name, y = new_index, fill = fill_category, pattern = uncertain),
     pattern_density = .5,
    pattern_spacing = 0.004,
    pattern_frequency = 5,
@@ -454,7 +424,7 @@ rank_rgn_label <- rank_rgn_label %>%
    show.legend = FALSE
     ) +
    geom_errorbar(data = data_2041,
-                 aes(x = fa_ffcl_shrt,
+                 aes(x = figure_name,
                      ymax = new_index,
                      ymin = new_index), color = "white", size = 0.4) + 
   geom_errorbar(data = data_2091,
@@ -466,7 +436,7 @@ rank_rgn_label <- rank_rgn_label %>%
   ) +
     geom_text(
       data = rank_rgn_label,
-       aes(x = fa_ffcl_shrt,
+       aes(x = figure_name,
            label = rgn_name_short,
            angle = angle,
            y = end_point,
@@ -516,7 +486,7 @@ rank_rgn_label <- rank_rgn_label %>%
       data = rgn_shift,
       aes(y = unique(rank_rgn_adj$end_point)/1.5,
           x = name_x,
-          label = contnnt),
+          label = continent),
       inherit.aes=FALSE,
       size=label_size+1) +
     annotate("text",
@@ -544,8 +514,6 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
 
     }
   }
-}
-
 
 
 
@@ -553,6 +521,33 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
 
  
 Make map of mean change and also save a legend 
+
+Get shapefile with correct country bounds
+
+```{r}
+# mollweide
+moll_proj <- '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs'
+
+# Unprojected UN-approved world base map
+world <- read_sf(list.files(out_folder, pattern = "country_bounds.shp",
+                            full.names = T, recursive = T))
+
+# Base map
+world_proj <- world |> 
+  st_transform(moll_proj)
+
+# Boundaries provided by UN
+world_bound <- read_sf(list.files(out_folder, pattern = "UN_intbnd.shp", 
+                                        full.names = T, recursive = T)) |> 
+  #Selecting boundary types to be included in the map
+  filter(TYPE < 99) 
+
+#Boundaries provided by UN
+world_bound_proj <- world_bound |> 
+  st_transform(moll_proj)
+
+```
+
 
 ```{r}
 
@@ -569,29 +564,10 @@ fill_colors <- c(
 )
 
 # order categories
-
 all_categories <- c("Decrease >30%",  "Decrease 20 to 30%", "Decrease 10 to 20%", "Decrease <10%", "Increase <10%", "Increase 10 to 20%", "Increase 20 to 30%",   "Increase >30%")
 
 all_categories_labels <- c("Decrease >30%",  "Decrease 20-30%", "Decrease 10-20%", "Decrease <10%", "Increase <10%", "Increase 10-20%", "Increase 20-30%",   "Increase >30%")
 
-
-globe_bbox <- rbind(c(-180, -90), c(-180, 90), 
-                      c(180, 90), c(180, -90), c(-180, -90)) 
-
-globe_border <- st_polygon(list(globe_bbox)) %>%
-  st_sfc(crs = 4326) %>%
-  st_sf(data.frame(rgn = 'globe', geom = .)) %>%
-  smoothr::densify(max_distance = 0.5) %>%
-  st_transform(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-
-countries_shp <- ne_countries(scale = 110, returnclass = "sf") |> 
-  st_transform(crs('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')) # read in countries shapefile
-
-world_360 <- read_sf(here("data/world_360deg.shp")) %>%
-  st_transform('+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-
-
-      
  ## make map 
 plot_df <- cmip_data_all %>%
   filter(spatial_scale %in% c("countries_admin")) %>% ## you can change this if you want to plot high seas or whatever
@@ -611,13 +587,17 @@ plot_df <- cmip_data_all %>%
            decade_clean = case_when(
              decade == "2041-2050" ~ "Mid-century",
              decade == "2091-2100" ~ "End of century"
-           )) 
+           )) %>%
+  mutate(ISOADM = countrycode(sourcevar = figure_name, origin = "country.name", destination = "iso3c")) # ok cool none empty
 
-
-eez_df <- world_360 %>%
- right_join(plot_df, by = c("adm0_a3" = "ISO3_country")) %>%
-  rename(ISO3_country = iso_a3) %>% 
-  dplyr::select(colnames(plot_df))
+eez_df <- world_proj %>%
+ right_join(plot_df, by = c("ISOADM")) %>%
+  dplyr::select(colnames(plot_df)) %>%
+    mutate(mean = case_when(
+    mean <= -69 ~ 69,
+    mean >= 69 ~ 69, 
+    TRUE ~ mean
+  ))
 
 
 ## Let's ditch many of the unnecessary elements
@@ -639,13 +619,7 @@ plain <- theme(
   legend.title = element_text(size = 30)
 )
 
-eez_df <- eez_df %>%
-  mutate(mean = case_when(
-    mean <= -69 ~ 69,
-    mean >= 69 ~ 69, 
-    TRUE ~ mean
-  ))
-
+## set order of levels for facets
 eez_df$scen_clean <- factor(eez_df$scen_clean, levels = c("Low Emissions: SSP1-2.6", "High Emissions: SSP5-8.5"))
 eez_df$decade_clean <- factor(eez_df$decade_clean, levels = c("Mid-century", "End of century"))
 
@@ -657,8 +631,14 @@ eez_df$decade_clean <- factor(eez_df$decade_clean, levels = c("Mid-century", "En
                  plain +
                labs(fill = "Change in fish biomass (%)")  +
                     coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
-                           geom_sf(data = world_360, fill = NA, colour = "grey", alpha = 0.2)  +
-                           geom_sf(data = globe_border, fill = NA, colour = "grey") +
+  geom_sf(data = world_bound_proj, lwd = 0.25, color = "black", show.legend = F, 
+          aes(linetype = as.factor(TYPE)))+
+  scale_linetype_manual(values = c("0" = "solid", "1" = "twodash", 
+                                   "2" = "dotdash", "3" = "dashed", 
+                                   "4" = "dotted"))+
+  geom_sf(data = world_bound_proj[world_bound_proj$TYPE == 8,], 
+          linetype = "longdash", 
+          lwd = 0.25, color = "#838285", show.legend = F) +
           facet_grid(decade_clean~scen_clean, switch = "y") +
           guides(fill = guide_legend(byrow = TRUE,
                               title.position = "top",
@@ -669,68 +649,16 @@ eez_df$decade_clean <- factor(eez_df$decade_clean, levels = c("Mid-century", "En
         ggsave(plot = p1, glue(here("outputs/map_admin_countries.png")), bg = "white", height = 30, width = 30, units = "in", dpi = 300)
         ggsave(plot = p1, glue(here("outputs/map_admin_countries.pdf")), bg = "white", height = 30, width = 30, units = "in", dpi = 300)
 
+        
 
  ## only saved this once
 
 g_legend <- cowplot::get_plot_component(p1, "guide-box", return_all = TRUE)[[1]] # for vertical
 
 ggsave(plot = g_legend, glue(here("outputs/circle_figs/legend_vertical.png")), height=20, width=20, units=c("in"), bg = "white") # for vertical
-  # ggsave(plot = g_legend, glue(here("scripts/outputs/legend.png")), height=20, width=20, units=c("in"), bg = "white")
 
-  
-
-## try plotting eezs instead of admin country
-
-eez_shp <- st_read(file.path(out_folder, "Merged_FAO_EEZ"), layer = "FAO_MajorAreas_200NM") 
-
-test <- eez_shp %>% st_drop_geometry()
-
-eez_shp_2 <- st_transform(eez_shp,  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs')
-
-eez_key <- read.csv(file.path(out_folder, "Merged_FAO_EEZ/supporting_files/FAO-Major-Areas_EEZ_continent_keys.csv")) %>%
-  mutate(figure_name = ifelse(!is.na(NAME_EN), NAME_EN, figure_name)) # REPLACE WITH PATH TO EEZ KEY
-
-eez_shp_df <- eez_shp_2 %>% 
-  left_join(eez_key)
-
-
-eez_data <- cmip_data_all %>% 
-  filter(spatial_scale %in% c("FAO_area", "countries"))
-
-test <- eez_shp_2 %>% 
-  left_join(eez_key) %>%
-  right_join(eez_data, by = c("figure_name" = "fa_ffcl_shrt")) %>%
-  rename(fa_ffcl_shrt = figure_name) %>%
-    dplyr::select(colnames(eez_data)) %>%
-    filter(!st_is_empty(.)) %>%
-        mutate(fill_category = case_when(
-    mean < -30 ~ "Decrease >30%",
-    mean <= -20 & mean >= -30 ~ "Decrease 20 to 30%",
-    mean <= -10 & mean > -20 ~ "Decrease 10 to 20%",
-    mean <= 0 & mean > -10 ~ "Decrease <10%",
-    mean >= 0 & mean < 10 ~ "Increase <10%",
-    mean >= 10 & mean < 20 ~ "Increase 10 to 20%", 
-    mean >= 20 & mean <= 30 ~ "Increase 20 to 30%",
-    mean > 30 ~ "Increase >30%"
-  ))
  
 
-p1 <- ggplot(data = test) +
-          geom_sf(aes(fill = fill_category), 
-                  key_glyph = "rect", color = "white") + 
-                scale_fill_manual(values = fill_colors, breaks = all_categories, labels = all_categories_labels, drop = F) +  # Assign fill colors manually
-                 plain +
-               labs(fill = "Change in fish biomass (%)")  +
-                    coord_sf(crs =  '+proj=moll +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs') +
-                           geom_sf(data = countries_shp, fill = NA, colour = "grey", alpha = 0.2)  +
-                           geom_sf(data = globe_border, fill = NA, colour = "grey") +
-          facet_grid(decade~scenario, switch = "y") +
-          guides(fill = guide_legend(byrow = TRUE,
-                              title.position = "top",
-               title.hjust = 1,
-               title.vjust = 1))
-
-# ggsave(here("outputs/test.png"), bg = "white", height = 30, width = 30, units = "in", dpi = 300)
 
 ```
 
@@ -815,56 +743,32 @@ plot_df <- cmip_data_plot %>% ## filter for scenario and decade
   filter(decade == decade_type,
          scenario == scen) %>%
   data.frame() %>%
-  mutate(contnnt = ifelse(spatial_scale == "FAO_area", "High Seas", contnnt)) %>%
-  arrange(contnnt, pos_neg, abs(mean_outlier)) # order by continent, increase/decrease, and mean
+  mutate(continent = ifelse(spatial_scale == "FAO_area", "High Seas", continent)) %>%
+  arrange(continent, pos_neg, abs(mean_outlier)) # order by continent, increase/decrease, and mean
 
 get_pos_neg_ranks <- plot_df %>%
-  group_by(contnnt, pos_neg, fa_ffcl_shrt) %>%
+  group_by(continent, pos_neg, figure_name) %>%
   summarise(index = sum(mean_outlier, na.rm = TRUE),
             sd = sum(sd, na.rm = TRUE)) %>% # these are just distinct numbers, so group by is unnecessary i think?
     mutate(new_index = abs(index)) %>%
-  arrange(contnnt, pos_neg, -new_index)
+  arrange(continent, pos_neg, -new_index)
 
 rank_pos_neg <- get_pos_neg_ranks %>%
-  group_by(contnnt) %>% 
+  group_by(continent) %>% 
   summarise(sum_mean = sum(new_index),
             count = length(new_index)) %>%
   ungroup()
 
-rank_pos_neg$contnnt <- factor(rank_pos_neg$contnnt, 
-                                         levels=unique(rank_pos_neg$contnnt))
-get_pos_neg_ranks$contnnt <- factor(get_pos_neg_ranks$contnnt, 
-                                         levels=unique(rank_pos_neg$contnnt))
+rank_pos_neg$continent <- factor(rank_pos_neg$continent, 
+                                         levels=unique(rank_pos_neg$continent))
+get_pos_neg_ranks$continent <- factor(get_pos_neg_ranks$continent, 
+                                         levels=unique(rank_pos_neg$continent))
 
 ## change some names for plot so that they will fit better...
 rank_rgn <- get_pos_neg_ranks %>%
-  arrange(contnnt, pos_neg, -new_index) %>%
-     mutate(rgn_name_short = fa_ffcl_shrt, 
-         rgn_name_short = gsub("United Kingdom of Great Britain and Northern Ireland", "United Kingdom", rgn_name_short),
-         rgn_name_short = gsub("Islands|islands", "Isl", rgn_name_short),
-         rgn_name_short = gsub("Island", "Isl", rgn_name_short),
-         rgn_name_short = gsub("Democratic", "Dem", rgn_name_short),
-         rgn_name_short = gsub("Republic", "Rep", rgn_name_short),
-         rgn_name_short = gsub("South", "S", rgn_name_short),
-         rgn_name_short = gsub("American", "Am", rgn_name_short),
-         rgn_name_short = gsub("the United States", "US", rgn_name_short),
-         rgn_name_short = gsub("Territory", "Terr", rgn_name_short),
-         rgn_name_short = gsub("Saint", "St", rgn_name_short),
-         rgn_name_short = gsub(" and ", " & ", rgn_name_short),
-         rgn_name_short = gsub("Republique", "Rep", rgn_name_short),
-         rgn_name_short = gsub("Dem Rep of the", "Dem Rep of", rgn_name_short),
-         rgn_name_short = gsub("Georgia and the", "Georgia and", rgn_name_short),
-         rgn_name_short = gsub("St Vincent and the", "St Vincent and", rgn_name_short),
-         rgn_name_short = gsub("Howland Isl & Baker Isl", "Howland & Baker Isl", rgn_name_short),
-         rgn_name_short = gsub("Northern", "N", rgn_name_short), 
-         rgn_name_short = gsub("Alaska", "AK", rgn_name_short),
-         rgn_name_short = gsub("Hawaii", "HI", rgn_name_short),
-         rgn_name_short = gsub("\\(the\\)", "", rgn_name_short),
-         rgn_name_short = gsub("Kingdom of the Netherlands", "Netherlands", rgn_name_short),
-         rgn_name_short = gsub("Russian Federation", "Russia", rgn_name_short),
-         rgn_name_short = gsub("Federated States", "Fed. States", rgn_name_short),
-         rgn_name_short = gsub("United Rep of Tanzania", "Tanzania", rgn_name_short)) %>%
-  mutate(rgn_name_short = ifelse(rgn_name_short == "Netherlands (Kingdom of the)", "Netherlands", rgn_name_short)) # not sure why gsub wasn't working
+  arrange(continent, pos_neg, -new_index) %>%
+     mutate(rgn_name_short = figure_name) %>%
+        mutate(rgn_name_short = gsub("United Kingdom of Great Britain and Northern Ireland", "the United Kingdom", rgn_name_short))  # changing UK so that the name will fit within the margins of the plot. Per FAO names page: https://www.fao.org/nocs/en: "The full name is to be used on title pages, in signatures and in recording nominations, elections and votes. Once the full name has been mentioned or WHERE SPACE IS LIMITED, as for instance in a table, the following shorter form may be used: the United Kingdom."
 
 
 
@@ -872,13 +776,13 @@ rank_rgn <- get_pos_neg_ranks %>%
  empty_bar <- 5
  to_add <- data.frame(matrix(NA, empty_bar, ncol(rank_rgn)) )
  colnames(to_add) = colnames(rank_rgn)
- to_add$fa_ffcl_shrt <- as.character(1:empty_bar)
+ to_add$figure_name <- as.character(1:empty_bar)
  rank_rgn_adj  <- rbind(to_add, rank_rgn)
 
 rank_rgn_adj$end_point <- max_value # point where we will want to place the country labels.. for this we'll just use 100.
 
  # some code to orient the country labels
-sequence_length = length(unique(rank_rgn_adj$fa_ffcl_shrt))
+sequence_length = length(unique(rank_rgn_adj$figure_name))
 first_sequence = c(1:(sequence_length%/%2)) 
 second_sequence = c((sequence_length%/%2+1):sequence_length) 
 first_angles = c(90 - 180/length(first_sequence) * first_sequence)
@@ -890,7 +794,7 @@ rank_rgn_adj$hjust <- c(rep(0, length(first_sequence)),
 
 # color for region labels and breaks
 rank_rgn_adj <- rank_rgn_adj %>%
-  mutate(fa_ffcl_shrt = factor(fa_ffcl_shrt, unique(fa_ffcl_shrt))) %>%
+  mutate(figure_name = factor(figure_name, unique(figure_name))) %>%
   mutate(pos_neg = factor(pos_neg, unique(pos_neg))) %>%
   mutate(color = "black") %>%
   mutate(color = ifelse(is.na(index), "white", color)) %>%
@@ -914,11 +818,11 @@ rank_rgn_adj <- rank_rgn_adj %>%
 if(spatial_type == "countries_high_seas"){
 
   rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 75, 125, 165, 190, 215),
                          name_y = c(70, 70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 5.5
 
@@ -928,11 +832,11 @@ plot_margin = margin(120, 120, 180, 70, unit = "pt")
 }else if(spatial_type == "countries"){
 
     rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 75, 125, 165, 200),
                          name_y = c(70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
   
 label_size = 5.5
 
@@ -942,11 +846,11 @@ plot_margin = margin(110, 120, 200, 50, unit = "pt")
 }else if(spatial_type == "countries_admin"){
   
     rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(20, 60, 90, 125, 145),
                          name_y = c(70, 70, 70, 70, 70))
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 7
 
@@ -956,12 +860,12 @@ plot_margin = margin(140, 10, 160, 10, unit = "pt")   # need to make sure names 
 }else if(spatial_type == "countries_admin_high_seas"){
   
   rgn_shift <- data.frame(
-                         contnnt = rank_pos_neg$contnnt,
+                         continent = rank_pos_neg$continent,
                          name_x = c(25, 55, 90, 125, 145, 165),
                          name_y = c(70, 70, 70, 70, 70, 70))
   
 rgn_shift <- rgn_shift %>%
-   mutate(contnnt = as.character(contnnt))
+   mutate(continent = as.character(continent))
 
 label_size = 7
 
@@ -974,9 +878,9 @@ circle_theme <- theme(axis.line=element_blank(),
                       axis.ticks=element_blank(),
                       axis.title.x=element_blank(),
                       axis.title.y=element_blank(),
-                     # legend.position="none", # do we want legend?  
-                      legend.position='top', 
-                      legend.justification = "center",
+                     legend.position="none", # do we want legend?  
+                     # legend.position='top', 
+                      #legend.justification = "center",
                       panel.background=element_blank(),
                       panel.border=element_blank(),
                       panel.grid.major=element_blank(),
@@ -1020,7 +924,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
   
 ## categorical fill - pattern for uncertainty. Using ggpattern is REALLY finnicky, and it took me a really long time to get the pattern stuff right... so beware. 
 
-  g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category,
+  g <- ggplot(data = rank_rgn_adj, aes(x = figure_name, y = new_index, fill = fill_category,
                         pattern = uncertain
                         )) +
    geom_bar_pattern(stat = "identity",
@@ -1041,7 +945,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
   ) +
     geom_text(
       data = rank_rgn_adj,
-       aes(x = fa_ffcl_shrt,
+       aes(x = figure_name,
            label = rgn_name_short,
            angle = angle,
            y = end_point,
@@ -1091,7 +995,7 @@ rank_rgn_adj <- rank_rgn_adj %>%
      data = rgn_shift,
       aes(y = 69/1.5,
           x = name_x,
-          label = contnnt),
+          label = continent),
       inherit.aes=FALSE,
       size=label_size + 1 ) +
     annotate("text",
@@ -1131,7 +1035,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   ggsave(glue(here("outputs/circle_figs/{spatial_type}/non_stacked/bar_{scen}_{decade_type}_pattern.png")), height=20, width=20, units=c("in"), bg = "white") # save as png
 
 
- g <- ggplot(data = rank_rgn_adj, aes(x = fa_ffcl_shrt, y = new_index, fill = fill_category)) +
+ g <- ggplot(data = rank_rgn_adj, aes(x = figure_name, y = new_index, fill = fill_category)) +
    geom_bar(stat = "identity", show.legend = TRUE) +
   geom_errorbar(
      aes(x = 1,
@@ -1142,7 +1046,7 @@ if(spatial_type %in% c("countries", "countries_high_seas")){
   ) +
     geom_text(
      # data = rank_rgn_adj,
-       aes(x = fa_ffcl_shrt,
+       aes(x = figure_name,
            label = rgn_name_short,
            angle = angle,
            y = end_point,
@@ -1192,7 +1096,7 @@ geom_text(
       # data = rgn_shift,
       aes(y = 69/1.5,
           x = name_x,
-          label = contnnt),
+          label = continent),
       inherit.aes=FALSE,
       size=label_size + 1) +
     annotate("text",

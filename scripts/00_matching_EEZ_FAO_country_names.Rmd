@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# Loading libraries adn defining forlders 
+# Loading libraries and defining folders 
   
 ```{r, message=FALSE, warning=FALSE}
 rm(list = ls())
@@ -74,7 +74,7 @@ fao_ema <- file.path(base_folder,
 # example: 
 fao_ema |>
   # list of country code
-  select(c(ISO_3, O_Name_En)) |> 
+  dplyr::select(c(ISO_3, O_Name_En)) |> 
   unique() |> 
   # need to isolate GBR = United Kingdom
   filter(ISO_3 == "GBR")
@@ -82,13 +82,13 @@ fao_ema |>
 # 1 list of country (excluding territories) code
 
 key1 <- fao_ema |>
-  select(ISO_3) |> 
+  dplyr::select(ISO_3) |> 
   unique()
 
 # 2 list of country and territory code and of country and territory names 
 
 key2 <- fao_ema |>
-  select(c(ISO3CD, O_Name_En)) |> 
+  dplyr::select(c(ISO3CD, O_Name_En)) |> 
   rename(ISO_3 = ISO3CD, Country = O_Name_En) |>
   unique()
 
@@ -110,7 +110,7 @@ Consider continent and official English name and add key 3 (country information)
 
 ```{r}
 fao2 <- fao_ema |> 
-  select(CONTCD, O_Name_En, ISO_3) |>
+  dplyr::select(CONTCD, O_Name_En, ISO_3) |>
   right_join(key3)
 filter(fao2, ISO_3 == "GBR")
 
@@ -142,7 +142,7 @@ duplicates[4]
 ```{r}
 fao_ema <- fao_ema |> 
   # keep also ISO3CD for merging with Stefania's data below 
-  select(CONTCD, ROMNAM, MAPLAB, O_Name_En, ISO_3, ISO3CD) |> 
+  dplyr::select(CONTCD, ROMNAM, MAPLAB, O_Name_En, ISO_3, ISO3CD) |> 
   right_join(key3) |> 
   # to join with FAO data from website and Stefania.
   mutate(O_Name_En_Emmanuel = O_Name_En) 
@@ -162,7 +162,7 @@ fao_st <- file.path(base_folder, "Country_Item_14022024.csv") |>
   unique()
 
 fao_st <- fao_st |> 
-  select(c(ISO3_Code, Official_Name_En)) |> 
+  dplyr::select(c(ISO3_Code, Official_Name_En)) |> 
   unique() |> 
   rename(ISO3CD = ISO3_Code, O_Name_En_Stefania = Official_Name_En) |> 
   # to join with website and Emmanuel information.
@@ -184,7 +184,7 @@ fao_final <- fao_ema |>
 fao_final <- fao_final |> 
   full_join(fao) |> 
   # not needed anymore as the merging is done. 
-  select(-O_Name_En) 
+  dplyr::select(-O_Name_En) 
 ```
 
 # Adjust columns
@@ -247,7 +247,7 @@ setdiff(sort(unique(new_key$nm_mrgd)),sort(unique(eez$nm_mrgd)))
 
 # consider only columns needed 
 new_key <- new_key |> 
-  select(c(ID_mrgd, continent, fa_ffcl, Country_name)) |> 
+  dplyr::select(c(ID_mrgd, continent, fa_ffcl, Country_name)) |> 
   rename(fao_official = fa_ffcl, Country_FAO = Country_name)
 
 ```
@@ -260,7 +260,7 @@ new column considered:
 fao <- file.path(base_folder, "nocsDataExport_20240501-114742_English.csv") |> 
   read_csv() |> 
   #Select relevant columns
-  select(c(`FULL NAME`, `LIST NAME`)) |> 
+  dplyr::select(c(`FULL NAME`, `LIST NAME`)) |> 
   #Update column names to something more descriptive
   rename(O_name_En_Website =`FULL NAME`, 
          figure_name =`LIST NAME`) |> 
@@ -314,28 +314,12 @@ write_csv(new_key, file.path(base_folder, "EEZ_FAO_key_with_short_names.csv"))
 
 final <- file.path(base_folder, "EEZ_FAO_key_with_short_names_utf.csv") |> 
   read.csv(fileEncoding = "UTF-8")
-nrow(final)
-
-View(final)
-# all good
-sort(final$figure_name)[53]
-sort(final$figure_name)[56]
-sort(final$figure_name)[46]
-sort(final$figure_name)[169]
-sort(final$figure_name)[156]
-sort(final$figure_name)[173]
-sort(final$figure_name)[209]
 
 # add Bouvet Island 
 head(final)
 bouv<-data.frame(ID_mrgd = 62599, continent = "Africa", fao_official = "Bouvet Island", Country_FAO = "the Kingdom of Norway", figure_name = "Bouvet Island")
 
 final<-rbind(final, bouv)
-nrow(final)
-
-sort(unique(final$figure_name))
-
-View(final)
 
 ```
 
@@ -349,11 +333,12 @@ eez <- eez |>
   mutate(continent = case_when(is.na(continent) ~ CONTINENT,
                                T ~ continent)) |> 
   #Remove columns that are not relevant
-  select(!c(F_CODE, OCEAN, MRGID:CONTINENT))
+  dplyr::select(!c(F_CODE, OCEAN, MRGID:CONTINENT))
 
 #Save results
 eez |> 
-  write_csv(file.path(base_folder, "FAO-Major-Areas_EEZ_continent_keys.csv"))
+  write_csv("/rd/gem/private/users/camillan/FAO_Report/Merged_FAO_EEZ/FAO-Major-Areas_EEZ_continent_keys.csv")
+
 ```
 
 

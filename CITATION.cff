@@ -1,20 +1,20 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-- family-names: "Blanchard"
-  given-names: "Julia"
-- family-names: "Cottrell"
-  given-names: "Rich"
+- family-names: "Novaglio"
+  given-names: "Camilla"
 - family-names: "Fierro-Arcos"
   given-names: "Denisse"
   orcid: "https://orcid.org/0000-0002-5039-6272"
-- family-names: "Novaglio"
-  given-names: "Camilla"
+- family-names: "Clawson"
+  given-names: "Gage"
+- family-names: "Blanchard"
+  given-names: "Julia"
 - name: "Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP)"
 
-title: "Data analysis for the 'Future climate change risks to marine ecosystems and fisheries' report"
+title: "Data and code for FishMIP global marine ecosystem model ensemble projections summarised by countries and territories and other spatial regions"
 version: 0.0.1
-doi: TBA
-date-released: TBA
+doi: 10.5281/zenodo.12528169
+date-released: 25/06/2024
 url: "https://github.com/Fish-MIP/FAO_Report"
 license: Apache-2.0
