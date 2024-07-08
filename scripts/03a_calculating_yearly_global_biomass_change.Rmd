@@ -11,7 +11,6 @@ editor_options:
   
 ```{r, message=FALSE, warning=FALSE}
 #Data wrangling
-rm(list = ls())
 library(tidyverse)
 library(data.table)
 library(glue)
@@ -273,14 +272,8 @@ for(m in members){
   
   #Keep information for all grid cells
   area_grid <- area_grid |>  
-    # drop_na(fao_official) |> 
-    # calculating trends for the whole globe 
     #Remove columns that are not relevant
     select(x:cell_area)
-  
-  # check mask - ensure it is the whole globe
-  # library(raster)
-  # plot(rasterFromXYZ(area_grid))
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -349,13 +342,14 @@ bio_data |>
 ## Calculating percentage change in fish biomass mean from global FishMIP models in the top 7 countries with highest catches
   
 ```{r}
-
-# Adjustment - add Puerto Rico as USA
-area_ipsl_df <- area_ipsl_df %>% 
-  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico", "the United States of America", Country_FAO))
+# Adjustment - add Puerto Rico to USA
+area_ipsl_df <- area_ipsl_df |> 
+  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico", 
+                              "the United States of America", Country_FAO))
   
-area_gfdl_df <- area_gfdl_df %>% 
-  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico", "the United States of America", Country_FAO))
+area_gfdl_df <- area_gfdl_df |> 
+  mutate(Country_FAO = ifelse(figure_name == "Puerto Rico",
+                              "the United States of America", Country_FAO))
 
 #Defining top 7 countries by catch
 top_7 <- c("China", "India", "Indonesia", "Peru", "Russian", 
@@ -363,7 +357,6 @@ top_7 <- c("China", "India", "Indonesia", "Peru", "Russian",
 
 #Looping through each FishMIP model
 for(m in members){
-  
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
     area_grid <- area_ipsl_df
@@ -378,7 +371,7 @@ for(m in members){
   area_grid <- area_grid |> 
     filter(str_detect(Country_FAO, paste0(top_7, collapse = "|"))) |> 
     #Remove continent information
-    dplyr::select(x:cell_area, Country_FAO)
+    select(x:cell_area, Country_FAO)
   
   #Load all data available for a single FishMIP model
   df_model <- str_subset(global_files, m) |>
@@ -386,7 +379,8 @@ for(m in members){
     map_df(~bind_rows(.)) |>
     #Add area for each grid cell and country
     left_join(area_grid, by = join_by(x, y)) |>
-    drop_na(Country_FAO) |> # remove cells outside the top 7 countries
+    # remove cells outside the top 7 countries
+    drop_na(Country_FAO) |> 
     #Calculate weighted mean for biomass per ensemble member per country
     group_by(year, mem, esm, scenario, Country_FAO) |> 
     summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) 
