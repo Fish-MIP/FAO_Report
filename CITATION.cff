@@ -10,7 +10,7 @@ authors:
   given-names: "Gage"
 - family-names: "Blanchard"
   given-names: "Julia"
-- name: "Fisheries and Marine Ecosystem Model Intercomparison Project (Fish-MIP)"
+- name: "Fisheries and Marine Ecosystem Model Intercomparison Project (FishMIP)"
 
 title: "Data and code for FishMIP global marine ecosystem model ensemble projections summarised by countries and territories and other spatial regions"
 version: 0.0.1
