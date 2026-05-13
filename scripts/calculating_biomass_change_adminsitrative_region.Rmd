@@ -1,25 +1,18 @@
 ---
-title: "Temporal biomass change at the country level (country AND territories combined)"
-author: "Gage"
-date: "2024-01-17"
+title: "Temporal biomass change at the country level (country and territories combined)"
+author: "Gage Clawson and Denisse Fierro Arcos"
+date: "2026-05-13"
 output: pdf_document
 ---
 
 ## Loading libraries
   
 ```{r, message=FALSE, warning=FALSE}
-#Data wrangling
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(purrr)
 library(data.table)
-#Raster data
-library(terra)
-#Combining plots
-library(cowplot)
-
-# filepaths
-library(here)
-# getting iso3c codes
-library(countrycode)
 ```
 
 ## Setting up notebook
@@ -30,11 +23,11 @@ base_folder <- "/rd/gem/private/users/camillan"
 
 #Defining location of notebook outputs
 out_folder <- file.path(base_folder, "FAO_Report")
-if(!dir.exists(out_folder)){
-  dir.create(out_folder)
-}
 
 country_level_folder <- file.path(out_folder, "country_level_gage")
+if(!dir.exists(country_level_folder)){
+  dir.create(country_level_folder)
+}
 ```
   
 ## Files with all information per grid cell
@@ -43,139 +36,93 @@ country_level_folder <- file.path(out_folder, "country_level_gage")
 #Getting GFDL grid area
 area_gfdl_df <- list.files(out_folder, "gfdl-esm4_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
-  read_csv()
+  fread()
 
 #Getting IPSL grid area
 area_ipsl_df <- list.files(out_folder, "ipsl-cm6a_60arcmin_global_FAO-EEZ.csv",
                            recursive = T, full.names = T) |> 
-  read_csv()
-
+  fread()
 ```
 
-## Adjust admin country names as per FAO short names
-
+## Adjusting admin country names as per FAO short names
 ```{r}
-
-### CN approach ----
-#get info from the masks area_gfdl_df and area_ipsl_df built using EEZ and FAO info
-
-fix_masks<-function(mask){
-  
-  # mask = area_gfdl_df
-  
-  # fix mistakes in file 
-  # filter(mask, figure_name == "Comoros") # country == the Union of the Comoros
-  mask <- mask %>% 
-    mutate(Country_FAO = case_when(figure_name == "Comoros" ~ "the Union of the Comoros",
-                                   .default = as.character(Country_FAO)),
-          figure_name = ifelse(figure_name == "Prince Edward Island", "Prince Edward Islands", figure_name))
-
-  mask<-mask %>% 
-    drop_na(fao_official) # remove all FAO fishing areas 
-
-  ##### 1. fix names from long to short # NB this is very likely the same as above code with countrycode() but needed to check ----
-
-  # # check Congo and Democratic Republic of the Congo as both needs to be there
-  # unique(filter(mask, str_detect(Country_FAO, "Congo"))$Country_FAO)
-  # unique(filter(mask, str_detect(Country_FAO, "the Republic of the "))$Country_FAO)
-  # unique(filter(mask, str_detect(Country_FAO, "the Democratic Republic of "))$Country_FAO)
-  # unique(filter(mask, str_detect(Country_FAO, "Korea"))$Country_FAO)
-  
-
-  # need to do this manually. Change here and back-adjust below
-  mask<-mask %>% 
-    mutate(Country_FAO = case_when(Country_FAO == "the Republic of the Congo" ~ "Congo rep",
-                                   Country_FAO == "the Democratic Republic of the Congo" ~ "Congo dem",
-                                   Country_FAO == "the Democratic People's Republic of Korea" ~ "Korea dem",
-                                   Country_FAO == "the Republic of Korea"~ "Korea rep",
-                                   .default = as.character(Country_FAO)))
-
-  # remove" long part of" names 
-  mask<-mask %>% 
-    mutate(Country_FAO = gsub("the Republic of |The Kingdom of |the Commonwealth of |the Democratic Republic of |the Eastern Republic of |the Federal Republic of |the Federated States of |the Federative Republic of |the Islamic Republic of |the Socialist Republic of |the State of |the Sultanate of |the Kingdom of |the |Arab Republic of |Bolivarian Republic of |Democratic Socialist Republic of |People's Democratic Republic of |Principality of |Co-operative Republic of |Hashemite Kingdom of |People's Republic of |Union of |Democratic |Independent State of |the Union of the ", '',Country_FAO))
-
-  # adjust exceptions - These cannot be changed according to FAO rules - e.g. "Iran (Islamic Republic of)"
-  mask<-mask %>% 
-    mutate(Country_FAO = case_when(Country_FAO == "Argentine Republic" ~ "Argentina",
-                                   Country_FAO == "French Republic" ~ "France",
-                                   Country_FAO == "Gabonese Republic" ~ "Gabon",
-                                   Country_FAO == "Hellenic Republic" ~ "Greece",
-                                   Country_FAO == "Iran" ~ "Iran (Islamic Republic of)",
-                                   Country_FAO == "Micronesia" ~ "Micronesia (Federated States of)",
-                                   Country_FAO == "Netherlands" ~ "Netherlands (Kingdom of the)",
-                                   Country_FAO == "Venezuela" ~ "Venezuela (Bolivarian Republic of)",
-                                   Country_FAO == "Lebanese Republic" ~ "Lebanon",
-                                   Country_FAO == "Portuguese Republic" ~ "Portugal", 
-                                   Country_FAO == "Saint Vincent and Grenadines" ~ "Saint Vincent and the Grenadines",
-                                   Country_FAO == "Togolese Republic" ~ "Togo",
-                                   Country_FAO == "United Mexican States" ~ "Mexico",
-                                   # readjust some names that have been changed above 
-                                   Country_FAO == "Congo rep" ~ "Congo", 
-                                   Country_FAO == "Congo dem" ~ "Democratic Republic of the Congo", 
-                                   Country_FAO == "Korea rep" ~ "Republic of Korea", 
-                                   Country_FAO == "Korea dem" ~ "Democratic People's Republic of Korea", 
-                                   .default = as.character(Country_FAO)))
-
-  setdiff(sort(unique(mask$Country_FAO)), sort(unique(mask$figure_name))) # Kiribati should be the only one
-
-  ##### 2. add country to missing ones as per Table A4 -----
-  # sort(unique(filter(mask, is.na(Country_FAO))$figure_name))
-
-  # remove disputed
-  mask<-mask %>% 
+# Get info from the masks area_gfdl_df and area_ipsl_df built using EEZ and 
+# FAO info
+fix_masks <- function(mask){
+  # Editing country names in masks to match FAO short names
+  mask <- mask |>
+    # remove all grid cells outside EEZs
+    drop_na(fao_official) |>
+    mutate(Country_FAO = str_remove_all(Country_FAO, "^the "),
+           Country_FAO = ifelse(Country_FAO == "Republic of the Congo", "Congo",
+                                Country_FAO),
+           Country_FAO =
+             str_remove(Country_FAO,
+                        paste("^Republic of ", "^Kingdom of ", "^State of ",
+                              "^H[a-z]+ Kingdom of ", "Independent State of ",
+                              "^Democratic Republic of ", "Sultanate of ",
+                              "[A|B|E|F|I|P|S][a-z]+ Republic of ",
+                              "Commonwealth of ", "^[P,C].* Republic of ",
+                              "People's Democratic Republic of ",
+                              "^Democratic Socialist Republic of ",
+                              sep = "|")),
+           Country_FAO = 
+             ifelse(Country_FAO == "the Congo", 
+                    "Democratic Republic of the Congo", Country_FAO),
+           Country_FAO = str_remove_all(Country_FAO, "^the |Union of "),
+           Country_FAO = case_when(
+             figure_name == "Comoros" ~ "Comoros",
+             figure_name == "Prince Edward Island" ~ "South Africa",
+             figure_name == "Cabo Verde" ~ "Cabo Verde",
+             figure_name == "Côte d'Ivoire" ~ "Côte d'Ivoire",
+             # The following names cannot be changed according to FAO rules:
+             # e.g. "Iran (Islamic Republic of)"
+             Country_FAO == "Argentine Republic" ~ "Argentina",
+             Country_FAO == "French Republic" ~ "France",
+             Country_FAO == "Gabonese Republic" ~ "Gabon",
+             Country_FAO == "Hellenic Republic" ~ "Greece",
+             Country_FAO == "Federated States of Micronesia" ~
+               "Micronesia (Federated States of)",
+             Country_FAO == "Iran" ~ "Iran (Islamic Republic of)",
+             Country_FAO == "Korea" ~ "Republic of Korea",
+             Country_FAO == "Lebanese Republic" ~ "Lebanon",
+             figure_name == "Libya" ~ "Libya",
+             Country_FAO == "United Mexican States" ~ "Mexico",
+             Country_FAO == "Netherlands" ~ "Netherlands (Kingdom of the)",
+             figure_name == "Papua New Guinea" ~ "Papua New Guinea",
+             Country_FAO == "Portuguese Republic" ~ "Portugal",
+             Country_FAO == "Togolese Republic" ~ "Togo",
+             figure_name == "Türkiye" ~ "Türkiye",
+             Country_FAO == "Venezuela" ~ "Venezuela (Bolivarian Republic of)",
+             # adding country names to territories where no country has been
+             # assigned as per Table A4
+             figure_name %in% c("Ascension", "Pitcairn", "Saint Helena",
+                                "Tristan da Cunha", "British Virgin Islands",
+                                "Cayman Islands", "Turks and Caicos Islands",
+                                "Guernsey") ~
+               "United Kingdom of Great Britain and Northern Ireland",
+             figure_name %in% c("Wallis and Futuna Islands", "Réunion",
+                                "Bassas da India", "Kerguelen Islands") ~
+               "France",
+             figure_name %in% c("Norfolk Island", "Cocos (Keeling) Islands",
+                                "Heard Island and McDonald Islands") ~
+               "Australia",
+             figure_name %in% c("Svalbard Islands", "Jan Mayen Island") ~
+               "Norway",
+             figure_name == "Curaçao" ~ "Netherlands (Kingdom of the)",
+             figure_name == "Faroe Islands" ~ "Denmark",
+             figure_name == "Puerto Rico" ~ "United States of America",
+             figure_name == "Andaman and Nicobar Islands" ~ "India",
+             figure_name == "Niue" ~ "New Zealand",
+             .default = as.character(Country_FAO))) |>
+    # removing disputed territories
     filter(!figure_name == "Juan de Nova Island")
 
-  mask<-mask %>% 
-    mutate(Country_FAO = case_when(figure_name == "Ascension" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Pitcairn" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Saint Helena" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Tristan da Cunha" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Kerguelen Islands" ~ "France",
-                                   figure_name == "Norfolk Island" ~ "Australia",
-                                   figure_name == "Réunion" ~ "France",
-                                   figure_name == "Prince Edward Islands" ~ "South Africa",
-                                   figure_name == "Bassas da India" ~ "France", 
-                                   figure_name == "British Virgin Islands" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Cayman Islands" ~ "United Kingdom of Great Britain and Northern Ireland",
-                                   figure_name == "Curaçao" ~ "Netherlands (Kingdom of the)",
-                                   figure_name == "Faroe Islands" ~ "Denmark", 
-                                   figure_name == "Puerto Rico" ~ "United States of America", 
-                                   figure_name == "Turks and Caicos Islands" ~ "United Kingdom of Great Britain and Northern Ireland", 
-                                   figure_name == "Guernsey" ~ "United Kingdom of Great Britain and Northern Ireland", 
-                                   figure_name == "Andaman and Nicobar Islands" ~ "India", 
-                                   figure_name == "Wallis and Futuna Islands" ~ "France", 
-                                   figure_name == "Svalbard Islands" ~ "Norway", 
-                                   figure_name == "Jan Mayen Island" ~ "Norway", 
-                                   figure_name == "Niue" ~ "New Zealand",
-                                   figure_name == "Cocos (Keeling) Islands" ~ "Australia",
-                                   figure_name == "Heard Island and McDonald Islands" ~ "Australia",
-                                   # countries accidentally left out in manual merging of FAO EEZ files - not a problem for other analysis
-                                   figure_name == "Cabo Verde" ~ "Cabo Verde",
-                                   figure_name == "Côte d'Ivoire" ~ "Côte d'Ivoire",
-                                   figure_name == "Libya" ~ "Libya", 
-                                   figure_name == "Türkiye" ~ "Türkiye", 
-                                   figure_name == "Papua New Guinea" ~ "Papua New Guinea", 
-                                   .default = as.character(Country_FAO)))
-
-  sort(unique(filter(mask, is.na(Country_FAO))$figure_name))
-  # these should all be territories 
-  setdiff(sort(unique(mask$figure_name)),sort(unique(mask$Country_FAO))) # 67
-
-  # trial<-mask %>% 
-  #   mutate(keep = ifelse(Country_FAO == figure_name, "no", "yes")) %>% 
-  #   filter(keep == "yes") %>% 
-  #   dplyr::select(Country_FAO, figure_name) %>% 
-  #   relocate(figure_name,Country_FAO) %>% 
-  #   unique()
-  # View(trial)
-
   return(mask)
-
 }
 
-area_gfdl_df<-fix_masks(area_gfdl_df)
-area_ipsl_df<-fix_masks(area_ipsl_df)
-
+area_gfdl_df <- fix_masks(area_gfdl_df)
+area_ipsl_df <- fix_masks(area_ipsl_df)
 ```
 
 ## Getting FishMIP output files
@@ -189,16 +136,13 @@ global_files <- list.files(base_folder,
 #Getting a list of models
 members <- str_extract(global_files, "annual_(.*)_(h|s)", group = 1) |> 
   unique()
-
 ```
   
-## Calculating percentage change in fish biomass mean per country from global FishMIP models at Admin country level
+## Calculating mean percentage change in fish biomass per country from global FishMIP MEM outputs
   
 ```{r, eval = F}
 #Looping through each FishMIP model
 for(m in members){
-  
- # m = members[[2]]
   
   #Select correct area of grid cell
   if(str_detect(m, "ipsl")){
@@ -208,11 +152,7 @@ for(m in members){
     area_grid <- area_gfdl_df
     print(paste0("processing '", m, "' file, using gfdl mask"))
   }
-  
 
-#     country_continent <- area_grid %>%
-#     distinct(Country_FAO, continent)
- 
   #Keep only information for grid cells with countries recognised by FAO
   #Extracting data from countries calculations
   area_grid <- area_grid |> 
@@ -228,19 +168,14 @@ for(m in members){
     drop_na(Country_FAO) |> 
     #Calculate weighted mean for biomass per ensemble member per country
     group_by(year, mem, esm, scenario, Country_FAO) |> 
-    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) %>% 
+    summarise(mean_bio = weighted.mean(biomass, cell_area, na.rm = T)) |> 
     ungroup()
-  
-  # sort(unique(df_model$Country_FAO))
-  # sort(unique(area_grid$Country_FAO))
   
   #Calculating reference period
   ref_bio <- df_model |> 
     filter(year >= 2005 & year <= 2014) |> 
-    group_by(Country_FAO) |> 
     #Calculate mean per ensemble member
-    summarise(ref_bio = mean(mean_bio, na.rm = T)) %>% 
-    ungroup()
+    summarise(ref_bio = mean(mean_bio, na.rm = T), .by = Country_FAO)
   
   #Add reference period to weighted mean data frame
   df_model <- df_model |> 
@@ -255,20 +190,15 @@ for(m in members){
   #Saving results for each model
   df_model |>
     fwrite(f_out)
- 
 }
-
 ```
   
-## Calculating mean ensemble percentage change in biomass for top 7 countries
+## Calculating mean ensemble percentage change in biomass per country
   
 ```{r eval = F}
-
-## CN approach 
-
 bio_data_by_model <- list.files(country_level_folder, 
-                       pattern = "_yearly_perc_bio_change_admin.csv",
-                       full.names = T, recursive = T) |> 
+                                pattern = "_yearly_perc_bio_change_admin.csv",
+                                full.names = T, recursive = T) |> 
   map(~fread(.)) |> 
   bind_rows()
 
@@ -277,33 +207,33 @@ f_out <- file.path(country_level_folder, "mem_perc_bio_change_admin_all.csv")
 
 #Saving results for each model
 bio_data_by_model |>
-  write_csv(f_out)
-
+  fwrite(f_out)
 ```
     
 ## Table of stats, model agreement and wilcox.test   
 
 ```{r}
-
-#mem percentage change in biomass by admin countries
+# mem percentage change in biomass by admin countries
 admin_count_bio_by_model <- list.files(country_level_folder, 
-                                 "mem_perc_bio_change_admin_all.csv",
-                                 recursive = T, full.names = T) |> 
-  read_csv()
+                                       "mem_perc_bio_change_admin_all.csv",
+                                       recursive = T, full.names = T) |> 
+  fread() |> 
+  filter(year %in% c(2041:2050, 2091:2100)) |> 
+  mutate(decade = ifelse(year %in% c(2041:2050), "2041-2050", "2091-2100")) |> 
+  # some models do not output info on some countries (see checks.R) 
+  filter(!is.na(perc_change)) 
 
-admin_count_bio_by_model <- admin_count_bio_by_model %>% 
-  filter(year %in% c(2041:2050, 2091:2100)) %>% 
-  mutate(decade = ifelse(year %in% c(2041:2050), "2041-2050", "2091-2100")) %>% 
-  filter(!is.na(perc_change)) # some models do not output info on some countries (see checks.R) 
-
-### mean, median, sd, min and max, agreement, wilcox ----
-stats <- admin_count_bio_by_model %>% 
-  group_by(Country_FAO, mem, esm, scenario, decade) %>% 
-  summarise(mean_across_decade = mean(perc_change, na.rm = T)) %>%  # across decade to have one (mean) value of change per model and exclude temporal variability from the calculations below 
-  ungroup() %>% 
-  group_by(Country_FAO, scenario, decade) %>% 
+# mean, median, sd, min and max, agreement
+stats <- admin_count_bio_by_model |> 
+  group_by(Country_FAO, mem, esm, scenario, decade) |> 
+  summarise(mean_across_decade = mean(perc_change, na.rm = T)) |> 
+  # across decade to calculate mean change per model and exclude temporal 
+  # variability from the calculations below 
+  ungroup() |> 
+  group_by(Country_FAO, scenario, decade) |> 
+  # then across model 
   summarise(
-    mean = mean(mean_across_decade), # then across model 
+    mean = mean(mean_across_decade), 
     median = median(mean_across_decade),
     sd = sd(mean_across_decade),
     min = min(mean_across_decade),
@@ -312,29 +242,23 @@ stats <- admin_count_bio_by_model %>%
     n_positive = sum(mean_across_decade >= 0),
     n_negative = sum(mean_across_decade < 0), 
     same_sign = max(n_positive,n_negative),
-    agreement = (same_sign/n_model)*100) %>% 
-  ungroup() %>% 
+    agreement = (same_sign/n_model)*100) |> 
+  ungroup() |> 
   dplyr::select(-c(n_positive, n_negative, same_sign))
 
-#### wilcox test ----
-
-w_test <- admin_count_bio_by_model %>% 
-  dplyr::select(!c(mean_bio, ref_bio)) %>% 
-  spread(scenario, perc_change) %>% 
-  group_by(Country_FAO, decade) %>%
-  summarise(wilcox_p = wilcox.test(ssp126, ssp585, alternative = "two.sided")$p.value) %>% 
+# wilcox test 
+w_test <- admin_count_bio_by_model |> 
+  dplyr::select(!c(mean_bio, ref_bio)) |> 
+  pivot_wider(names_from = scenario, values_from = perc_change) |> 
+  group_by(Country_FAO, decade) |>
+  summarise(wilcox_p = wilcox.test(ssp126, ssp585, alternative = "two.sided",
+                                   exact = F)$p.value) |> 
   ungroup()
 
-table <- stats %>% 
-  full_join(w_test) %>% 
+table_stats <- stats |> 
+  full_join(w_test) |> 
   mutate(spatial_scale = "countries_admin")
 
-fwrite(table, paste0(country_level_folder,"/table_stats_country_admin.csv"))
-
-## GAGE approach 
-fwrite(table, here("data/table_stats_country_admin.csv"))
-
-## CN approach 
-# fwrite(table, here("data/table_stats_country_admin_CN.csv"))
-
+# Save results
+fwrite(table_stats, file.path(out_folder, "table_stats_country_admin.csv"))
 ```
